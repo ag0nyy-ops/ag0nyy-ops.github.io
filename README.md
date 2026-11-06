@@ -49,7 +49,7 @@ One-time setup: **Settings → Pages → Build and deployment → Source: GitHub
 
 ## Changing prices
 
-Every price on the site comes from one file: `assets/data/prices.js`. Change a number there and it updates everywhere (the website tiers, the add-ons, the other commissions and the easter egg). Use `null` for "not set yet"; it shows as "on request", which is also what visitors see if JavaScript is off.
+Every price on the site comes from one file: `assets/data/prices.js`. Change a number there and it updates everywhere (the services list, the showpiece line and the easter egg). Each price shows as "from $X"; use `null` for "quote on request", which is also what visitors see if JavaScript is off. The word "from" and the "quote on request" text are set at the top of the same file.
 
 ## Filling in placeholders
 
