@@ -67,34 +67,42 @@ ${body}
 </svg>`;
 }
 
-// a cat's head, front-on, with the site's lens eyes and slit pupils; centred on (0,0), ~520 wide
-function cat(id) {
-  const eye = (x, tilt) => `<g transform="translate(${x} -40) rotate(${tilt})">
-      <clipPath id="${id}-lens${x}"><path d="M-82 0 Q0 -72 82 0 Q0 72 -82 0Z"/></clipPath>
-      <circle r="70" fill="url(#${id}-iris)" clip-path="url(#${id}-lens${x})"/>
-      <ellipse rx="10" ry="44" fill="${BG}" clip-path="url(#${id}-lens${x})"/>
-      <circle cx="-16" cy="-14" r="7" fill="${FG}"/>
-      <path d="M-82 0 Q0 -72 82 0 Q0 72 -82 0Z" fill="none" stroke="${FG}" stroke-width="8" stroke-linejoin="round"/>
-    </g>`;
-  let s = `<g class="cat"><defs>
-      <radialGradient id="${id}-iris"><stop offset="0" stop-color="${FG}"/><stop offset=".75" stop-color="#9a9a9a"/><stop offset="1" stop-color="#4a4a4a"/></radialGradient>
-      <radialGradient id="${id}-shine"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
-    </defs>`;
-  s += `<ellipse cx="0" cy="-40" rx="330" ry="170" fill="url(#${id}-shine)"/>`;
-  // head + ears in one outline
-  s += `<path d="M-250 60 C-262 -70 -215 -160 -160 -200 L-215 -395 L-62 -258 C-22 -266 22 -266 62 -258 L215 -395 L160 -200 C215 -160 262 -70 250 60 C232 200 112 272 0 276 C-112 272 -232 200 -250 60Z" fill="${BG}" stroke="${FG}" stroke-width="9" stroke-linejoin="round"/>`;
-  // inner ears
-  s += `<g fill="none" stroke="#6a6a6a" stroke-width="5" stroke-linejoin="round"><path d="M-188 -330 L-100 -255 L-165 -215"/><path d="M188 -330 L100 -255 L165 -215"/></g>`;
-  s += eye(-108, 8) + eye(108, -8);
-  // the third eye, same lens as the site's
-  s += `<g transform="translate(0 -172) scale(.62)"><path d="M-82 0 Q0 -62 82 0 Q0 62 -82 0Z" fill="${BG}" stroke="${FG}" stroke-width="8" stroke-linejoin="round"/>
-      <circle r="30" fill="none" stroke="${FG}" stroke-width="6"/><circle r="15" fill="${FG}"/><circle cx="-5" cy="-5" r="4" fill="${BG}"/></g>`;
-  // nose, mouth, whiskers
-  s += `<path d="M-24 92 L24 92 L0 118Z" fill="${FG}"/>`;
-  s += `<path d="M0 118 q-8 32 -42 28 M0 118 q8 32 42 28" fill="none" stroke="${FG}" stroke-width="6" stroke-linecap="round"/>`;
-  s += `<g stroke="#8a8a8a" stroke-width="4" stroke-linecap="round">`;
-  for (const side of [-1, 1]) for (const [y1, y2] of [[118, 82], [134, 134], [150, 188]]) s += `<line x1="${side * 70}" y1="${y1}" x2="${side * 360}" y2="${y2}"/>`;
-  return s + `</g></g>`;
+// developer card: an editor window with a small, original bot snippet + a terminal strip
+function devCard() {
+  const X = 664, Y = 50, W = 606, H = 390, lh = 30;
+  const code = [
+    [['k', 'const'], ['t', ' bot = '], ['k', 'new'], ['t', ' Client({ intents })']],
+    [],
+    [['t', 'bot.'], ['f', 'on'], ['t', '('], ['s', "'ready'"], ['t', ', () => {']],
+    [['t', '  console.'], ['f', 'log'], ['t', '('], ['s', "'watching.'"], ['t', ');']],
+    [['t', '});']],
+    [],
+    [['k', 'await'], ['t', ' bot.'], ['f', 'login'], ['t', '(process.env.TOKEN);']],
+  ];
+  const col = { k: [FG, 600], t: ['#9c9c9c', 400], f: [FG, 400], s: ['#c8c8c8', 400] };
+  let rows = '';
+  code.forEach((line, i) => {
+    const y = Y + 86 + i * lh;
+    rows += `<text x="${X + 34}" y="${y}" fill="#4a4a4a" text-anchor="end">${i + 1}</text>`;
+    rows += `<text x="${X + 58}" y="${y}">` + line.map(([c, t]) => `<tspan fill="${col[c][0]}" font-weight="${col[c][1]}">${t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/^ +/, (m) => '\u00a0'.repeat(m.length))}</tspan>`).join('') + `</text>`;
+  });
+  const ty = Y + H - 60;
+  return `
+    <defs><linearGradient id="fade" x1="0" x2="1"><stop offset="0" stop-color="${BG}"/><stop offset=".42" stop-color="${BG}" stop-opacity=".9"/><stop offset=".55" stop-color="${BG}" stop-opacity="0"/></linearGradient></defs>
+    <g transform="translate(960 245) scale(.62)" opacity=".35">${sigil('w', { eye: false, ringText: false })}</g>
+    <rect width="1320" height="490" fill="url(#fade)"/>
+    <g font-family="IBM Plex Mono" font-size="21" style="white-space: pre">
+      <rect x="${X}" y="${Y}" width="${W}" height="${H}" rx="14" fill="#0b0b0b" stroke="${LINE}" stroke-width="2"/>
+      <path d="M${X} ${Y + 48} h${W}" stroke="${LINE}" stroke-width="2"/>
+      <g fill="none" stroke="#6a6a6a" stroke-width="2"><circle cx="${X + 26}" cy="${Y + 24}" r="7"/><circle cx="${X + 50}" cy="${Y + 24}" r="7"/><circle cx="${X + 74}" cy="${Y + 24}" r="7"/></g>
+      <text x="${X + 104}" y="${Y + 31}" fill="${MUTED}" font-size="19">bots/index.js</text>
+      <g transform="translate(${X + W - 36} ${Y + 24}) scale(.2)"><path d="M-82 0 Q0 -62 82 0 Q0 62 -82 0Z" fill="none" stroke="${FG}" stroke-width="9"/><circle r="26" fill="${FG}"/></g>
+      ${rows}
+      <path d="M${X} ${ty - 30} h${W}" stroke="${LINE}" stroke-width="2"/>
+      <text x="${X + 24}" y="${ty}" fill="${MUTED}">$ <tspan fill="${FG}">npm start</tspan></text>
+      <text x="${X + 24}" y="${ty + lh}" fill="${FG}">› watching.<tspan fill="${FG}" font-weight="600"> █</tspan></text>
+    </g>
+    <text x="56" y="70" font-family="IBM Plex Mono" font-size="22" letter-spacing="4" fill="${MUTED}">CASE FILE · DEV · STATUS: <tspan fill="${FG}" font-weight="600">ACTIVE</tspan></text>`;
 }
 
 // a bot avatar: ring + ticks + one blackletter initial
@@ -116,12 +124,9 @@ const FORMATS = [
   { name: 'avatar', W: 1024, H: 1024, avatar: true },
   // discord profile "board" widget art. Discord writes the title + description over the bottom-left,
   // so that corner stays dark; the watching cat sits on the right.
-  { name: 'discord-widget', W: 1320, H: 490, custom: () => `
-      <defs><linearGradient id="fade" x1="0" x2="1"><stop offset="0" stop-color="${BG}"/><stop offset=".45" stop-color="${BG}" stop-opacity=".85"/><stop offset=".7" stop-color="${BG}" stop-opacity="0"/></linearGradient></defs>
-      <g transform="translate(1010 250) scale(.58)" opacity=".5">${sigil('w', { eye: false, ringText: false })}</g>
-      <g transform="translate(1010 275) scale(.6)">${cat('c')}</g>
-      <rect width="1320" height="490" fill="url(#fade)"/>
-      <text x="56" y="70" font-family="IBM Plex Mono" font-size="24" letter-spacing="5" fill="${MUTED}">CASE FILE · BOTS · STATUS: <tspan fill="${FG}" font-weight="600">ONLINE</tspan></text>` },
+  // discord profile "board" widget art. Discord writes the title + description over the left,
+  // so that side stays dark; a code window sits on the right.
+  { name: 'discord-widget', W: 1320, H: 490, custom: () => devCard() },
   { name: 'bot-jinzo', W: 512, H: 512, custom: () => botIcon('J') },
   { name: 'bot-cosmou', W: 512, H: 512, custom: () => botIcon('C') },
   { name: 'icon-site', W: 512, H: 512, custom: () => `<rect width="512" height="512" fill="url(#glow)"/><g transform="translate(256 256) scale(.49)">${sigil('s', { tri: false, ringText: false })}</g>` },
