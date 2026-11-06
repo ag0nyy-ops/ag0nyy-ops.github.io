@@ -1,12 +1,20 @@
 /* JAY // DOSSIER — the only JavaScript on the page.
+   © 2026 Jay · https://ag0nyy-ops.github.io/ · source viewable, not reusable (LICENSE)
    Rule: JS never animates anything. It only does what CSS can't:
      1. tell CSS where the cursor is            (--mx, --my on <html>)
-     2. tell CSS where each eye sits            (--ex, --ey on each .eye)
+     2. tell CSS where each eye sits            (--jdx-ex, --jdx-ey on each .eye)
      3. notice idle / away / scares             (data-idle, data-away, data-scare)
      4. same-page view transitions, copy, the right-click menu, "?" shortcut
    Everything visual lives in style.css. */
 (() => {
   'use strict';
+
+  // signature for anyone who opens dev tools
+  console.info(
+    '%cJay%c  https://ag0nyy-ops.github.io/\nLooking at the source? Learn from it, don\u2019t lift it. Case jdx-hollow-81ca45.',
+    'font: 600 16px/1.6 "UnifrakturMaguntia", serif',
+    'font: 12px/1.6 "IBM Plex Mono", monospace; color: #888'
+  );
 
   const root = document.documentElement;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
@@ -49,8 +57,8 @@
     for (const el of onScreen) rects.push([el, el.getBoundingClientRect()]);   // reads…
     for (const [el, r] of rects) {                                              // …then writes
       if (!r.width) continue;
-      el.style.setProperty('--ex', (r.left + r.width / 2).toFixed(1));
-      el.style.setProperty('--ey', (r.top + r.height / 2).toFixed(1));
+      el.style.setProperty('--jdx-ex', (r.left + r.width / 2).toFixed(1));
+      el.style.setProperty('--jdx-ey', (r.top + r.height / 2).toFixed(1));
     }
   };
   if ('IntersectionObserver' in window) {

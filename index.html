@@ -1,4 +1,6 @@
 <!doctype html>
+<!-- jay. — © 2026 Jay — https://ag0nyy-ops.github.io/
+     Source is viewable for learning, not for reuse. See LICENSE. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -53,9 +55,9 @@
   <a class="skip" href="#main">Skip to content</a>
 
   <!-- SVG filters referenced from CSS with filter: url(#…) -->
-  <svg class="fx-defs" width="0" height="0" aria-hidden="true" focusable="false">
+  <svg class="fx-defs" data-case="jdx-witness-eb69d0" width="0" height="0" aria-hidden="true" focusable="false">
     <!-- chromatic aberration: pull R, G and B apart and screen them back together -->
-    <filter id="rgb-split" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+    <filter id="jdx-rgb-split" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
       <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r"/>
       <feOffset in="r" dx="-1.2" dy="0" result="r2"/>
       <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g"/>
@@ -65,7 +67,7 @@
       <feBlend in="rg" in2="b2" mode="screen"/>
     </filter>
     <!-- liquid warp: turbulence noise used as a displacement map -->
-    <filter id="warp" x="-10%" y="-10%" width="120%" height="120%">
+    <filter id="jdx-warp" x="-10%" y="-10%" width="120%" height="120%">
       <feTurbulence type="fractalNoise" baseFrequency="0.012 0.08" numOctaves="2" seed="7" result="noise"/>
       <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
     </filter>
@@ -96,7 +98,7 @@
 
   <header class="topbar">
     <a class="topbar__logo" href="#top" aria-label="Jay, back to top">
-      <span class="eye eye--logo" style="--blink:5.3s; --blink-delay:-1s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span></span>
+      <span class="eye eye--logo" style="--jdx-blink:5.3s; --jdx-blink-delay:-1s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span></span>
       <span class="topbar__name">Jay</span>
     </a>
     <nav aria-label="Primary">
@@ -127,22 +129,22 @@
           </svg>
         </div>
         <div class="sigil__ticks"></div>
-        <svg class="sigil__tri" viewBox="0 0 600 600"><path d="M300 52 L515 424 L85 424Z"/><path d="M300 548 L515 176 L85 176Z"/></svg>
+        <svg class="sigil__tri" viewBox="0 0 600 600"><path d="M300 52 L515 424 L85 424Z"/><path d="M300 548 L515 176 L85 176 L300 548.004Z"/></svg>
       </div>
 
       <!-- depth layer: mid (the big eye) -->
       <div class="hero__layer hero__layer--mid" aria-hidden="true">
-        <span class="eye eye--hero" style="--blink:6.4s; --blink-delay:-3.1s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--hero" style="--jdx-blink:6.4s; --jdx-blink-delay:-3.1s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
       </div>
 
       <!-- hidden watchers: only really visible when the light finds them -->
       <div class="hero__layer hero__layer--near" aria-hidden="true">
-        <span class="eye eye--mini" style="--x:6%;  --y:26%; --w:5.5rem; --blink:5.1s; --blink-delay:-.4s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
-        <span class="eye eye--mini" style="--x:23%; --y:14%; --w:3.4rem; --blink:7.7s; --blink-delay:-2.2s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
-        <span class="eye eye--mini" style="--x:76%; --y:16%; --w:4rem;   --blink:6.9s; --blink-delay:-5.5s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
-        <span class="eye eye--mini" style="--x:88%; --y:42%; --w:5rem;   --blink:4.8s; --blink-delay:-1.7s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
-        <span class="eye eye--mini" style="--x:66%; --y:64%; --w:3.2rem; --blink:8.3s; --blink-delay:-6s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
-        <span class="eye eye--mini" style="--x:9%;  --y:52%; --w:3rem;   --blink:6.1s; --blink-delay:-3.3s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:6%;  --y:26%; --w:5.5rem; --jdx-blink:5.1s; --jdx-blink-delay:-.4s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:23%; --y:14%; --w:3.4rem; --jdx-blink:7.7s; --jdx-blink-delay:-2.2s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:76%; --y:16%; --w:4rem;   --jdx-blink:6.9s; --jdx-blink-delay:-5.5s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:88%; --y:42%; --w:5rem;   --jdx-blink:4.8s; --jdx-blink-delay:-1.7s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:66%; --y:64%; --w:3.2rem; --jdx-blink:8.3s; --jdx-blink-delay:-6s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:9%;  --y:52%; --w:3rem;   --jdx-blink:6.1s; --jdx-blink-delay:-3.3s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
       </div>
 
       <div class="hero__file" aria-hidden="true">
@@ -263,7 +265,7 @@
     <!-- ================= SERVICES ================= -->
     <section class="section" id="services" tabindex="-1" aria-labelledby="services-title">
       <span class="section__ghost" aria-hidden="true">02</span>
-      <span class="eye eye--margin" style="--blink:7.1s; --blink-delay:-2.6s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+      <span class="eye eye--margin" style="--jdx-blink:7.1s; --jdx-blink-delay:-2.6s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
       <header class="sh">
         <p class="sh__label">File 02 / Commissions / rate sheet</p>
         <h2 class="sh__title distort" id="services-title" data-text="Services">Services</h2>
@@ -350,7 +352,7 @@
   </main>
 
   <footer class="footer">
-    <span class="eye eye--footer" style="--blink:5.8s; --blink-delay:-4.4s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+    <span class="eye eye--footer" style="--jdx-blink:5.8s; --jdx-blink-delay:-4.4s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
     <p class="footer__end">End of file</p>
 
     <!-- easter egg: press "?" or open this to see how the effects are built -->
@@ -388,8 +390,8 @@
         <figure class="snippet">
           <figcaption><b>03 / Eyes that do their own trig</b> JS just writes the cursor position and each eye's centre as numbers. CSS works out the angle and distance and moves the iris itself.</figcaption>
 <pre><code>.eye__iris {
-  --dx: calc(var(--mx) - var(--ex));
-  --dy: calc(var(--my) - var(--ey));
+  --dx: calc(var(--mx) - var(--jdx-ex));
+  --dy: calc(var(--my) - var(--jdx-ey));
   --angle: atan2(var(--dy), var(--dx));
   --reach: min(1, hypot(var(--dx), var(--dy)) / 420);
   translate: calc(cos(var(--angle)) * var(--reach) * 10cqw)
@@ -415,7 +417,7 @@
     <p class="footer__sample">This site is a sample. Commissions open. <a href="#contact">Hire me ↗</a></p>
 
     <div class="footer__row">
-      <p>© 2026 Jay</p>
+      <p>© Jay. All rights reserved. <a href="https://github.com/ag0nyy-ops/ag0nyy-ops.github.io/blob/main/LICENSE" target="_blank" rel="noopener">Source</a> is viewable for learning, not for reuse.</p>
       <p><a href="uploader/">Uploader app</a> · <a href="privacy.html">Privacy</a></p>
       <p><a href="#top">Back to top ↑</a></p>
     </div>
