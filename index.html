@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap">
-  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/style.css?v=3">
   <script>
     (function (d) {
       d.classList.add('js');
@@ -24,9 +24,15 @@
       try { skip = !!sessionStorage.getItem('seen'); } catch (e) {}
       if (skip || matchMedia('(prefers-reduced-motion: reduce)').matches) d.classList.add('no-intro');
       else d.classList.add('intro-playing');
+      // failsafe: if main.js never runs (blocked, stale cache, error), unlock scrolling
+      // and fall back to the static no-JS page so nothing stays hidden
+      setTimeout(function () {
+        d.classList.remove('intro-playing');
+        if (!d.classList.contains('js-ok')) d.classList.remove('js');
+      }, 4000);
     })(document.documentElement);
   </script>
-  <script src="assets/js/main.js" defer></script>
+  <script src="assets/js/main.js?v=3" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
