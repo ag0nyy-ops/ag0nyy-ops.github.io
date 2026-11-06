@@ -54,6 +54,27 @@
   document.fonts?.ready.then(measure);
   setTimeout(measure, 1600); // after the intro lids have opened
 
+  /* 2b. scroll progress fallback. Browsers with scroll-driven animations do
+     this in pure CSS (scroll(root) timeline). Others get --progress (0..1)
+     and the "Declassified %" text from here, so the line and the meter
+     stay in sync either way. */
+  if (!(window.CSS && CSS.supports('animation-timeline: scroll()'))) {
+    root.classList.add('no-sda');
+    const pct = document.querySelector('.topbar__progress .pct');
+    let pending = false;
+    const update = () => {
+      pending = false;
+      const max = root.scrollHeight - innerHeight;
+      const p = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
+      root.style.setProperty('--progress', p.toFixed(4));
+      if (pct) pct.textContent = String(Math.round(p * 100)).padStart(2, '0') + '%';
+    };
+    const queue = () => { if (!pending) { pending = true; requestAnimationFrame(update); } };
+    addEventListener('scroll', queue, { passive: true });
+    addEventListener('resize', queue, { passive: true });
+    update();
+  }
+
   /* 3a. cursor left the window → everything squints */
   document.addEventListener('mouseleave', () => { root.dataset.away = ''; });
   document.addEventListener('mouseenter', () => { delete root.dataset.away; });
