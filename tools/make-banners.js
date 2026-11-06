@@ -40,11 +40,18 @@ function sigil(id, { ring = true, ticks = true, tri = true, eye = true, ringText
   return s + `</g>`;
 }
 
-function text() {
+// "Jay" as outlines (tools/jay-outline.json, pulled from UnifrakturMaguntia with fontTools), so it
+// never depends on a font being loaded. Hollow like the site footer: faint fill, near-white stroke.
+// The stroke is non-scaling, so `sw` is in output pixels whatever the lockup's scale.
+const JAY = JSON.parse(fs.readFileSync(__dirname + '/jay-outline.json', 'utf8'));
+const jayPath = (sw) => `<g class="jay" data-size="330"><path d="${JAY.d}" transform="scale(${(330 / JAY.upm).toFixed(5)})"
+    fill="#ffffff" fill-opacity=".08" stroke="${FG}" stroke-width="${sw}" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></g>`;
+
+function text(sw) {
   // laid out at a reference scale; the whole lockup is scaled afterwards
   return `<g class="txt" font-family="IBM Plex Mono">
     <text class="lab" x="0" y="0" font-size="32" letter-spacing="5" fill="${MUTED}">FILE NO. J-018 · CLASS: PUBLIC · STATUS: <tspan fill="${FG}" font-weight="600">ACTIVE</tspan></text>
-    <text class="jay" x="-8" y="0" font-family="UnifrakturMaguntia" font-size="330" fill="${FG}">Jay</text>
+    ${jayPath(sw)}
     <text class="tag" x="0" y="0" font-size="60" font-weight="600" letter-spacing="15" fill="${FG}">SHIPS REAL THINGS</text>
     <text class="sub" x="0" y="0" font-size="46" fill="${MUTED}">discord bots · web apps · ios · builds</text>
     <text class="url" x="0" y="0" font-size="46" font-weight="600" fill="${FG}">ag0nyy-ops.github.io</text>
@@ -54,7 +61,7 @@ function text() {
 function shell(W, H, body, { grain = 128, vig = .75 } = {}) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
 <!-- Jay · https://ag0nyy-ops.github.io/ · © 2026 Jay, all rights reserved -->
-<style>${FONTS}</style>
+<style>${FONTS.split('\n').filter((l) => !l.includes('UnifrakturMaguntia') || body.includes('UnifrakturMaguntia')).join('\n')}</style>
 <defs>
   <pattern id="grain" width="${grain}" height="${grain}" patternUnits="userSpaceOnUse"><image href="data:image/png;base64,${GRAIN}" width="${grain}" height="${grain}"/></pattern>
   <radialGradient id="vig" cx=".5" cy=".5" r=".75"><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="${vig}"/></radialGradient>
@@ -116,11 +123,11 @@ const FORMATS = [
   // discord: shown tiny (~340px wide in the profile popout). The avatar covers the left and
   // bottom-left, the avatar decoration the top, the custom status the bottom-right. So: only
   // "Jay" + tagline, big, in the right half's middle band. Everything else is in the bio anyway.
-  { name: 'discord-banner', W: 1200, H: 480, box: [560, 88, 590, 262], textOnly: true, keep: ['jay', 'tag'],
+  { name: 'discord-banner', W: 1200, H: 480, box: [565, 92, 550, 232], textOnly: true, keep: ['jay', 'tag'], jayStroke: 6,
     decor: (sig) => `<g transform="translate(230 240) scale(.5)" opacity=".4">${sig('bg', { eye: false, ringText: false })}</g>` },
-  { name: 'github-social-preview', W: 1280, H: 640, box: [256, 128, 768, 384] },
-  { name: 'x-header', W: 1500, H: 500, box: [300, 90, 900, 320] },
-  { name: 'youtube-banner', W: 2560, H: 1440, box: [557, 518, 1446, 404], bgSigil: true, wide: true },
+  { name: 'github-social-preview', W: 1280, H: 640, box: [256, 128, 768, 384], jayStroke: 3.5 },
+  { name: 'x-header', W: 1500, H: 500, box: [300, 90, 900, 320], jayStroke: 4 },
+  { name: 'youtube-banner', W: 2560, H: 1440, box: [557, 518, 1446, 404], bgSigil: true, wide: true, jayStroke: 6 },
   { name: 'avatar', W: 1024, H: 1024, avatar: true },
   // discord profile "board" widget art. Discord writes the title + description over the bottom-left,
   // so that corner stays dark; the watching cat sits on the right.
@@ -144,7 +151,7 @@ const FORMATS = [
       body = `<rect width="1024" height="1024" fill="url(#glow)"/><g transform="translate(512 512) scale(.96)">${sigil('a')}</g>`;
     } else {
       body = (f.decor ? f.decor(sigil) : '') + (f.bgSigil ? `<g transform="translate(${f.W/2} ${f.H/2}) scale(1.3)" opacity=".2">${sigil('bg', { tri: true, eye: false })}</g>` : '')
-        + `<g class="lockup">${f.textOnly ? '' : sigil('e', { tri: false, ticks: true })}${text()}</g>`;
+        + `<g class="lockup">${f.textOnly ? '' : sigil('e', { tri: false, ticks: true })}${text(f.jayStroke || +(f.W / 240).toFixed(1))}</g>`;
     }
     const svg = shell(f.W, f.H, body, { grain: f.W > 2000 ? 256 : 160 });
     await page.setViewportSize({ width: f.W, height: f.H });
@@ -152,25 +159,26 @@ const FORMATS = [
     await page.evaluate(() => document.fonts.ready);
     let info = {};
     if (!f.avatar && !f.custom) {
-      info = await page.evaluate(([box, wide, keep]) => {
+      info = await page.evaluate(([box, wide, keep, UPM]) => {
         const q = (s) => document.querySelector(s), bb = (s) => q(s).getBBox();
+        // text elements move with x/y; the outlined "Jay" is a <g>, so it moves with a translate
+        const setXY = (el, x, y) => { if (el.tagName === 'g') el.setAttribute('transform', `translate(${(+x).toFixed(1)} ${(+y).toFixed(1)})`); else { el.setAttribute('x', x); el.setAttribute('y', y); } };
+        const setJaySize = (px) => { const j = q('.jay'), path = j.querySelector('path'); j.dataset.size = px; path.setAttribute('transform', `scale(${(px / UPM).toFixed(5)})`); };
         const s = q('.lockup .sigil'), txt = q('.txt');
-        const stack = (keys, gap) => { let y = 0; for (const k of keys) { const el = q('.' + k); el.setAttribute('y', 0); el.setAttribute('x', 0); const b = el.getBBox(); y += gap[k] || 0; el.setAttribute('y', (y - b.y).toFixed(1)); y += b.height; } return y; };
+        const stack = (keys, gap) => { let y = 0; for (const k of keys) { const el = q('.' + k); setXY(el, 0, 0); const b = el.getBBox(); y += gap[k] || 0; setXY(el, 0, (y - b.y).toFixed(1)); y += b.height; } return y; };
         if (!wide) {
           // eye | stacked column: labels, Jay, tagline, sub line, url
           const keys = keep || ['lab', 'jay', 'tag', 'sub', 'url'];
           for (const k of ['lab', 'jay', 'tag', 'sub', 'url']) if (!keys.includes(k)) q('.' + k).remove();
-          if (keep) { q('.jay').setAttribute('font-size', 250); q('.tag').setAttribute('letter-spacing', 7); }
+          if (keep) { setJaySize(250); q('.tag').setAttribute('letter-spacing', 4); }
           stack(keys, { jay: 40, tag: 30, sub: 34, url: 18 });
         } else {
           // eye | Jay | stacked column — a long, low lockup for very wide safe areas
           const colH = stack(['lab', 'tag', 'sub', 'url'], { tag: 34, sub: 30, url: 16 });
-          const jay = q('.jay'); jay.setAttribute('y', 0); const jb = jay.getBBox();
-          const jayScale = (colH * 1.25) / jb.height;
-          jay.setAttribute('font-size', (330 * jayScale).toFixed(1));
+          const jay = q('.jay'); setXY(jay, 0, 0); const jb = jay.getBBox();
+          setJaySize(330 * (colH * 1.25) / jb.height);
           const jb2 = jay.getBBox();
-          jay.setAttribute('y', (-(jb2.y) + (colH - jb2.height) / 2).toFixed(1));
-          jay.setAttribute('x', (-jb2.width - 70 - jb2.x).toFixed(1));
+          setXY(jay, -jb2.width - 70 - jb2.x, -jb2.y + (colH - jb2.height) / 2);
         }
         const t = bb('.txt'), D = s ? t.height * (wide ? 1.35 : 1.04) : 0, between = s ? 80 : 0;
         if (s) s.setAttribute('transform', `translate(${D/2} ${D/2}) scale(${(D/1000).toFixed(4)})`);
@@ -181,7 +189,7 @@ const FORMATS = [
         q('.lockup').setAttribute('transform', `translate(${tx.toFixed(1)} ${ty.toFixed(1)}) scale(${sc.toFixed(4)})`);
         const r = q('.lockup').getBoundingClientRect();
         return { scale: +sc.toFixed(3), tagPx: +(60 * sc), smallTextPx: +(46 * sc).toFixed(1), labelPx: +(32 * sc).toFixed(1), lockup: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] };
-      }, [f.box, !!f.wide, f.keep || null]);
+      }, [f.box, !!f.wide, f.keep || null, JAY.upm]);
     }
     const final = await page.evaluate(() => document.querySelector('svg').outerHTML);
     fs.writeFileSync(OUT + f.name + '.svg', '<?xml version="1.0" encoding="UTF-8"?>\n' + final);
