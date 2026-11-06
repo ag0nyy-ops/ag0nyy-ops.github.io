@@ -20,7 +20,7 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap"></noscript>
-  <link rel="stylesheet" href="assets/css/style.css?v=8">
+  <link rel="stylesheet" href="assets/css/style.css?v=9">
   <script>
     /* The only blocking JS: skip the eyelid intro on repeat visits this session. */
     try {
@@ -28,7 +28,7 @@
       sessionStorage.setItem('seen', '1');
     } catch (e) {}
   </script>
-  <script src="assets/js/main.js?v=8" defer></script>
+  <script src="assets/js/main.js?v=9" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -72,6 +72,9 @@
   <p class="toast" role="status" aria-live="polite"></p>
 
   <div class="intro" aria-hidden="true"><span class="intro__lid intro__lid--top"></span><span class="intro__lid intro__lid--bottom"></span></div>
+
+  <!-- scroll progress: a 2px line on the right edge, synced with "Declassified %" -->
+  <div class="scrollline" aria-hidden="true"><span class="scrollline__fill"></span></div>
 
   <header class="topbar">
     <a class="topbar__logo" href="#top" aria-label="Jay, back to top">
