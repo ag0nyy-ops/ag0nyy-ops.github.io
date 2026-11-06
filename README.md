@@ -47,10 +47,13 @@ Pushing to `main` deploys through GitHub Actions (`.github/workflows/pages.yml`)
 
 One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
+## Changing prices
+
+Every price on the site comes from one file: `assets/data/prices.js`. Change a number there and it updates everywhere (the website tiers, the add-ons, the other commissions and the easter egg). Use `null` for "not set yet"; it shows as "on request", which is also what visitors see if JavaScript is off.
+
 ## Filling in placeholders
 
 Search the code for `[` and `TODO` to find everything that still needs real content:
 
 - screenshots go in `assets/img/`, then replace the `[screenshot here]` spans with `<img src="assets/img/…" alt="…" loading="lazy">`
-- prices are the `$[__]` values in the Services section
 - the Discord handle is `#discord-handle` in the Contact section
