@@ -2,7 +2,7 @@
 
 My portfolio and commissions page: Discord bots, iOS apps, Roblox/Minecraft and websites.
 
-**Live:** https://ag0nyy-ops.github.io
+**Live:** [https://ag0nyy-ops.github.io](https://ag0nyy-ops.github.io/)
 
 ## Stack
 
