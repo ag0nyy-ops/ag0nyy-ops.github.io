@@ -79,6 +79,10 @@ Search the code for `[` and `TODO` to find everything that still needs real cont
 - screenshots go in `assets/img/`, then replace the `[screenshot here]` spans with `<img src="assets/img/…" alt="…" loading="lazy">`
 - the Discord handle is `#discord-handle` in the Contact section
 
+## Social banners
+
+`assets/banners/` has the profile art (PNG to upload + self-contained SVG source with the fonts and grain embedded): Discord banner 1200×480 (600×240 at 2×), GitHub social preview 1280×640, X header 1500×500, YouTube banner 2560×1440 (text inside the 1546×423 safe area) and a 1024×1024 eye avatar. Rebuild them with `node tools/make-banners.js` (needs Playwright).
+
 ## Licence
 
 Source-available, view only: you can read and learn from this code, but not copy, redistribute or reuse it (modified or not) as your own site or in commercial work without written permission. See [LICENSE](LICENSE). The self-hosted fonts in `assets/fonts/` are SIL Open Font License 1.1 (licence texts included).
