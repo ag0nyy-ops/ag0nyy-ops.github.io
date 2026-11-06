@@ -133,6 +133,17 @@
     position: absolute !important; width: 1px; height: 1px;
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
   }
+  /* Text selection is off for the page (it's a "document" you look at, and
+     drag-selecting fights the cursor effects)… */
+  body { -webkit-user-select: none; user-select: none; }
+  /* …except what people actually need to copy: contact details and prices.
+     Pure CSS, so it works the same with JavaScript off. */
+  #discord-handle, .contact__links a, .price__amt,
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text; user-select: text;
+  }
+  #discord-handle::selection, .price__amt ::selection { background: var(--fg); color: var(--bg); }
+
   .skip {
     position: absolute; left: 16px; top: -100px; z-index: 400;
     padding: .6em 1em; background: var(--fg); color: var(--bg); font-family: var(--mono);
@@ -690,15 +701,16 @@
   /* ---------------- contact ---------------- */
   .contact__lead { margin-bottom: 1rem; font: .78rem/1.5 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   .handle {
-    display: block; max-width: 100%; padding: 0; border: 0; background: none;
-    color: var(--fg); text-align: left; cursor: pointer;
+    display: block; width: fit-content; max-width: 100%; margin-bottom: 1rem;
+    color: var(--fg); cursor: copy;
     font: 600 clamp(2.4rem, 9vw, 7.5rem)/1.05 var(--mono); letter-spacing: -.05em;
     overflow-wrap: anywhere;
     /* hover pulls the RGB channels apart with text-shadow */
     text-shadow: 0 0 0 var(--fringe-r), 0 0 0 var(--fringe-c);
     transition: text-shadow .5s var(--ease-spring);
   }
-  .handle:hover, .handle:focus-visible { text-shadow: -.04em 0 0 var(--fringe-r), .04em 0 0 var(--fringe-c); }
+  .handle:hover { text-shadow: -.04em 0 0 var(--fringe-r), .04em 0 0 var(--fringe-c); }
+  .btn--small { padding: .75em 1.1em; font-size: .75rem; }
   .contact__status { min-height: 1.6em; margin: .9rem 0 2rem; font: .78rem/1.6 var(--mono); color: var(--muted); }
   .contact__links a { font: 600 clamp(1rem, 2vw, 1.3rem)/1 var(--mono); text-decoration: none; border-bottom: 1px solid var(--line-strong); padding-bottom: .3rem; }
   .contact__links a:hover { border-color: var(--fg); }
@@ -804,23 +816,33 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* ---- custom cursor: a reticle that grows over anything clickable ---- */
+  /* ---- custom cursor ----
+     A ring that trails the mouse. Three rules keep it honest:
+     1. It only exists on devices with a real mouse: (hover: hover) and
+        (pointer: fine). Touch devices never lose their default behaviour.
+     2. The native cursor is only hidden once JS has seen a real mouse move
+        and set data-cursor on <html>. No JS → normal cursor, no ring.
+     3. "Smooth" is a short transition on translate: every mousemove retargets
+        it, so the ring glides a few ms behind the pointer. */
   .reticle {
-    position: fixed; left: 0; top: 0; z-index: 70;
+    position: fixed; left: 0; top: 0; z-index: 90;
     width: 2.2rem; aspect-ratio: 1; margin: -1.1rem 0 0 -1.1rem;
     border: 1px solid #fff; border-radius: 50%;
     background: radial-gradient(circle, #fff 0 2px, transparent 2.5px);
     mix-blend-mode: difference;
     pointer-events: none;
     translate: calc(var(--mx) * 1px) calc(var(--my) * 1px);
-    transition: scale .45s var(--ease-spring);
-    display: none;
+    transition: translate .14s var(--ease-liquid), scale .45s var(--ease-spring), opacity .35s;
+    display: none; opacity: 0;
   }
   @media (hover: hover) and (pointer: fine) {
-    .js-ok .reticle { display: block; }
-    .js-ok, .js-ok * { cursor: none; }
+    :root[data-cursor] .reticle { display: block; opacity: 1; }
+    :root[data-cursor] * { cursor: none; }
+    /* mouse left the window: the ring fades instead of freezing at the edge */
+    :root[data-cursor][data-away] .reticle { opacity: 0; }
   }
-  :root:has(:is(a, button, summary, .redacted):hover) .reticle { scale: 2.3; }
+  /* grows over anything you can click, including the right-click menu */
+  :root:has(:is(a, button, summary, .redacted, [data-copy]):hover) .reticle { scale: 2.3; }
 
   /* ---- the whisper ---- */
   .whisper {
@@ -1194,7 +1216,8 @@
     .flashlight, .dim, .reticle, .whisper, .intro, .grain, .vhs::after { display: none !important; }
     .eye__iris, .eye__lid, .eye__lashes { translate: none !important; }
     .glitch { filter: none !important; }
-    .js-ok, .js-ok * { cursor: auto !important; }
+    /* reduced motion: no trailing ring, the normal system cursor comes back */
+    :root[data-cursor] * { cursor: auto !important; }
   }
 
   /* people who ask for more contrast get the plain document */
@@ -1217,5 +1240,88 @@
   @keyframes vt-in {
     from { clip-path: circle(0 at var(--vt-x, 50%) var(--vt-y, 50%)); }
     to   { clip-path: circle(150vmax at var(--vt-x, 50%) var(--vt-y, 50%)); }
+  }
+}
+
+
+/* ==========================================================================
+   Right-click menu — re-opens @layer components (layers can be added to
+   later; their order was fixed at the top of the file).
+   It's a native popover (popover="auto"), which gives three things for free:
+     · it renders in the top layer, above every z-index on the page
+     · Escape closes it
+     · clicking anywhere outside closes it ("light dismiss")
+   JS only opens it and positions it at the cursor.
+   ========================================================================== */
+@layer components {
+  /* hidden unless the browser supports popovers AND it's open. Browsers
+     without :popover-open drop the second rule, so the menu stays hidden
+     and the normal browser menu is used instead. */
+  .ctx { display: none; }
+  .ctx:popover-open {
+    display: grid;
+    position: fixed; inset: auto; margin: 0;   /* undo the UA's centred popover */
+    min-width: 15.5rem;
+    padding: .35rem;
+    border: 1px solid var(--line-strong);
+    color: var(--fg);
+    background: color-mix(in oklab, var(--bg) 82%, transparent);
+    backdrop-filter: blur(14px) saturate(0);
+    -webkit-backdrop-filter: blur(14px) saturate(0);
+    box-shadow: 0 1.2rem 3rem rgb(0 0 0 / .6);
+    font: 400 .75rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  }
+  /* the folder corner: a notch cut out of the top-right with clip-path */
+  .ctx:popover-open {
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+  }
+  .ctx__head {
+    display: flex; justify-content: space-between; gap: 1rem;
+    padding: .55rem .65rem .7rem;
+    margin-bottom: .3rem;
+    border-bottom: 1px dashed var(--line-strong);
+    color: var(--muted);
+  }
+  .ctx__head span:first-child {
+    padding: .2rem .4rem; border: 1px solid currentColor; rotate: -3deg; color: var(--fg);
+  }
+  .ctx__item {
+    display: flex; align-items: center; gap: .8rem;
+    width: 100%; padding: .75rem .65rem;
+    border: 0; background: none; color: inherit;
+    font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left;
+    text-decoration: none; cursor: pointer;
+    transition: background-color .2s, color .2s;
+  }
+  .ctx__item:is(:hover, :focus-visible) { background: var(--fg); color: var(--bg); outline: none; }
+  .ctx__no { color: var(--muted); font-size: .75rem; }
+  .ctx__item:is(:hover, :focus-visible) .ctx__no { color: inherit; }
+  .ctx__hint {
+    margin-top: .3rem; padding: .6rem .65rem .45rem;
+    border-top: 1px dashed var(--line-strong);
+    color: var(--muted); font-size: .75rem; letter-spacing: .06em; text-transform: none;
+  }
+
+  /* little confirmation for "copy" */
+  .toast {
+    position: fixed; left: 50%; bottom: 1.5rem; z-index: 95;
+    translate: -50% 0;
+    padding: .7rem 1rem;
+    border: 1px solid var(--line-strong);
+    background: var(--bg);
+    font: .75rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s, translate .5s var(--ease-spring);
+  }
+  .toast.is-on { opacity: 1; translate: -50% -.4rem; }
+}
+
+@layer motion {
+  @media (prefers-reduced-motion: no-preference) {
+    /* the menu "unfolds" from its top edge as it opens */
+    .ctx:popover-open { animation: ctx-open .28s var(--ease-liquid); }
+    @keyframes ctx-open {
+      from { opacity: 0; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 0, 0 0); }
+    }
   }
 }
