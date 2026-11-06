@@ -138,7 +138,7 @@
   body { -webkit-user-select: none; user-select: none; }
   /* …except what people actually need to copy: contact details and prices.
      Pure CSS, so it works the same with JavaScript off. */
-  #discord-handle, .contact__links a, .price__amt,
+  #discord-handle, .contact__links a, .price__amt, [data-price],
   input, textarea, [contenteditable] {
     -webkit-user-select: text; user-select: text;
   }
@@ -620,7 +620,7 @@
     position: relative;
     display: grid;
     grid-template-columns: 3.5rem auto minmax(2rem, 1fr) auto;
-    grid-template-areas: "no name dots amt" ". desc desc desc";
+    grid-template-areas: "no name dots amt" ". desc desc cta";
     gap: .3rem 1.1rem; align-items: baseline;
     padding: 1.7rem 1rem;
     border-bottom: 1px solid var(--line-strong);
@@ -634,9 +634,77 @@
   .price__amt { grid-area: amt; font: .76rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
   .price__amt b { font-size: 1.45rem; letter-spacing: 0; margin-left: .25em; }
   .price__desc { grid-area: desc; color: var(--muted); }
+  .price__cta {
+    grid-area: cta; justify-self: end; align-self: center;
+    font: 600 .75rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+    text-decoration: none; white-space: nowrap;
+    padding-bottom: .25rem; border-bottom: 1px solid var(--line-strong);
+    transition: border-color .3s;
+  }
+  .price__cta:hover, .price__cta:focus-visible { border-color: var(--fg); }
+
+  /* ---- requisition labels + website tiers ---- */
+  .req__label {
+    margin: clamp(2.5rem, 5vw, 3.5rem) 0 1rem;
+    font: 400 .75rem/1 var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--muted);
+  }
+  .req__label::before { content: "▤ "; }
+  .tiers {
+    display: grid; gap: clamp(1rem, 2vw, 1.5rem);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  }
+  .tier {
+    position: relative;
+    display: grid; align-content: start; gap: 1rem;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border: 1px solid var(--line-strong);
+    background: var(--bg-2);
+    transition: transform .6s var(--ease-spring), border-color .3s;
+  }
+  .tier:hover, .tier:focus-within { transform: translateY(-6px); border-color: var(--fg); }
+  /* the showpiece tier gets the same running-light border as the case files */
+  .tier--showpiece {
+    border-color: transparent;
+    background:
+      linear-gradient(var(--bg-2), var(--bg-2)) padding-box,
+      conic-gradient(from var(--sweep), var(--line-strong) 0 72%, var(--fg) 86%, var(--line-strong) 100%) border-box;
+    transition: transform .6s var(--ease-spring), --sweep 1.6s var(--ease-ink);
+  }
+  .tier--showpiece:hover, .tier--showpiece:focus-within { --sweep: 360deg; }
+  .tier__head {
+    display: flex; justify-content: space-between; align-items: center;
+    font: 400 .75rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+  }
+  .tier__head .stamp { color: var(--fg); }
+  .tier__name { font: 600 clamp(1.6rem, 3vw, 2.3rem)/1.05 var(--mono); letter-spacing: -.045em; }
+  .tier__name span { display: block; margin-top: .35rem; font-size: .5em; letter-spacing: 0; color: var(--muted); }
+  .tier__desc { color: var(--muted); max-width: 42ch; }
+  /* .tier__amt reuses .price__amt (selectable, same type), but must not inherit
+     its grid-area: "amt" doesn't exist in this grid and would add a column */
+  .tier__amt { grid-area: auto; }
+  .tier__amt b { font-size: clamp(2rem, 4vw, 2.8rem); }
+  .tier__cta { justify-self: start; margin-top: .4rem; }
+
+  .scope-note {
+    margin-top: 1.6rem;
+    font: 400 .9rem/1.6 var(--mono); color: var(--muted);
+  }
+  .scope-note a { color: var(--fg); text-underline-offset: .2em; }
+
+  /* ---- "Case 006: unassigned" — commission hint at the end of the case files ---- */
+  .file-cta {
+    display: grid; gap: 1rem; justify-items: start;
+    margin-top: clamp(2rem, 5vw, 3rem);
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+    border: 1px dashed var(--line-strong);
+    background: repeating-linear-gradient(-45deg, transparent 0 14px, color-mix(in oklab, var(--fg) 3%, transparent) 14px 15px);
+  }
+  .file-cta__k { font: 400 .75rem/1.7 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  .file-cta__big { font: 400 clamp(2rem, 5vw, 3.6rem)/1.05 var(--goth); }
 
   @container prices (max-width: 38rem) {
-    .price { grid-template-columns: 2.2rem minmax(0, 1fr); grid-template-areas: "no name" ". desc" ". amt"; padding-inline: 0; }
+    .price { grid-template-columns: 2.2rem minmax(0, 1fr); grid-template-areas: "no name" ". desc" ". amt" ". cta"; padding-inline: 0; }
+    .price__cta { justify-self: start; margin-top: .4rem; }
     .price__dots { display: none; }
     .price__amt { margin-top: .5rem; }
   }
@@ -719,6 +787,11 @@
   .footer { position: relative; overflow: clip; border-top: 1px solid var(--line-strong); padding: clamp(4rem, 9vw, 7rem) var(--gutter) 0; text-align: center; }
   .eye--footer { width: min(15rem, 50vw); margin: 0 auto 1.4rem; }
   .footer__end { margin-bottom: clamp(1.5rem, 4vw, 2.5rem); font: .75rem/1 var(--mono); letter-spacing: .5em; text-transform: uppercase; color: var(--muted); }
+  .footer__sample {
+    margin-bottom: 1.5rem;
+    font: 400 .75rem/1.6 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
+  }
+  .footer__sample a { color: var(--fg); text-underline-offset: .25em; }
   .footer__row {
     display: flex; flex-wrap: wrap; justify-content: space-between; gap: .6rem 1.5rem;
     padding: 1.2rem 0; border-top: 1px solid var(--line);
@@ -1183,6 +1256,12 @@
     backdrop-filter: blur(14px);
   }
   .source__intro { grid-column: 1 / -1; color: var(--muted); max-width: 70ch; }
+  .source__cta {
+    grid-column: 1 / -1; max-width: 70ch;
+    padding: .9rem 1rem; border-left: 2px solid var(--fg);
+    background: color-mix(in oklab, var(--fg) 5%, transparent);
+  }
+  .source__cta a { white-space: nowrap; text-underline-offset: .2em; }
   .snippet { display: grid; gap: .7rem; align-content: start; }
   .snippet figcaption { color: var(--muted); font-size: .95rem; }
   .snippet figcaption b { display: block; color: var(--fg); font: 600 .78rem/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .2rem; }
