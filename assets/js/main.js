@@ -17,7 +17,7 @@
   motionQuery.addEventListener?.('change', (e) => {
     reduce = e.matches;
     if (reduce) {
-      root.classList.remove('has-cursor', 'is-away');
+      root.classList.remove('has-cursor');
       document.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-in'));
     }
   });
@@ -28,8 +28,6 @@
   addEventListener('pointermove', onPtr, { passive: true });
   addEventListener('pointerdown', onPtr, { passive: true });
   document.addEventListener('mouseover', (e) => { ptr.hot = !!e.target.closest('a, button, [data-cursor]'); });
-  document.addEventListener('mouseleave', () => { if (!reduce && fine) root.classList.add('is-away'); });
-  document.addEventListener('mouseenter', () => root.classList.remove('is-away'));
 
   /* ------------------------------------------------------------------
      1. Boot sequence
@@ -67,13 +65,53 @@
     intro.addEventListener('click', finish);
     addEventListener('keydown', finish, { once: true });
   });
-  introDone.then(() => setTimeout(() => root.classList.add('eye-ready'), 1100));
 
   /* ------------------------------------------------------------------
      2. Watching eyes
+     Real eyelids: the upper/lower lid curves, aperture clip and lashes are
+     regenerated from one "openness" value (0 closed, 1 open, >1 wide) that
+     runs on a spring, with blinks layered on top.
      ------------------------------------------------------------------ */
   const mainEye = document.querySelector('.eye--main');
   const eyes = [];
+  let away = false;
+  document.addEventListener('mouseleave', () => { away = true; });
+  document.addEventListener('mouseenter', () => { away = false; });
+
+  let introEnd = Infinity;
+  introDone.then(() => { introEnd = performance.now(); });
+
+  const LASH_T = [0.14, 0.3, 0.5, 0.7, 0.86];
+  const LASH_L = [8, 11, 13, 11, 8];
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+
+  // lid geometry for a given openness (o >= 0)
+  const shape = (o) => {
+    const cu = 100 - 114 * o;              // upper lid control point: 100 closed -> -14 open
+    const cl = 100 + 34 * o;               // lower lid control point: 100 closed -> 134 open
+    const c = clamp(1 - o, 0, 1);          // closedness, for the lashes
+    let lash = '';
+    for (let i = 0; i < LASH_T.length; i++) {
+      const t = LASH_T[i], mt = 1 - t;
+      const px = mt * mt * 8 + 2 * mt * t * 100 + t * t * 192;
+      const py = mt * mt * 60 + 2 * mt * t * cu + t * t * 60;
+      const tx = 184;                      // dx/dt is constant for this curve
+      const ty = 2 * mt * (cu - 60) + 2 * t * (60 - cu);
+      let nx = ty, ny = -tx;
+      let len = Math.hypot(nx, ny); nx /= len; ny /= len;
+      nx = lerp(nx, nx * 0.4, c); ny = lerp(ny, 0.9, c);   // lashes droop as the lid closes
+      len = Math.hypot(nx, ny); nx /= len; ny /= len;
+      const L = LASH_L[i];
+      lash += `M${px.toFixed(1)} ${py.toFixed(1)}l${(nx * L).toFixed(1)} ${(ny * L).toFixed(1)}`;
+    }
+    return {
+      aperture: `M8 60 Q100 ${cu.toFixed(2)} 192 60 Q100 ${cl.toFixed(2)} 8 60Z`,
+      upper: `M8 60 Q100 ${cu.toFixed(2)} 192 60`,
+      lower: `M8 60 Q100 ${cl.toFixed(2)} 192 60`,
+      crease: `M24 ${(54 - 6 * o).toFixed(2)} Q100 ${(cu - 16 * o).toFixed(2)} 176 ${(54 - 6 * o).toFixed(2)}`,
+      lash,
+    };
+  };
 
   if (mainEye) {
     // detailed iris: radial fibres
@@ -92,7 +130,6 @@
 
     const cloneEye = (cls) => {
       const c = mainEye.cloneNode(true);
-      c.querySelector('defs')?.remove();
       c.classList.replace('eye--main', cls);
       return c;
     };
@@ -116,12 +153,28 @@
     if (footerSlot) footerSlot.appendChild(cloneEye('eye--footer'));
 
     document.querySelectorAll('.eye').forEach((svg, n) => {
+      // every eye needs its own clipPath id
+      const id = 'eye-clip-' + n;
+      svg.querySelector('clipPath').id = id;
+      svg.querySelector('.eye__inner').setAttribute('clip-path', `url(#${id})`);
       eyes.push({
         svg,
+        main: svg.classList.contains('eye--main'),
         iris: svg.querySelector('.eye__iris'),
         rays: svg.querySelector('.eye__rays'),
         pupil: svg.querySelector('.eye__pupil'),
+        el: {
+          aperture: svg.querySelector('.eye__aperture'),
+          fill: svg.querySelector('.eye__fill'),
+          upper: svg.querySelector('.eye__lid--upper'),
+          lower: svg.querySelector('.eye__lid--lower'),
+          crease: svg.querySelector('.eye__crease'),
+          lash: svg.querySelector('.eye__lash'),
+        },
         x: 0, y: 0, r: 11, rot: rand(0, 360), seed: n * 1.7, visible: true,
+        o: reduce ? 1 : 0, v: 0, drawn: -1,
+        openDelay: svg.classList.contains('eye--main') ? 150 : rand(300, 1400),
+        blinkAt: -1, fearUntil: 0,
       });
     });
 
@@ -133,33 +186,89 @@
     });
     eyes.forEach((e) => io.observe(e.svg));
 
+    const draw = (e, o) => {
+      const g = shape(Math.max(0, o));
+      e.el.aperture.setAttribute('d', g.aperture);
+      e.el.fill.setAttribute('d', g.aperture);
+      e.el.upper.setAttribute('d', g.upper);
+      e.el.lower.setAttribute('d', g.lower);
+      e.el.crease.setAttribute('d', g.crease);
+      e.el.lash.setAttribute('d', g.lash);
+      e.drawn = o;
+    };
+
+    // blink curve: fast close, tiny hold, slower open
+    const blinkAmount = (e, now) => {
+      if (e.blinkAt < 0) return 0;
+      const t = now - e.blinkAt;
+      if (t < 0) return 0;
+      if (t < 75) return Math.pow(t / 75, 2);
+      if (t < 115) return 1;
+      if (t < 300) return 1 - easeOut((t - 115) / 185);
+      e.blinkAt = -1;
+      return 0;
+    };
+    const blink = (e, delay = 0) => { e.blinkAt = performance.now() + delay; };
+
     const MAX_X = 30, MAX_Y = 16;
+    let wasAsleep = false;
+
     const tick = (now) => {
       requestAnimationFrame(tick);
-      const idle = now - ptr.last > 3500;
+      const idleFor = now - ptr.last;
+      const asleep = idleFor > 16000 && !reduce;
+      const drowsy = idleFor > 7000;
+
+      // waking up from a nap: everybody startles
+      if (wasAsleep && !asleep) eyes.forEach((e) => { e.v += 0.32; e.fearUntil = now + 700; blink(e, 450); });
+      wasAsleep = asleep;
+
       for (const e of eyes) {
         if (!e.visible) continue;
-        let gx = 0, gy = 0, pr = 11;
-        if (!reduce) {
-          let tx = ptr.x, ty = ptr.y;
-          if (idle) {
-            tx = innerWidth * (0.5 + 0.42 * Math.sin(now / 2100 + e.seed));
-            ty = innerHeight * (0.5 + 0.35 * Math.cos(now / 2900 + e.seed));
-          }
-          const rc = e.svg.getBoundingClientRect();
-          const dx = tx - (rc.left + rc.width / 2);
-          const dy = ty - (rc.top + rc.height / 2);
-          const a = Math.atan2(dy, dx);
-          const t = Math.min(Math.hypot(dx, dy) / (rc.width + 160), 1);
-          gx = Math.cos(a) * MAX_X * t;
-          gy = Math.sin(a) * MAX_Y * t;
-          pr = ptr.hot && !idle ? 16 : 11; // dilate when you're about to click something
-          e.rot += 0.04;
+
+        if (reduce) {
+          if (e.drawn !== 1) { e.o = 1; e.v = 0; draw(e, 1); }
+          e.iris.setAttribute('transform', 'translate(0 0)');
+          continue;
         }
-        const k = reduce ? 1 : 0.1;
-        e.x = lerp(e.x, gx, k);
-        e.y = lerp(e.y, gy, k);
-        e.r = lerp(e.r, pr, reduce ? 1 : 0.12);
+
+        // where to look
+        let tx = ptr.x, ty = ptr.y;
+        if (idleFor > 3500) {
+          tx = innerWidth * (0.5 + 0.42 * Math.sin(now / 2100 + e.seed));
+          ty = innerHeight * (0.5 + 0.35 * Math.cos(now / 2900 + e.seed));
+        }
+        const rc = e.svg.getBoundingClientRect();
+        const dx = tx - (rc.left + rc.width / 2);
+        const dy = ty - (rc.top + rc.height / 2);
+        const a = Math.atan2(dy, dx);
+        const reach = Math.min(Math.hypot(dx, dy) / (rc.width + 160), 1);
+        let gx = Math.cos(a) * MAX_X * reach;
+        let gy = Math.sin(a) * MAX_Y * reach;
+        if (asleep) { gx = 0; gy = 10; }
+
+        // how open the eye wants to be
+        let target = 1;
+        if (now < introEnd + e.openDelay) target = 0;
+        else if (asleep) target = 0;
+        else if (drowsy) target = 0.5 + 0.07 * Math.sin(now / 650 + e.seed);
+        else if (away) target = 0.38;
+        else if (ptr.hot) target = 1.14;
+
+        // spring: overshoots a little when snapping open
+        e.v += (target - e.o) * 0.085;
+        e.v *= 0.76;
+        e.o += e.v;
+
+        const open = Math.max(0, e.o) * (1 - blinkAmount(e, now));
+        if (Math.abs(open - e.drawn) > 0.002) draw(e, open);
+
+        // pupil: dilates near clickable things, pinpoints when startled
+        const pr = now < e.fearUntil ? 6.5 : ptr.hot && !drowsy ? 16 : 11;
+        e.x = lerp(e.x, gx, 0.1);
+        e.y = lerp(e.y, gy, 0.1);
+        e.r = lerp(e.r, pr, 0.14);
+        e.rot += 0.04;
         e.iris.setAttribute('transform', `translate(${e.x.toFixed(2)} ${e.y.toFixed(2)})`);
         e.pupil.setAttribute('r', e.r.toFixed(2));
         e.rays?.setAttribute('transform', `rotate(${e.rot.toFixed(2)} 100 60)`);
@@ -167,25 +276,73 @@
     };
     requestAnimationFrame(tick);
 
-    const blinkOnce = (e) => {
-      e.svg.classList.add('is-blinking');
-      setTimeout(() => e.svg.classList.remove('is-blinking'), 130);
-    };
-    const blinkLoop = (e) => {
-      if (!reduce && e.visible && root.classList.contains('eye-ready')) {
-        blinkOnce(e);
-        if (Math.random() < 0.2) setTimeout(() => blinkOnce(e), 260);
-      }
-      setTimeout(() => blinkLoop(e), rand(2400, 7500));
-    };
-    eyes.forEach((e) => setTimeout(() => blinkLoop(e), rand(1500, 4500)));
+    const awake = () => !reduce && performance.now() > introEnd + 1500 && performance.now() - ptr.last < 16000;
 
-    // click anywhere: everything flinches
-    addEventListener('pointerdown', () => {
-      if (reduce || !root.classList.contains('eye-ready')) return;
-      eyes.forEach((e) => e.visible && blinkOnce(e));
-    }, { passive: true });
+    // each eye blinks on its own rhythm, sometimes twice
+    const blinkLoop = (e) => {
+      if (awake() && e.visible) {
+        blink(e);
+        if (Math.random() < 0.22) blink(e, 340);
+      }
+      setTimeout(() => blinkLoop(e), rand(2600, 7200));
+    };
+    eyes.forEach((e) => setTimeout(() => blinkLoop(e), rand(2000, 5000)));
+
+    // every so often they all blink at once. creepy on purpose.
+    const syncBlink = () => {
+      if (awake()) eyes.forEach((e) => blink(e));
+      setTimeout(syncBlink, rand(15000, 28000));
+    };
+    setTimeout(syncBlink, rand(9000, 15000));
+
+    eyes.flinch = () => eyes.forEach((e) => { e.v += 0.28; e.fearUntil = performance.now() + 600; blink(e, 160); });
   }
+
+  /* ------------------------------------------------------------------
+     2b. Jolts + signal interference
+     ------------------------------------------------------------------ */
+  const staticEl = document.querySelector('.static');
+  const jolt = () => {
+    if (reduce) return;
+    root.classList.remove('is-jolt');
+    void root.offsetWidth; // restart the animation
+    root.classList.add('is-jolt');
+    setTimeout(() => root.classList.remove('is-jolt'), 450);
+  };
+  const interfere = () => {
+    if (reduce || document.hidden || !staticEl || root.classList.contains('intro-playing')) return;
+    let frames = 0;
+    const paint = () => {
+      const bars = [];
+      const n = 3 + ((Math.random() * 5) | 0);
+      for (let i = 0; i < n; i++) {
+        const top = Math.random() * 100;
+        const h = Math.random() * (i ? 2.5 : 8) + 0.25;
+        bars.push(`linear-gradient(#fff, #fff) 0 ${top.toFixed(1)}% / 100% ${h.toFixed(2)}% no-repeat`);
+      }
+      staticEl.style.background = bars.join(', ');
+      staticEl.style.transform = `translateX(${(Math.random() * 18 - 9).toFixed(1)}px)`;
+    };
+    root.classList.add('is-interference');
+    const step = () => {
+      paint();
+      if (++frames < 5) setTimeout(step, 40 + Math.random() * 45);
+      else { root.classList.remove('is-interference'); staticEl.style.background = ''; }
+    };
+    step();
+    const name = document.querySelector('.hero__name [data-glitch]');
+    if (name) { name.classList.add('is-glitching'); setTimeout(() => name.classList.remove('is-glitching'), 320); }
+  };
+  const scheduleInterference = () => setTimeout(() => { interfere(); scheduleInterference(); }, rand(13000, 26000));
+  scheduleInterference();
+
+  // click on empty space: the page flinches, and so do they
+  addEventListener('click', (ev) => {
+    if (reduce || ev.target.closest('a, button, input, [data-cursor], .redacted')) return;
+    jolt();
+    if (Math.random() < 0.5) setTimeout(interfere, 60);
+    eyes.flinch?.();
+  });
 
   /* ------------------------------------------------------------------
      3. Scramble + glitch
