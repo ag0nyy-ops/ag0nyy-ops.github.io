@@ -1,5 +1,7 @@
 /* ==========================================================================
    JAY // DOSSIER — a classified file that watches you back
+   © 2026 Jay · https://ag0nyy-ops.github.io/ · case ref jdx-umbra-b8e5b4
+   Source is viewable for learning, not for reuse. See LICENSE.
    --------------------------------------------------------------------------
    How this file is organised
    - @layer sets the cascade order up front, so "later layer wins" is explicit
@@ -48,8 +50,11 @@
    Registered properties (must live at the top level, outside layers)
    -------------------------------------------------------------------------- */
 
+/* Naming: the eye system uses a jdx- prefix ("jay dossier") for its custom
+   properties and SVG filter ids, so it reads as one family in dev tools. */
+
 /* 0 = eyes follow the cursor, 1 = every eye snaps to stare at the visitor */
-@property --stare { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --jdx-stare { syntax: "<number>"; inherits: true; initial-value: 0; }
 
 /* scroll % printed by the "Declassified" counter */
 @property --pct { syntax: "<integer>"; inherits: false; initial-value: 0; }
@@ -365,10 +370,10 @@
   .eye {
     --R: 62.5cqw;                  /* radius of both circles */
     --stroke: max(1px, 1.1cqw);    /* outline thickness scales with the eye */
-    --lid-top: 0cqw;               /* resting offsets, changed by states (idle, away…) */
-    --lid-bottom: 0cqw;
-    --blink: 6s;                   /* per-eye rhythm, set inline in the HTML */
-    --blink-delay: 0s;
+    --jdx-lid-top: 0cqw;               /* resting offsets, changed by states (idle, away…) */
+    --jdx-lid-bottom: 0cqw;
+    --jdx-blink: 6s;                   /* per-eye rhythm, set inline in the HTML */
+    --jdx-blink-delay: 0s;
     container-type: inline-size;
     position: relative; display: block;
     aspect-ratio: 2 / 1;
@@ -385,13 +390,13 @@
     background: radial-gradient(60% 90% at 50% 50%, color-mix(in oklab, var(--fg) 7%, var(--bg)), var(--bg) 75%);
   }
 
-  /* Iris. JS writes --ex/--ey (this eye's centre) and --mx/--my (cursor).
+  /* Iris. JS writes --jdx-ex/--jdx-ey (this eye's centre) and --mx/--my (cursor).
      CSS does the trigonometry: angle = atan2(dy, dx), distance = hypot(dx, dy). */
   .eye__iris {
-    --dx: calc(var(--mx) - var(--ex, var(--mx)));
-    --dy: calc(var(--my) - var(--ey, var(--my)));
+    --dx: calc(var(--mx) - var(--jdx-ex, var(--mx)));
+    --dy: calc(var(--my) - var(--jdx-ey, var(--my)));
     --reach: min(1, calc(hypot(var(--dx), var(--dy)) / 420));   /* 0 near, 1 far */
-    --look: calc(var(--reach) * (1 - var(--stare)));             /* stare = look straight at you */
+    --look: calc(var(--reach) * (1 - var(--jdx-stare)));             /* stare = look straight at you */
     position: absolute; left: 50%; top: 50%;
     width: 34cqw; aspect-ratio: 1; margin: -17cqw 0 0 -17cqw;
     border-radius: 50%;
@@ -413,7 +418,7 @@
     position: absolute; inset: 33%; border-radius: 50%;
     background: var(--fg);
     /* dilates on hover (:has above) and when the eyes stare */
-    scale: calc(1 + var(--dilate) * .45 + var(--stare) * .6);
+    scale: calc(1 + var(--dilate) * .45 + var(--jdx-stare) * .6);
     transition: scale .6s var(--ease-spring);
   }
   .eye__pupil::after {   /* catch-light */
@@ -434,7 +439,7 @@
       transparent calc(var(--R) - var(--stroke)),
       var(--fg)   calc(var(--R) - var(--stroke)) var(--R),
       var(--bg)   var(--R));
-    translate: 0 var(--lid-top);
+    translate: 0 var(--jdx-lid-top);
     transition: translate .9s var(--ease-spring);
   }
   .eye__lid--bottom {
@@ -443,7 +448,7 @@
       transparent calc(var(--R) - var(--stroke)),
       var(--fg)   calc(var(--R) - var(--stroke)) var(--R),
       var(--bg)   var(--R));
-    translate: 0 var(--lid-bottom);
+    translate: 0 var(--jdx-lid-bottom);
     transition: translate .9s var(--ease-spring);
   }
 
@@ -462,7 +467,7 @@
     mask-composite: intersect;
     -webkit-mask-composite: source-in;
     transform-origin: 50% 14cqw;   /* pivot on the lid edge */
-    translate: 0 var(--lid-top);
+    translate: 0 var(--jdx-lid-top);
     transition: translate .9s var(--ease-spring);
     will-change: transform;
   }
@@ -565,7 +570,7 @@
      shoved sideways, then settle. Step timing keeps changes under 3 per second. */
   .glitch {
     position: relative; display: inline-block;
-    filter: url(#rgb-split);   /* resting chromatic aberration from the SVG filter */
+    filter: url(#jdx-rgb-split);   /* resting chromatic aberration from the SVG filter */
   }
   .glitch::before, .glitch::after {
     content: attr(data-text);
@@ -913,7 +918,7 @@
     position: fixed; inset: 0; z-index: 46; pointer-events: none;
     will-change: opacity;
     background: #000;
-    opacity: calc(var(--stare) * .32);
+    opacity: calc(var(--jdx-stare) * .32);
   }
 
   /* ---- VHS: scanlines + vignette, plus a slow tracking band ---- */
@@ -1055,12 +1060,12 @@
     }
 
     /* ---- blinking: pure CSS keyframes on transform ----
-       Each eye has its own --blink duration and negative --blink-delay
+       Each eye has its own --jdx-blink duration and negative --jdx-blink-delay
        (inline in the HTML), so they never blink in sync by accident.
        Close in ~80ms (ease-in), hold, open in ~170ms (ease-out). */
-    .eye__lid--top    { animation: blink-top    var(--blink) var(--blink-delay) infinite; }
-    .eye__lid--bottom { animation: blink-bottom var(--blink) var(--blink-delay) infinite; }
-    .eye__lashes      { animation: blink-lashes var(--blink) var(--blink-delay) infinite; }
+    .eye__lid--top    { animation: blink-top    var(--jdx-blink) var(--jdx-blink-delay) infinite; }
+    .eye__lid--bottom { animation: blink-bottom var(--jdx-blink) var(--jdx-blink-delay) infinite; }
+    .eye__lashes      { animation: blink-lashes var(--jdx-blink) var(--jdx-blink-delay) infinite; }
     @keyframes blink-top {
       0%, 91%   { transform: none; animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
       92.4%     { transform: translateY(40cqw); }
@@ -1247,15 +1252,15 @@
    ========================================================================== */
 @layer scares {
   @media (prefers-reduced-motion: no-preference) {
-    /* --stare is a registered number, so this transition actually tweens
+    /* --jdx-stare is a registered number, so this transition actually tweens
        it, and every eye inherits the in-between value */
-    :root { transition: --stare .4s var(--ease-liquid); }
-    :root[data-scare="stare"] { --stare: 1; }
-    :root[data-scare="stare"] .eye { --lid-top: -2cqw; }
+    :root { transition: --jdx-stare .4s var(--ease-liquid); }
+    :root[data-scare="stare"] { --jdx-stare: 1; }
+    :root[data-scare="stare"] .eye { --jdx-lid-top: -2cqw; }
 
-    :root[data-away] .eye { --lid-top: 17cqw; --lid-bottom: -3cqw; }
-    :root[data-idle="drowsy"] .eye { --lid-top: 21cqw; --lid-bottom: -2cqw; }
-    :root[data-idle="asleep"] .eye { --lid-top: 40cqw; --lid-bottom: -11cqw; }
+    :root[data-away] .eye { --jdx-lid-top: 17cqw; --jdx-lid-bottom: -3cqw; }
+    :root[data-idle="drowsy"] .eye { --jdx-lid-top: 21cqw; --jdx-lid-bottom: -2cqw; }
+    :root[data-idle="asleep"] .eye { --jdx-lid-top: 40cqw; --jdx-lid-bottom: -11cqw; }
     :root[data-idle="asleep"] .eye__iris { translate: 0 4cqw; }
     :root[data-idle="asleep"] .eye__lashes { scale: 1 -.7; }
 
@@ -1269,10 +1274,10 @@
     .glitch::before  { animation: glitch-r 21s steps(1, end) 6s infinite; }
     .glitch::after   { animation: glitch-c 21s steps(1, end) 6s infinite; }
     @keyframes glitch-base {
-      0%, 90%  { transform: none; filter: url(#rgb-split); }
-      91%      { transform: skewX(-7deg) translateX(-.015em); filter: url(#warp); }
-      93%      { transform: skewX(4deg) translateX(.02em); filter: url(#warp); }
-      95%      { transform: none; filter: url(#rgb-split); }
+      0%, 90%  { transform: none; filter: url(#jdx-rgb-split); }
+      91%      { transform: skewX(-7deg) translateX(-.015em); filter: url(#jdx-warp); }
+      93%      { transform: skewX(4deg) translateX(.02em); filter: url(#jdx-warp); }
+      95%      { transform: none; filter: url(#jdx-rgb-split); }
     }
     @keyframes glitch-r {
       0%, 90%  { opacity: 0; clip-path: inset(0); transform: none; }
