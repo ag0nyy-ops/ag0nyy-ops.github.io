@@ -20,7 +20,7 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap"></noscript>
-  <link rel="stylesheet" href="assets/css/style.css?v=5">
+  <link rel="stylesheet" href="assets/css/style.css?v=6">
   <script>
     /* The only blocking JS: skip the eyelid intro on repeat visits this session. */
     try {
@@ -28,7 +28,7 @@
       sessionStorage.setItem('seen', '1');
     } catch (e) {}
   </script>
-  <script src="assets/js/main.js?v=5" defer></script>
+  <script src="assets/js/main.js?v=6" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -60,6 +60,17 @@
   <div class="grain" aria-hidden="true"></div>
   <div class="reticle" aria-hidden="true"></div>
   <p class="whisper" aria-hidden="true" data-edge="right"><span style="--i:0">S</span><span style="--i:1">U</span><span style="--i:2">B</span><span style="--i:3">J</span><span style="--i:4">E</span><span style="--i:5">C</span><span style="--i:6">T</span><span style="--i:7"> </span><span style="--i:8">I</span><span style="--i:9">S</span><span style="--i:10"> </span><span style="--i:11">W</span><span style="--i:12">A</span><span style="--i:13">T</span><span style="--i:14">C</span><span style="--i:15">H</span><span style="--i:16">I</span><span style="--i:17">N</span><span style="--i:18">G</span></p>
+  <!-- custom right-click menu (native popover: Esc + click-away close it for free).
+       Without JS or popover support it never opens and the browser menu is used. -->
+  <div class="ctx" id="ctx" popover role="menu" aria-label="Classified actions">
+    <p class="ctx__head" aria-hidden="true"><span>Classified</span><span>Actions</span></p>
+    <button class="ctx__item" type="button" role="menuitem" data-action="copy"><span class="ctx__no" aria-hidden="true">01</span>Copy Discord handle</button>
+    <a class="ctx__item" role="menuitem" href="#projects"><span class="ctx__no" aria-hidden="true">02</span>View projects</a>
+    <a class="ctx__item" role="menuitem" href="#contact"><span class="ctx__no" aria-hidden="true">03</span>Hire me</a>
+    <p class="ctx__hint" aria-hidden="true">Shift + right-click: browser menu</p>
+  </div>
+  <p class="toast" role="status" aria-live="polite"></p>
+
   <div class="intro" aria-hidden="true"><span class="intro__lid intro__lid--top"></span><span class="intro__lid intro__lid--bottom"></span></div>
 
   <header class="topbar">
@@ -283,10 +294,9 @@
       </header>
 
       <div class="contact__body bleed">
-        <p class="contact__lead">Discord is the fastest way to reach me. Click to copy.</p>
-        <button class="handle" type="button" data-copy="#discord-handle">
-          <span id="discord-handle">.jaypatty</span>
-        </button>
+        <p class="contact__lead">Discord is the fastest way to reach me. Click the handle to copy it, or select it.</p>
+        <p class="handle"><span id="discord-handle" data-copy="#discord-handle" title="Click to copy">.jaypatty</span></p>
+        <button class="btn btn--small" type="button" data-copy="#discord-handle">Copy handle</button>
         <p class="contact__status" role="status" aria-live="polite"></p>
         <ul class="contact__links">
           <li><a href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener">GitHub / ag0nyy-ops ↗</a></li>
@@ -299,9 +309,9 @@
     <span class="eye eye--footer" style="--blink:5.8s; --blink-delay:-4.4s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
     <p class="footer__end">End of file</p>
 
-    <!-- easter egg: press "/" or open this to see how the effects are built -->
+    <!-- easter egg: press "?" or open this to see how the effects are built -->
     <details class="source" id="source">
-      <summary><span aria-hidden="true">◉</span> Declassify the source <kbd>/</kbd></summary>
+      <summary><span aria-hidden="true">◉</span> Declassify the source <kbd>?</kbd></summary>
       <div class="source__body">
         <p class="source__intro">You found the back room. Here is the CSS behind four of the effects on this page. JavaScript only tells CSS where your cursor is and where each eye sits; CSS does the rest.</p>
 
