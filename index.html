@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jay.</title>
-  <meta name="description" content="Jay, Builds Discord bots, iOS apps, Roblox and Minecraft projects, and websites. Open for commissions.">
-  <meta name="theme-color" content="#070707">
+  <meta name="description" content="Jay builds Discord bots, iOS apps, Roblox and Minecraft projects, and websites. Open for commissions.">
+  <meta name="theme-color" content="#060606">
+  <meta name="color-scheme" content="dark">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Jay — builder of bots, apps & worlds">
+  <meta property="og:title" content="Jay — ships real things">
   <meta property="og:description" content="Discord bots, iOS apps, Roblox & Minecraft, websites. Open for commissions.">
   <meta property="og:url" content="https://ag0nyy-ops.github.io/">
   <!-- TODO: add assets/og-image.png (1200x630) and uncomment -->
@@ -15,128 +16,119 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap">
-  <link rel="stylesheet" href="assets/css/style.css?v=4">
+  <!-- fonts load without blocking first paint; fallbacks show until they arrive -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap"></noscript>
+  <link rel="stylesheet" href="assets/css/style.css?v=5">
   <script>
-    (function (d) {
-      d.classList.add('js');
-      var skip = false;
-      try { skip = !!sessionStorage.getItem('seen'); } catch (e) {}
-      if (skip || matchMedia('(prefers-reduced-motion: reduce)').matches) d.classList.add('no-intro');
-      else d.classList.add('intro-playing');
-      // failsafe: if main.js never runs (blocked, stale cache, error), unlock scrolling
-      // and fall back to the static no-JS page so nothing stays hidden
-      setTimeout(function () {
-        d.classList.remove('intro-playing');
-        if (!d.classList.contains('js-ok')) d.classList.remove('js');
-      }, 4000);
-    })(document.documentElement);
+    /* The only blocking JS: skip the eyelid intro on repeat visits this session. */
+    try {
+      if (sessionStorage.getItem('seen')) document.documentElement.classList.add('seen');
+      sessionStorage.setItem('seen', '1');
+    } catch (e) {}
   </script>
-  <script src="assets/js/main.js?v=4" defer></script>
+  <script src="assets/js/main.js?v=5" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
 
-  <!-- boot sequence (decorative, skipped with reduced motion or on repeat visits) -->
-  <div class="intro" aria-hidden="true">
-    <div class="intro__lid intro__lid--top"></div>
-    <div class="intro__lid intro__lid--bottom"></div>
-    <div class="intro__seam"></div>
-    <pre class="intro__log"></pre>
-  </div>
+  <!-- SVG filters referenced from CSS with filter: url(#…) -->
+  <svg class="fx-defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <!-- chromatic aberration: pull R, G and B apart and screen them back together -->
+    <filter id="rgb-split" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+      <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r"/>
+      <feOffset in="r" dx="-1.2" dy="0" result="r2"/>
+      <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g"/>
+      <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b"/>
+      <feOffset in="b" dx="1.2" dy="0" result="b2"/>
+      <feBlend in="r2" in2="g" mode="screen" result="rg"/>
+      <feBlend in="rg" in2="b2" mode="screen"/>
+    </filter>
+    <!-- liquid warp: turbulence noise used as a displacement map -->
+    <filter id="warp" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.08" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
 
+  <!-- ===== atmosphere layers (all decorative, all pointer-events: none) ===== -->
+  <div class="ink" aria-hidden="true"></div>
+  <div class="flashlight" aria-hidden="true"><div class="flashlight__track"><div class="flashlight__beam"></div></div></div>
+  <div class="dim" aria-hidden="true"></div>
+  <div class="vhs" aria-hidden="true"></div>
   <div class="grain" aria-hidden="true"></div>
-  <div class="rules" aria-hidden="true"></div>
-  <div class="cursor" aria-hidden="true">
-    <span class="cursor__dot"></span>
-    <span class="cursor__ring"><span class="cursor__label"></span></span>
-    <span class="cursor__coords"></span>
-  </div>
-  <div class="preview" aria-hidden="true"></div>
-  <div class="static" aria-hidden="true"></div>
+  <div class="reticle" aria-hidden="true"></div>
+  <p class="whisper" aria-hidden="true" data-edge="right"><span style="--i:0">S</span><span style="--i:1">U</span><span style="--i:2">B</span><span style="--i:3">J</span><span style="--i:4">E</span><span style="--i:5">C</span><span style="--i:6">T</span><span style="--i:7"> </span><span style="--i:8">I</span><span style="--i:9">S</span><span style="--i:10"> </span><span style="--i:11">W</span><span style="--i:12">A</span><span style="--i:13">T</span><span style="--i:14">C</span><span style="--i:15">H</span><span style="--i:16">I</span><span style="--i:17">N</span><span style="--i:18">G</span></p>
+  <div class="intro" aria-hidden="true"><span class="intro__lid intro__lid--top"></span><span class="intro__lid intro__lid--bottom"></span></div>
 
   <header class="topbar">
-    <a class="topbar__logo" href="#top">
-      <svg viewBox="0 0 64 40" aria-hidden="true"><path d="M2 20 Q32 -6 62 20 Q32 46 2 20Z"/><circle cx="32" cy="20" r="8"/><circle cx="32" cy="20" r="3.5" class="fill"/></svg>
-      <span>Jay</span>
+    <a class="topbar__logo" href="#top" aria-label="Jay, back to top">
+      <span class="eye eye--logo" style="--blink:5.3s; --blink-delay:-1s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span></span>
+      <span class="topbar__name">Jay</span>
     </a>
     <nav aria-label="Primary">
       <ul class="topbar__nav">
-        <li><a href="#projects"><span class="no">01</span><span data-scramble>Projects</span></a></li>
-        <li><a href="#services"><span class="no">02</span><span data-scramble>Services</span></a></li>
-        <li><a href="#about"><span class="no">03</span><span data-scramble>About</span></a></li>
-        <li><a href="#contact"><span class="no">04</span><span data-scramble>Contact</span></a></li>
+        <li><a href="#projects" data-spy="projects"><span class="no">01</span>Projects</a></li>
+        <li><a href="#services" data-spy="services"><span class="no">02</span>Services</a></li>
+        <li><a href="#about" data-spy="about"><span class="no">03</span>About</a></li>
+        <li><a href="#contact" data-spy="contact"><span class="no">04</span>Contact</a></li>
       </ul>
     </nav>
-    <p class="topbar__progress" aria-hidden="true">Declassified <span data-progress>000</span>%</p>
+    <p class="topbar__progress" aria-hidden="true">Declassified <span class="pct"></span></p>
+    <span class="topbar__bar" aria-hidden="true"></span>
   </header>
 
   <main id="main">
     <!-- ================= HERO ================= -->
     <section class="hero" id="top" aria-labelledby="hero-name">
-      <span class="mark mark--tl" aria-hidden="true"></span>
-      <span class="mark mark--tr" aria-hidden="true"></span>
-      <span class="mark mark--bl" aria-hidden="true"></span>
-      <span class="mark mark--br" aria-hidden="true"></span>
+      <!-- depth layer: far (sigil ring + radar sweep) -->
+      <div class="hero__layer hero__layer--far" aria-hidden="true">
+        <div class="radar"></div>
+        <div class="sigil">
+          <svg viewBox="0 0 600 600">
+            <defs><path id="ring-path" d="M300,300 m-246,0 a246,246 0 1,1 492,0 a246,246 0 1,1 -492,0"/></defs>
+            <circle cx="300" cy="300" r="270"/>
+            <text><textPath href="#ring-path" textLength="1540" lengthAdjust="spacing">SEES EVERYTHING ✶ SHIPS REAL THINGS ✶ SEES EVERYTHING ✶ SHIPS REAL THINGS ✶</textPath></text>
+          </svg>
+        </div>
+        <div class="sigil__ticks"></div>
+        <svg class="sigil__tri" viewBox="0 0 600 600"><path d="M300 52 L515 424 L85 424Z"/><path d="M300 548 L515 176 L85 176Z"/></svg>
+      </div>
+
+      <!-- depth layer: mid (the big eye) -->
+      <div class="hero__layer hero__layer--mid" aria-hidden="true">
+        <span class="eye eye--hero" style="--blink:6.4s; --blink-delay:-3.1s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+      </div>
+
+      <!-- hidden watchers: only really visible when the light finds them -->
+      <div class="hero__layer hero__layer--near" aria-hidden="true">
+        <span class="eye eye--mini" style="--x:6%;  --y:26%; --w:5.5rem; --blink:5.1s; --blink-delay:-.4s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:23%; --y:14%; --w:3.4rem; --blink:7.7s; --blink-delay:-2.2s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:76%; --y:16%; --w:4rem;   --blink:6.9s; --blink-delay:-5.5s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:88%; --y:42%; --w:5rem;   --blink:4.8s; --blink-delay:-1.7s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:66%; --y:64%; --w:3.2rem; --blink:8.3s; --blink-delay:-6s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <span class="eye eye--mini" style="--x:9%;  --y:52%; --w:3rem;   --blink:6.1s; --blink-delay:-3.3s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+      </div>
 
       <div class="hero__file" aria-hidden="true">
         <p>File no. J-018</p>
         <p>Class: public</p>
         <p>Status: <b>active</b></p>
       </div>
-      <div class="hero__clock" aria-hidden="true">
-        <p>Your local time</p>
-        <p data-clock>--:--:--</p>
-        <p>Subject is watching</p>
+      <div class="hero__hint" aria-hidden="true">
+        <p class="hint--mouse">Move the light<br>to search the file</p>
+        <p class="hint--touch">The light is<br>searching for you</p>
       </div>
-
-      <div class="hero__stage" aria-hidden="true">
-        <svg class="sigil" viewBox="0 0 600 600">
-          <defs>
-            <path id="ring-path" d="M300,300 m-246,0 a246,246 0 1,1 492,0 a246,246 0 1,1 -492,0"/>
-          </defs>
-          <circle class="sigil__thin" cx="300" cy="300" r="292"/>
-          <g class="sigil__spin">
-            <circle cx="300" cy="300" r="268"/>
-            <text class="sigil__text"><textPath href="#ring-path" textLength="1540" lengthAdjust="spacing">SEES EVERYTHING ✶ BUILDS ANYTHING ✶ SHIPS IT ✶ SEES EVERYTHING ✶ BUILDS ANYTHING ✶ SHIPS IT ✶</textPath></text>
-          </g>
-          <g class="sigil__spin sigil__spin--rev">
-            <circle class="sigil__ticks" cx="300" cy="300" r="222"/>
-          </g>
-          <path class="sigil__tri" d="M300 52 L515 424 L85 424Z"/>
-          <path class="sigil__tri sigil__tri--inv" d="M300 548 L515 176 L85 176Z"/>
-        </svg>
-
-        <svg class="eye eye--main" viewBox="0 0 200 120">
-          <defs>
-            <clipPath id="eye-clip-0"><path class="eye__aperture" d="M8 60 Q100 -14 192 60 Q100 134 8 60Z"/></clipPath>
-          </defs>
-          <path class="eye__fill" d="M8 60 Q100 -14 192 60 Q100 134 8 60Z"/>
-          <g class="eye__inner" clip-path="url(#eye-clip-0)">
-            <g class="eye__iris">
-              <circle class="eye__ring" cx="100" cy="60" r="35"/>
-              <g class="eye__rays"><path d="M100 26v10M100 84v10M66 60h10M124 60h10"/></g>
-              <circle class="eye__ring eye__ring--inner" cx="100" cy="60" r="23"/>
-              <circle class="eye__pupil" cx="100" cy="60" r="11"/>
-              <circle class="eye__glint" cx="95" cy="55" r="2.6"/>
-            </g>
-          </g>
-          <path class="eye__crease" d="M24 48 Q100 -30 176 48"/>
-          <path class="eye__lid eye__lid--lower" d="M8 60 Q100 134 192 60"/>
-          <path class="eye__lid eye__lid--upper" d="M8 60 Q100 -14 192 60"/>
-          <path class="eye__lash" d="M30 38l-8-10M55 22l-4-12M100 14V2M145 22l4-12M170 38l8-10"/>
-        </svg>
-      </div>
-      <div class="hero__minis" aria-hidden="true"></div>
 
       <div class="hero__content">
-        <h1 class="hero__name" id="hero-name"><span class="sr-only">Jay</span><span aria-hidden="true" data-glitch="Jay">Jay</span></h1>
+        <h1 class="hero__name" id="hero-name"><span class="glitch" data-text="Jay">Jay</span></h1>
         <div class="hero__side">
           <p class="hero__pitch">I build <strong>Discord bots</strong>, <strong>iOS apps</strong>, <strong>Roblox &amp; Minecraft</strong> worlds and <strong>websites</strong>, and I ship them fast.</p>
           <ul class="hero__links">
-            <li><a class="btn" href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener" data-magnetic>GitHub ↗</a></li>
-            <li><a class="btn" href="#contact" data-magnetic>Discord</a></li>
-            <li><a class="btn btn--solid" href="#contact" data-magnetic>Hire me</a></li>
+            <li><a class="btn" href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener">GitHub ↗</a></li>
+            <li><a class="btn" href="#contact">Discord</a></li>
+            <li><a class="btn btn--solid" href="#contact">Hire me</a></li>
           </ul>
         </div>
       </div>
@@ -146,166 +138,131 @@
 
     <div class="tape" aria-hidden="true">
       <div class="tape__strip tape__strip--b"><div class="tape__track"><span>Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶&nbsp;</span><span>Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶&nbsp;</span></div></div>
-      <div class="tape__strip tape__strip--a"><div class="tape__track"><span>Discord bots ✶ iOS apps ✶ Roblox ✶ Minecraft ✶ Websites ✶ Graphics ✶ Discord bots ✶ iOS apps ✶ Roblox ✶ Minecraft ✶ Websites ✶ Graphics ✶&nbsp;</span><span>Discord bots ✶ iOS apps ✶ Roblox ✶ Minecraft ✶ Websites ✶ Graphics ✶ Discord bots ✶ iOS apps ✶ Roblox ✶ Minecraft ✶ Websites ✶ Graphics ✶&nbsp;</span></div></div>
+      <div class="tape__strip tape__strip--a"><div class="tape__track"><span>Discord bots ✶ iOS apps ✶ Roblox ✶ Minecraft ✶ Websites ✶ Ships real things ✶ Discord bots ✶ iOS apps ✶ Roblox ✶ Minecraft ✶ Websites ✶ Ships real things ✶&nbsp;</span><span>Discord bots ✶ iOS apps ✶ Roblox ✶ Minecraft ✶ Websites ✶ Ships real things ✶ Discord bots ✶ iOS apps ✶ Roblox ✶ Minecraft ✶ Websites ✶ Ships real things ✶&nbsp;</span></div></div>
     </div>
 
     <!-- ================= PROJECTS ================= -->
-    <section class="section" id="projects" aria-labelledby="projects-title">
-      <header class="sh" data-reveal>
-        <span class="sh__num" aria-hidden="true">01</span>
-        <div>
-          <p class="sh__label" data-scramble>Case files / 5 records</p>
-          <h2 class="sh__title" id="projects-title" data-scramble="letters" data-glitch="Projects">Projects</h2>
-        </div>
+    <section class="section" id="projects" tabindex="-1" aria-labelledby="projects-title">
+      <span class="section__ghost" aria-hidden="true">01</span>
+      <header class="sh">
+        <p class="sh__label">File 01 / Case files / 5 records</p>
+        <h2 class="sh__title distort" id="projects-title" data-text="Projects">Projects</h2>
       </header>
 
-      <ol class="cases">
-        <li class="case" data-reveal data-cursor="open">
-          <span class="case__no">001</span>
-          <div class="case__head">
-            <h3 class="case__title">Skyscrob</h3>
-            <p class="case__desc"><span class="redact">Scrobbles your Apple Music listening to Last.fm.</span></p>
+      <div class="cases">
+        <article class="case case--feature bleed">
+          <header class="case__tab"><span>Case 001</span><span class="stamp">Shipped</span></header>
+          <div class="case__body">
+            <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
+            <div class="case__text">
+              <h3 class="case__title">Skyscrob</h3>
+              <p class="case__desc"><span class="redact">Scrobbles your Apple Music listening to Last.fm. Public repo, shipped and working.</span></p>
+              <ul class="case__tech" aria-label="Tech used"><li>[tech]</li><li>Apple Music</li><li>Last.fm API</li></ul>
+              <a class="case__link" href="https://github.com/ag0nyy-ops/skyscrob" target="_blank" rel="noopener">View repo <span aria-hidden="true">↗</span></a>
+            </div>
           </div>
-          <ul class="case__tech" aria-label="Tech used"><li>[tech]</li><li>Apple Music</li><li>Last.fm API</li></ul>
-          <span class="stamp">Shipped</span>
-          <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
-          <a class="case__link" href="https://github.com/ag0nyy-ops/skyscrob" target="_blank" rel="noopener"><span class="sr-only">Skyscrob: view repo</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M8 5h11v11"/></svg></a>
-        </li>
+        </article>
 
-        <li class="case" data-reveal data-cursor="open">
-          <span class="case__no">002</span>
-          <div class="case__head">
-            <h3 class="case__title">Jinzo &amp; Cosmou</h3>
-            <p class="case__desc"><span class="redact">Two Discord bots. Jinzo runs moderation and chat; Cosmou handles helping and server management.</span></p>
+        <article class="case bleed">
+          <header class="case__tab"><span>Case 002</span><span class="stamp">Live</span></header>
+          <div class="case__body">
+            <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
+            <div class="case__text">
+              <h3 class="case__title">Jinzo &amp; Cosmou</h3>
+              <p class="case__desc"><span class="redact">Two Discord bots. Jinzo runs moderation and chat; Cosmou handles helping and server management.</span></p>
+              <ul class="case__tech" aria-label="Tech used"><li>[tech]</li><li>Discord API</li></ul>
+              <!-- TODO: replace href with bot invite / info link -->
+              <a class="case__link" href="#contact">[invite link here] <span aria-hidden="true">↗</span></a>
+            </div>
           </div>
-          <ul class="case__tech" aria-label="Tech used"><li>[tech]</li><li>Discord API</li></ul>
-          <span class="stamp">Live</span>
-          <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
-          <!-- TODO: replace href with bot invite / info link -->
-          <a class="case__link" href="#contact"><span class="sr-only">Jinzo and Cosmou: [invite link here]</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M8 5h11v11"/></svg></a>
-        </li>
+        </article>
 
-        <li class="case" data-reveal data-cursor="view">
-          <span class="case__no">003</span>
-          <div class="case__head">
-            <h3 class="case__title">Minecraft Landmarks</h3>
-            <p class="case__desc"><span class="redact">Large-scale builds of the Golden Gate Bridge and the Colosseum.</span></p>
+        <article class="case bleed">
+          <header class="case__tab"><span>Case 003</span><span class="stamp">Finished</span></header>
+          <div class="case__body">
+            <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
+            <div class="case__text">
+              <h3 class="case__title">Minecraft Landmarks</h3>
+              <p class="case__desc"><span class="redact">Large-scale builds of the Golden Gate Bridge and the Colosseum.</span></p>
+              <ul class="case__tech" aria-label="Tech used"><li>Minecraft</li><li>[tools used]</li></ul>
+              <!-- TODO: replace href with gallery / video link -->
+              <a class="case__link" href="#contact">[gallery link here] <span aria-hidden="true">↗</span></a>
+            </div>
           </div>
-          <ul class="case__tech" aria-label="Tech used"><li>Minecraft</li><li>[tools used]</li></ul>
-          <span class="stamp">Finished</span>
-          <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
-          <!-- TODO: replace href with gallery / video link -->
-          <a class="case__link" href="#contact"><span class="sr-only">Minecraft Landmarks: [gallery link here]</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M8 5h11v11"/></svg></a>
-        </li>
+        </article>
 
-        <li class="case" data-reveal data-cursor="watch">
-          <span class="case__no">004</span>
-          <div class="case__head">
-            <h3 class="case__title">Static Archive</h3>
-            <p class="case__desc"><span class="redact">A faceless horror YouTube channel.</span></p>
+        <article class="case bleed">
+          <header class="case__tab"><span>Case 004</span><span class="stamp">Live</span></header>
+          <div class="case__body">
+            <div class="case__media" aria-hidden="true"><span>[channel banner here]</span></div>
+            <div class="case__text">
+              <h3 class="case__title">Static Archive</h3>
+              <p class="case__desc"><span class="redact">A faceless horror YouTube channel.</span></p>
+              <ul class="case__tech" aria-label="Tech used"><li>YouTube</li><li>[editing tools]</li></ul>
+              <!-- TODO: replace href with channel URL -->
+              <a class="case__link" href="#contact">[channel link here] <span aria-hidden="true">↗</span></a>
+            </div>
           </div>
-          <ul class="case__tech" aria-label="Tech used"><li>YouTube</li><li>[editing tools]</li></ul>
-          <span class="stamp">Live</span>
-          <div class="case__media" aria-hidden="true"><span>[channel banner here]</span></div>
-          <!-- TODO: replace href with channel URL -->
-          <a class="case__link" href="#contact"><span class="sr-only">Static Archive: [channel link here]</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M8 5h11v11"/></svg></a>
-        </li>
+        </article>
 
-        <li class="case case--wip" data-reveal data-cursor="soon">
-          <span class="case__no">005</span>
-          <div class="case__head">
-            <h3 class="case__title">Workout App</h3>
-            <p class="case__desc"><span class="redact">A custom iOS workout app. In progress, not released yet.</span></p>
+        <article class="case case--wip bleed">
+          <header class="case__tab"><span>Case 005</span><span class="stamp stamp--wip">In progress</span></header>
+          <div class="case__body">
+            <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
+            <div class="case__text">
+              <h3 class="case__title">Workout App</h3>
+              <p class="case__desc"><span class="redact">A custom iOS workout app. In progress, not released yet.</span></p>
+              <ul class="case__tech" aria-label="Tech used"><li>iOS</li><li>[Swift / SwiftUI?]</li></ul>
+              <p class="case__note">Not public yet</p>
+            </div>
           </div>
-          <ul class="case__tech" aria-label="Tech used"><li>iOS</li><li>[Swift / SwiftUI?]</li></ul>
-          <span class="stamp stamp--wip">In progress</span>
-          <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
-          <span class="case__link case__link--none" aria-label="Not public yet">—</span>
-        </li>
-      </ol>
+        </article>
+      </div>
     </section>
 
     <!-- ================= SERVICES ================= -->
-    <section class="section" id="services" aria-labelledby="services-title">
-      <header class="sh" data-reveal>
-        <span class="sh__num" aria-hidden="true">02</span>
-        <div>
-          <p class="sh__label" data-scramble>Commissions / rate sheet</p>
-          <h2 class="sh__title" id="services-title" data-scramble="letters" data-glitch="Services">Services</h2>
-        </div>
+    <section class="section" id="services" tabindex="-1" aria-labelledby="services-title">
+      <span class="section__ghost" aria-hidden="true">02</span>
+      <span class="eye eye--margin" style="--blink:7.1s; --blink-delay:-2.6s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+      <header class="sh">
+        <p class="sh__label">File 02 / Commissions / rate sheet</p>
+        <h2 class="sh__title distort" id="services-title" data-text="Services">Services</h2>
       </header>
 
       <ol class="prices">
-        <li class="price" data-reveal>
-          <span class="price__no">01</span>
-          <h3 class="price__name">Discord bots + server setup</h3>
-          <span class="price__dots" aria-hidden="true"></span>
-          <p class="price__amt">from <b>$[__]</b></p>
-          <p class="price__desc">Custom bots, roles, channels, permissions, the works.</p>
-        </li>
-        <li class="price" data-reveal>
-          <span class="price__no">02</span>
-          <h3 class="price__name">Minecraft builds</h3>
-          <span class="price__dots" aria-hidden="true"></span>
-          <p class="price__amt">from <b>$[__]</b></p>
-          <p class="price__desc">Landmarks, spawns, lobbies, custom structures.</p>
-        </li>
-        <li class="price" data-reveal>
-          <span class="price__no">03</span>
-          <h3 class="price__name">Roblox maps &amp; UI</h3>
-          <span class="price__dots" aria-hidden="true"></span>
-          <p class="price__amt">from <b>$[__]</b></p>
-          <p class="price__desc">Maps and interface design for your game.</p>
-        </li>
-        <li class="price" data-reveal>
-          <span class="price__no">04</span>
-          <h3 class="price__name">Skins &amp; texture packs</h3>
-          <span class="price__dots" aria-hidden="true"></span>
-          <p class="price__amt">from <b>$[__]</b></p>
-          <p class="price__desc">Custom skins and resource packs.</p>
-        </li>
-        <li class="price" data-reveal>
-          <span class="price__no">05</span>
-          <h3 class="price__name">Graphics &amp; thumbnails</h3>
-          <span class="price__dots" aria-hidden="true"></span>
-          <p class="price__amt">from <b>$[__]</b></p>
-          <p class="price__desc">Thumbnails, banners, icons.</p>
-        </li>
-        <li class="price" data-reveal>
-          <span class="price__no">06</span>
-          <h3 class="price__name">Websites</h3>
-          <span class="price__dots" aria-hidden="true"></span>
-          <p class="price__amt">from <b>$[__]</b></p>
-          <p class="price__desc">Fast static sites like this one, hosted for free.</p>
-        </li>
+        <li class="price bleed"><span class="price__no">01</span><h3 class="price__name">Discord bots + server setup</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt">from <b>$[__]</b></p><p class="price__desc">Custom bots, roles, channels, permissions, the works.</p></li>
+        <li class="price bleed"><span class="price__no">02</span><h3 class="price__name">Minecraft builds</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt">from <b>$[__]</b></p><p class="price__desc">Landmarks, spawns, lobbies, custom structures.</p></li>
+        <li class="price bleed"><span class="price__no">03</span><h3 class="price__name">Roblox maps &amp; UI</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt">from <b>$[__]</b></p><p class="price__desc">Maps and interface design for your game.</p></li>
+        <li class="price bleed"><span class="price__no">04</span><h3 class="price__name">Skins &amp; texture packs</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt">from <b>$[__]</b></p><p class="price__desc">Custom skins and resource packs.</p></li>
+        <li class="price bleed"><span class="price__no">05</span><h3 class="price__name">Graphics &amp; thumbnails</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt">from <b>$[__]</b></p><p class="price__desc">Thumbnails, banners, icons.</p></li>
+        <li class="price bleed"><span class="price__no">06</span><h3 class="price__name">Websites</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt">from <b>$[__]</b></p><p class="price__desc">Fast static sites like this one, hosted for free.</p></li>
       </ol>
 
-      <div class="callout" data-reveal>
+      <div class="callout bleed">
         <div>
           <p class="callout__k">Custom project?</p>
-          <a class="callout__big" href="#contact" data-cursor="dm me">DM me on Discord</a>
+          <a class="callout__big" href="#contact">DM me on Discord</a>
         </div>
         <span class="stamp stamp--big">Open for commissions</span>
       </div>
     </section>
 
     <!-- ================= ABOUT ================= -->
-    <section class="section" id="about" aria-labelledby="about-title">
-      <header class="sh" data-reveal>
-        <span class="sh__num" aria-hidden="true">03</span>
-        <div>
-          <p class="sh__label" data-scramble>Subject profile</p>
-          <h2 class="sh__title" id="about-title" data-scramble="letters" data-glitch="About">About</h2>
-        </div>
+    <section class="section" id="about" tabindex="-1" aria-labelledby="about-title">
+      <span class="section__ghost" aria-hidden="true">03</span>
+      <header class="sh">
+        <p class="sh__label">File 03 / Subject profile</p>
+        <h2 class="sh__title distort" id="about-title" data-text="About">About</h2>
       </header>
 
       <div class="about">
-        <figure class="figure" data-reveal>
+        <figure class="figure bleed">
+          <!-- the photo sits inside an eye-shaped (lens) mask -->
           <div class="figure__frame"><span>[photo or avatar here]</span></div>
           <figcaption>Fig. 01 — Subject, in their natural habitat (a dark room)</figcaption>
         </figure>
 
-        <div class="about__text" data-reveal>
+        <div class="about__text bleed">
           <p class="about__lead">I'm Jay, a high school student who can't stop building things. If it can be made, I want to try making it.</p>
           <dl class="form">
             <div><dt>Name</dt><dd>Jay</dd></div>
@@ -318,33 +275,89 @@
     </section>
 
     <!-- ================= CONTACT ================= -->
-    <section class="section contact" id="contact" aria-labelledby="contact-title">
-      <header class="sh" data-reveal>
-        <span class="sh__num" aria-hidden="true">04</span>
-        <div>
-          <p class="sh__label" data-scramble>Open a channel</p>
-          <h2 class="sh__title" id="contact-title" data-scramble="letters" data-glitch="Contact">Contact</h2>
-        </div>
+    <section class="section contact" id="contact" tabindex="-1" aria-labelledby="contact-title">
+      <span class="section__ghost" aria-hidden="true">04</span>
+      <header class="sh">
+        <p class="sh__label">File 04 / Open a channel</p>
+        <h2 class="sh__title distort" id="contact-title" data-text="Contact">Contact</h2>
       </header>
 
-      <div class="contact__body" data-reveal>
+      <div class="contact__body bleed">
         <p class="contact__lead">Discord is the fastest way to reach me. Click to copy.</p>
-        <button class="handle" type="button" data-copy="#discord-handle" data-cursor="copy">
+        <button class="handle" type="button" data-copy="#discord-handle">
           <span id="discord-handle">.jaypatty</span>
         </button>
         <p class="contact__status" role="status" aria-live="polite"></p>
         <ul class="contact__links">
-          <li><a href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener" data-cursor="github">GitHub / ag0nyy-ops ↗</a></li>
+          <li><a href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener">GitHub / ag0nyy-ops ↗</a></li>
         </ul>
       </div>
     </section>
   </main>
 
   <footer class="footer">
-    <div class="footer__eye" aria-hidden="true"></div>
+    <span class="eye eye--footer" style="--blink:5.8s; --blink-delay:-4.4s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
     <p class="footer__end">End of file</p>
+
+    <!-- easter egg: press "/" or open this to see how the effects are built -->
+    <details class="source" id="source">
+      <summary><span aria-hidden="true">◉</span> Declassify the source <kbd>/</kbd></summary>
+      <div class="source__body">
+        <p class="source__intro">You found the back room. Here is the CSS behind four of the effects on this page. JavaScript only tells CSS where your cursor is and where each eye sits; CSS does the rest.</p>
+
+        <figure class="snippet">
+          <figcaption><b>01 / The flashlight</b> One huge overlay with a transparent hole in a radial gradient. It only ever moves with <code>translate</code>, so the GPU composites it and nothing repaints.</figcaption>
+<pre><code>.flashlight__beam {
+  width: 260vmax; height: 260vmax;      /* big enough that the edge never shows */
+  background: radial-gradient(circle,
+    transparent 0 7rem,                 /* the beam */
+    rgb(0 0 0 / .55) 16rem,
+    rgb(0 0 0 / .92) 34rem);            /* the dark */
+  translate: calc(var(--mx) * 1px - 130vmax)
+             calc(var(--my) * 1px - 130vmax);
+}</code></pre>
+        </figure>
+
+        <figure class="snippet">
+          <figcaption><b>02 / The almond is two circles</b> No SVG. The eye shape is where two big circles overlap, cut out with two radial-gradient masks and <code>mask-composite: intersect</code>. Container query units keep it in proportion at any size.</figcaption>
+<pre><code>.eye { container-type: inline-size; aspect-ratio: 2 / 1; }
+.eye__ball {
+  mask:
+    radial-gradient(circle 62.5cqw at 50% 62.5cqw,  #000 99.5%, #0000),
+    radial-gradient(circle 62.5cqw at 50% -12.5cqw, #000 99.5%, #0000);
+  mask-composite: intersect;
+}</code></pre>
+        </figure>
+
+        <figure class="snippet">
+          <figcaption><b>03 / Eyes that do their own trig</b> JS just writes the cursor position and each eye's centre as numbers. CSS works out the angle and distance and moves the iris itself.</figcaption>
+<pre><code>.eye__iris {
+  --dx: calc(var(--mx) - var(--ex));
+  --dy: calc(var(--my) - var(--ey));
+  --angle: atan2(var(--dy), var(--dx));
+  --reach: min(1, hypot(var(--dx), var(--dy)) / 420);
+  translate: calc(cos(var(--angle)) * var(--reach) * 10cqw)
+             calc(sin(var(--angle)) * var(--reach) * 5cqw);
+}</code></pre>
+        </figure>
+
+        <figure class="snippet">
+          <figcaption><b>04 / A scroll counter with zero JS</b> The "Declassified %" in the top bar is a registered integer property, animated by the scroll position and printed with a CSS counter.</figcaption>
+<pre><code>@property --pct { syntax: "&lt;integer&gt;"; inherits: false; initial-value: 0; }
+
+.topbar__progress {
+  animation: count linear both;
+  animation-timeline: scroll(root);
+  counter-reset: pct var(--pct);
+}
+.topbar__progress .pct::after { content: counter(pct) "%"; }
+@keyframes count { to { --pct: 100; } }</code></pre>
+        </figure>
+      </div>
+    </details>
+
     <div class="footer__row">
-      <p>© <span data-year>2026</span> Jay</p>
+      <p>© 2026 Jay</p>
       <p><a href="uploader/">Uploader app</a> · <a href="privacy.html">Privacy</a></p>
       <p><a href="#top">Back to top ↑</a></p>
     </div>
