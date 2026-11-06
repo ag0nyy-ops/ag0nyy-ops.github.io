@@ -8,6 +8,7 @@ My portfolio and commissions page: Discord bots, iOS apps, Roblox/Minecraft and 
 
 Plain HTML, CSS and a little JavaScript. No framework, no build step, no dependencies.
 
+- `assets/fonts/`: self-hosted IBM Plex Mono, IBM Plex Sans and UnifrakturMaguntia (OFL 1.1). No third-party requests.
 - `index.html`: the page, plus two SVG filters (chromatic aberration and a liquid warp)
 - `assets/css/style.css`: almost everything. It's organised in `@layer`s and commented so every effect can be explained.
 - `assets/js/main.js`: about 100 lines. It never animates anything; it only tells CSS what CSS can't know (cursor position, where each eye sits, idle/away state), plus the copy button and view transitions.
@@ -19,7 +20,7 @@ Plain HTML, CSS and a little JavaScript. No framework, no build step, no depende
 | --- | --- |
 | Flashlight | huge radial-gradient overlay moved with `translate` (composited); touch devices get a CSS Lissajous wander |
 | Eyes | no SVG: two-circle `mask-composite: intersect`, container query units, `atan2()`/`hypot()` pupil tracking in CSS |
-| Blinking | pure CSS keyframes on `transform`, per-eye `--blink` timing |
+| Blinking | pure CSS keyframes on `transform`, per-eye `--jdx-blink` timing |
 | Pupils dilate on hover | `:root:has(a:hover)` flips a variable |
 | Scroll reveals, redaction peel, title distortion, parallax | scroll-driven animations (`animation-timeline: view()` / `scroll()`) |
 | "Declassified %" counter + scroll spy | `@property` integer + CSS counter; named view timelines + `timeline-scope` |
@@ -77,3 +78,7 @@ Search the code for `[` and `TODO` to find everything that still needs real cont
 
 - screenshots go in `assets/img/`, then replace the `[screenshot here]` spans with `<img src="assets/img/…" alt="…" loading="lazy">`
 - the Discord handle is `#discord-handle` in the Contact section
+
+## Licence
+
+Source-available, view only: you can read and learn from this code, but not copy, redistribute or reuse it (modified or not) as your own site or in commercial work without written permission. See [LICENSE](LICENSE). The self-hosted fonts in `assets/fonts/` are SIL Open Font License 1.1 (licence texts included).
