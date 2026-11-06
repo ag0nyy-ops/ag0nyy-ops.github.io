@@ -10,10 +10,10 @@ Plain HTML, CSS and JavaScript. No framework, no build step, no dependencies.
 
 - `index.html`: the page
 - `assets/css/style.css`: all styles
-- `assets/js/main.js`: eyes, glitch/scramble text, scroll reveals, custom cursor
+- `assets/js/main.js`: boot intro, watching eyes, glitch/scramble text, scroll reveals, custom cursor, project preview
 - `uploader/` and `privacy.html`: homepage and privacy policy for my uploader app (keep these URLs stable)
 
-Every animation respects `prefers-reduced-motion`. The page works without JavaScript; you just lose the effects.
+Every animation respects `prefers-reduced-motion`. The boot intro plays once per browser session (clear `sessionStorage` to see it again). The page works without JavaScript; you just lose the effects.
 
 ## Run locally
 
