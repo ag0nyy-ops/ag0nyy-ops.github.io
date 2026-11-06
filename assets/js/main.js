@@ -5,6 +5,7 @@
   'use strict';
 
   const root = document.documentElement;
+  root.classList.add('js-ok'); // tells the inline failsafe in index.html we're alive
   const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   let reduce = motionQuery.matches;
   const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
