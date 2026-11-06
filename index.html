@@ -1,3 +1,245 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ag0nyy uploader</title>
-<style>body{font:16px/1.6 system-ui,sans-serif;max-width:640px;margin:48px auto;padding:0 16px;color:#222}a{color:#0a58ca}</style></head>
-<body><h1>ag0nyy uploader</h1><p>A private tool that uploads and schedules videos to the owner's own YouTube channels using the YouTube Data API. It is not offered to the public.</p><p><a href="privacy.html">Privacy policy</a></p></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jay — builder of bots, apps & worlds</title>
+  <meta name="description" content="Jay, 18. Builds Discord bots, iOS apps, Roblox and Minecraft projects, and websites. Open for commissions.">
+  <meta name="theme-color" content="#050505">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Jay — builder of bots, apps & worlds">
+  <meta property="og:description" content="Discord bots, iOS apps, Roblox & Minecraft, websites. Open for commissions.">
+  <meta property="og:url" content="https://ag0nyy-ops.github.io/">
+  <!-- TODO: add assets/og-image.png (1200x630) and uncomment -->
+  <!-- <meta property="og:image" content="https://ag0nyy-ops.github.io/assets/og-image.png"> -->
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script>document.documentElement.classList.add('js')</script>
+  <script src="assets/js/main.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <div class="cursor" aria-hidden="true"><span class="cursor__dot"></span><span class="cursor__ring"><span class="cursor__label"></span></span></div>
+
+  <header class="topbar">
+    <a class="topbar__logo" href="#top" data-cursor="top">JAY<span>//</span>DOSSIER</a>
+    <nav aria-label="Primary">
+      <ul class="topbar__nav">
+        <li><a href="#projects">Projects</a></li>
+        <li><a href="#services">Services</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </nav>
+    <span class="topbar__tag" aria-hidden="true">CLEARANCE: PUBLIC</span>
+  </header>
+
+  <main id="main">
+    <!-- ============ HERO ============ -->
+    <section class="hero" id="top" aria-labelledby="hero-name">
+      <div class="hero__eyes" aria-hidden="true">
+        <!-- main eye; smaller watchers are cloned from it by main.js -->
+        <svg class="eye eye--main" viewBox="0 0 200 120">
+          <defs>
+            <clipPath id="eye-clip"><path d="M8 60 Q100 -14 192 60 Q100 134 8 60Z"/></clipPath>
+          </defs>
+          <g class="eye__lid">
+            <path class="eye__outline" d="M8 60 Q100 -14 192 60 Q100 134 8 60Z"/>
+            <g clip-path="url(#eye-clip)">
+              <g class="eye__iris">
+                <circle class="eye__ring" cx="100" cy="60" r="34"/>
+                <circle class="eye__ring eye__ring--inner" cx="100" cy="60" r="24"/>
+                <g class="eye__rays">
+                  <path d="M100 26v10M100 84v10M66 60h10M124 60h10M76 36l7 7M117 77l7 7M124 36l-7 7M83 77l-7 7"/>
+                </g>
+                <circle class="eye__pupil" cx="100" cy="60" r="12"/>
+                <circle class="eye__glint" cx="94" cy="54" r="3"/>
+              </g>
+            </g>
+            <path class="eye__lash" d="M30 38l-8-10M55 22l-4-12M100 14V2M145 22l4-12M170 38l8-10"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="hero__inner">
+        <dl class="hero__meta">
+          <div><dt>Subject</dt><dd>Jay</dd></div>
+          <div><dt>Age</dt><dd>18</dd></div>
+          <div><dt>Status</dt><dd>HS senior / building</dd></div>
+          <div><dt>Languages</dt><dd>EN · ES · NL</dd></div>
+        </dl>
+
+        <h1 class="hero__name" id="hero-name"><span class="sr-only">Jay</span><span aria-hidden="true" data-glitch="Jay">Jay</span></h1>
+
+        <p class="hero__pitch">
+          I build <strong>Discord bots</strong>, <strong>iOS apps</strong>, <strong>Roblox &amp; Minecraft</strong> worlds and <strong>websites</strong>, and I ship them fast with AI-assisted development.
+        </p>
+
+        <ul class="hero__links">
+          <li><a class="btn" href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener" data-cursor="github">GitHub ↗</a></li>
+          <li><a class="btn" href="#contact" data-cursor="discord">Discord</a></li>
+          <li><a class="btn btn--solid" href="#contact" data-cursor="hire">Contact / Hire me</a></li>
+        </ul>
+      </div>
+
+      <p class="hero__scroll" aria-hidden="true">SCROLL TO DECLASSIFY ↓</p>
+    </section>
+
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track">
+        <span>Discord bots ✶ iOS apps ✶ Roblox ✶ Minecraft ✶ Websites ✶ Graphics ✶&nbsp;</span>
+        <span>Discord bots ✶ iOS apps ✶ Roblox ✶ Minecraft ✶ Websites ✶ Graphics ✶&nbsp;</span>
+      </div>
+    </div>
+
+    <!-- ============ PROJECTS ============ -->
+    <section class="section" id="projects" aria-labelledby="projects-title">
+      <header class="section__head" data-reveal>
+        <p class="section__file">File 01 // Case files</p>
+        <h2 class="section__title" id="projects-title" data-scramble data-glitch="Projects">Projects</h2>
+      </header>
+
+      <div class="cards">
+        <article class="card" data-reveal data-cursor="open">
+          <div class="card__top"><span>Case 001</span><span class="stamp stamp--done">Shipped</span></div>
+          <div class="card__media"><span>[screenshot here]</span></div>
+          <h3 class="card__title">Skyscrob</h3>
+          <p class="card__desc">Scrobbles your Apple Music listening to Last.fm.</p>
+          <ul class="card__tech" aria-label="Tech used"><li>[tech]</li><li>Apple Music</li><li>Last.fm API</li></ul>
+          <a class="card__link" href="https://github.com/ag0nyy-ops/skyscrob" target="_blank" rel="noopener">View repo ↗</a>
+        </article>
+
+        <article class="card" data-reveal data-cursor="open">
+          <div class="card__top"><span>Case 002</span><span class="stamp stamp--live">Live</span></div>
+          <div class="card__media"><span>[screenshot here]</span></div>
+          <h3 class="card__title">Jinzo &amp; Cosmou</h3>
+          <p class="card__desc">Two Discord bots. Jinzo handles moderation and chat, Cosmou handles helping and server management.</p>
+          <ul class="card__tech" aria-label="Tech used"><li>[tech]</li><li>Discord API</li></ul>
+          <!-- TODO: replace with bot invite or info link -->
+          <a class="card__link" href="#contact">[invite link here] ↗</a>
+        </article>
+
+        <article class="card" data-reveal data-cursor="view">
+          <div class="card__top"><span>Case 003</span><span class="stamp stamp--done">Finished</span></div>
+          <div class="card__media"><span>[screenshot here]</span></div>
+          <h3 class="card__title">Minecraft Landmarks</h3>
+          <p class="card__desc">Large-scale builds of the Golden Gate Bridge and the Colosseum.</p>
+          <ul class="card__tech" aria-label="Tech used"><li>Minecraft</li><li>[tools used]</li></ul>
+          <!-- TODO: link to gallery / video, or remove -->
+          <a class="card__link" href="#contact">[gallery link here] ↗</a>
+        </article>
+
+        <article class="card" data-reveal data-cursor="watch">
+          <div class="card__top"><span>Case 004</span><span class="stamp stamp--live">Live</span></div>
+          <div class="card__media"><span>[channel banner here]</span></div>
+          <h3 class="card__title">Static Archive</h3>
+          <p class="card__desc">A faceless horror YouTube channel.</p>
+          <ul class="card__tech" aria-label="Tech used"><li>YouTube</li><li>[editing tools]</li></ul>
+          <!-- TODO: replace with channel URL -->
+          <a class="card__link" href="#contact">[channel link here] ↗</a>
+        </article>
+
+        <article class="card card--wip" data-reveal data-cursor="soon">
+          <div class="card__top"><span>Case 005</span><span class="stamp stamp--wip">In progress</span></div>
+          <div class="card__media"><span>[screenshot here]</span></div>
+          <h3 class="card__title">Workout App</h3>
+          <p class="card__desc">A custom iOS workout app. Still in progress and not released yet.</p>
+          <ul class="card__tech" aria-label="Tech used"><li>iOS</li><li>[Swift / SwiftUI?]</li></ul>
+          <p class="card__note">Not public yet</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ SERVICES ============ -->
+    <section class="section" id="services" aria-labelledby="services-title">
+      <header class="section__head" data-reveal>
+        <p class="section__file">File 02 // Commissions</p>
+        <h2 class="section__title" id="services-title" data-scramble data-glitch="Services">Services</h2>
+      </header>
+
+      <ol class="services">
+        <li class="service" data-reveal>
+          <span class="service__num">01</span>
+          <div><h3>Discord bots + server setup</h3><p>Custom bots, roles, channels, permissions, the works.</p></div>
+          <p class="service__price">from <span>$[__]</span></p>
+        </li>
+        <li class="service" data-reveal>
+          <span class="service__num">02</span>
+          <div><h3>Minecraft builds</h3><p>Landmarks, spawns, lobbies, custom structures.</p></div>
+          <p class="service__price">from <span>$[__]</span></p>
+        </li>
+        <li class="service" data-reveal>
+          <span class="service__num">03</span>
+          <div><h3>Roblox maps &amp; UI</h3><p>Maps and interface design for your game.</p></div>
+          <p class="service__price">from <span>$[__]</span></p>
+        </li>
+        <li class="service" data-reveal>
+          <span class="service__num">04</span>
+          <div><h3>Skins &amp; texture packs</h3><p>Custom skins and packs.</p></div>
+          <p class="service__price">from <span>$[__]</span></p>
+        </li>
+        <li class="service" data-reveal>
+          <span class="service__num">05</span>
+          <div><h3>Graphics &amp; thumbnails</h3><p>Thumbnails, banners, icons.</p></div>
+          <p class="service__price">from <span>$[__]</span></p>
+        </li>
+        <li class="service" data-reveal>
+          <span class="service__num">06</span>
+          <div><h3>Websites</h3><p>Fast static sites like this one, deployed for free.</p></div>
+          <p class="service__price">from <span>$[__]</span></p>
+        </li>
+      </ol>
+      <p class="services__custom" data-reveal>Custom project? <a href="#contact">DM me on Discord</a> and tell me what you need.</p>
+    </section>
+
+    <!-- ============ ABOUT ============ -->
+    <section class="section about" id="about" aria-labelledby="about-title">
+      <header class="section__head" data-reveal>
+        <p class="section__file">File 03 // Subject profile</p>
+        <h2 class="section__title" id="about-title" data-scramble data-glitch="About">About</h2>
+      </header>
+
+      <div class="about__grid">
+        <div class="about__photo" data-reveal><span>[photo or avatar here]</span></div>
+        <div class="about__text" data-reveal>
+          <p>I'm Jay, 18, a high school senior who can't stop building things. Bots, apps, game worlds, websites. If it can be made, I want to try making it.</p>
+          <p>I build with AI-assisted development. AI helps me move fast, but I still read, test and debug what I ship, and I learn how it works along the way.</p>
+          <p>I speak English, Spanish and Dutch. Next up: studying computer engineering and landing an internship at Apple.</p>
+          <p class="about__redact">Sleep schedule: <span class="redacted" title="classified">[REDACTED]</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONTACT ============ -->
+    <section class="section contact" id="contact" aria-labelledby="contact-title">
+      <header class="section__head" data-reveal>
+        <p class="section__file">File 04 // Open a channel</p>
+        <h2 class="section__title" id="contact-title" data-scramble data-glitch="Contact">Contact</h2>
+      </header>
+
+      <div class="contact__grid" data-reveal>
+        <div class="contact__item">
+          <p class="contact__label">Discord (fastest)</p>
+          <!-- TODO: replace [discord handle] with your handle -->
+          <p class="contact__value"><span id="discord-handle">[discord handle]</span></p>
+          <button class="btn btn--small" type="button" data-copy="#discord-handle" data-cursor="copy">Copy handle</button>
+          <span class="contact__status" role="status" aria-live="polite"></span>
+        </div>
+        <div class="contact__item">
+          <p class="contact__label">GitHub</p>
+          <p class="contact__value"><a href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener">ag0nyy-ops ↗</a></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© <span data-year>2026</span> Jay. Built from scratch.</p>
+    <p><a href="uploader/">Uploader app</a> · <a href="privacy.html">Privacy</a></p>
+  </footer>
+</body>
+</html>
