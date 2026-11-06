@@ -229,8 +229,9 @@ a { color: inherit; }
 }
 
 @media (max-width: 760px) {
-  .eye--main { width: 120vw; right: -40vw; top: 22%; opacity: .3; }
+  .eye--main { width: 120vw; right: -45vw; top: 16%; opacity: .25; }
   .eye--mini { opacity: .2; }
+  .hero__meta { grid-template-columns: 1fr; }
 }
 
 /* ---------- glitch (decorative layers) ---------- */
