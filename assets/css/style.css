@@ -1337,16 +1337,49 @@
     :root[data-cursor] * { cursor: auto !important; }
   }
 
-  /* ---- low-power mode ----
-     main.js adds .low-power if scrolling stays below ~30fps. It switches off
-     the most expensive effects and keeps everything else. Force it with
-     ?fx=low, or keep the full effects with ?fx=full. */
-  .low-power .ink::before, .low-power .ink::after,
-  .low-power .vhs,
-  .low-power :is(.radar, .sigil, .sigil__ticks, .eye__fibers, .tape__track) { animation: none; }
-  .low-power .vhs::after { display: none; }
-  .low-power .glitch { filter: none; }
-  .low-power .distort::before, .low-power .distort::after { display: none; }
+  /* ---- adaptive effects quality: html[data-fx="full" | "balanced" | "low"] ----
+     The inline script in <head> picks a provisional tier before first paint;
+     main.js confirms or lowers it from measured frame times. FULL is the
+     page exactly as designed. Each tier keeps the look as close as it can.
+
+     BALANCED ("LIMITED"): no live SVG filters, no blend modes.
+       (Grain is already a pre-rendered tile and the flashlight already moves
+       as a transformed element in every tier.)
+       - the name's RGB split: SVG feColorMatrix filter → two text-shadows
+       - the glitch keeps its slices and shove, minus the SVG warp frames
+       - colour-split copies on the titles/name: screen blend → plain alpha */
+  :root:is([data-fx="balanced"], [data-fx="low"]) .glitch {
+    filter: none;
+    text-shadow: -1.2px 0 var(--fringe-r), 1.2px 0 var(--fringe-c);
+    animation-name: glitch-lite;
+  }
+  :root:is([data-fx="balanced"], [data-fx="low"]) :is(.glitch, .distort)::before,
+  :root:is([data-fx="balanced"], [data-fx="low"]) :is(.glitch, .distort)::after {
+    mix-blend-mode: normal;
+  }
+  @keyframes glitch-lite {   /* glitch-base without the filter swaps */
+    0%, 90%  { transform: none; }
+    91%      { transform: skewX(-7deg) translateX(-.015em); }
+    93%      { transform: skewX(4deg) translateX(.02em); }
+    95%      { transform: none; }
+  }
+
+  /* LOW ("MIN"): balanced, plus
+       - static smoke (the blobs stay where they are) and static grain
+       - simplified eyes: no spinning iris fibres, no lashes (still blink + track)
+       - no scanlines, no VHS tracking band */
+  [data-fx="low"] .ink::before, [data-fx="low"] .ink::after { animation: none; }
+  [data-fx="low"] .eye__fibers, [data-fx="low"] .eye__lashes { display: none; }
+  [data-fx="low"] .vhs {
+    animation: none;
+    background:
+      url("../img/grain.png") 0 0 / 128px 128px,
+      radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / .5) 100%),
+      conic-gradient(from 0deg at 55% 45%,
+        transparent, color-mix(in oklab, var(--fg) 3.5%, transparent) 25%,
+        transparent 50%, color-mix(in oklab, var(--fg) 2.5%, transparent) 75%, transparent);
+  }
+  [data-fx="low"] .vhs::after { display: none; }
 
   /* people who ask for more contrast get the plain document */
   @media (prefers-contrast: more) {
@@ -1452,4 +1485,27 @@
       from { opacity: 0; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 0, 0 0); }
     }
   }
+}
+
+
+/* ==========================================================================
+   SIGHT toggle (effects quality) + its readout in the source panel
+   ========================================================================== */
+@layer components {
+  .sight {
+    padding: .35rem .55rem;
+    border: 1px solid var(--line-strong);
+    background: transparent; color: var(--muted);
+    font: 400 .75rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
+    cursor: pointer;
+    transition: color .25s, border-color .25s;
+  }
+  .sight b { color: var(--fg); font-weight: 600; }
+  .sight:hover, .sight:focus-visible { color: var(--fg); border-color: var(--fg); }
+  .sight[hidden] { display: none; }
+  .source__fx {
+    grid-column: 1 / -1;
+    font: 400 .8rem/1.6 var(--mono); letter-spacing: .08em; color: var(--muted);
+  }
+  .source__fx b { color: var(--fg); letter-spacing: .16em; text-transform: uppercase; }
 }
