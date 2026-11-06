@@ -6,14 +6,29 @@ My portfolio and commissions page: Discord bots, iOS apps, Roblox/Minecraft and 
 
 ## Stack
 
-Plain HTML, CSS and JavaScript. No framework, no build step, no dependencies.
+Plain HTML, CSS and a little JavaScript. No framework, no build step, no dependencies.
 
-- `index.html`: the page
-- `assets/css/style.css`: all styles
-- `assets/js/main.js`: boot intro, watching eyes, glitch/scramble text, scroll reveals, custom cursor, project preview
+- `index.html`: the page, plus two SVG filters (chromatic aberration and a liquid warp)
+- `assets/css/style.css`: almost everything. It's organised in `@layer`s and commented so every effect can be explained.
+- `assets/js/main.js`: about 100 lines. It never animates anything; it only tells CSS what CSS can't know (cursor position, where each eye sits, idle/away state), plus the copy button and view transitions.
 - `uploader/` and `privacy.html`: homepage and privacy policy for my uploader app (keep these URLs stable)
 
-Every animation respects `prefers-reduced-motion`. The boot intro plays once per browser session (clear `sessionStorage` to see it again). The page works without JavaScript; you just lose the effects.
+### Effects and how they're built
+
+| Effect | Technique |
+| --- | --- |
+| Flashlight | huge radial-gradient overlay moved with `translate` (composited); touch devices get a CSS Lissajous wander |
+| Eyes | no SVG: two-circle `mask-composite: intersect`, container query units, `atan2()`/`hypot()` pupil tracking in CSS |
+| Blinking | pure CSS keyframes on `transform`, per-eye `--blink` timing |
+| Pupils dilate on hover | `:root:has(a:hover)` flips a variable |
+| Scroll reveals, redaction peel, title distortion, parallax | scroll-driven animations (`animation-timeline: view()` / `scroll()`) |
+| "Declassified %" counter + scroll spy | `@property` integer + CSS counter; named view timelines + `timeline-scope` |
+| Ink smoke | animated `@property` gradients on a quarter-size layer scaled 4× |
+| Grain / VHS / RGB split | SVG `feTurbulence`, scanline gradients, `feColorMatrix` channel offsets |
+| Section jumps + page changes | View Transitions (same-document and cross-document) |
+| Hidden "how it's built" panel | press `/` or open "Declassify the source" in the footer |
+
+`prefers-reduced-motion` turns off all motion, scares and flicker. `prefers-contrast: more` removes the darkness overlays. Browsers without scroll-driven animations get a static, fully visible page.
 
 ## Run locally
 
