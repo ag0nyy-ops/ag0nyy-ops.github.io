@@ -26,7 +26,10 @@ Plain HTML, CSS and a little JavaScript. No framework, no build step, no depende
 | Ink smoke | animated `@property` gradients on a quarter-size layer scaled 4× |
 | Grain / VHS / RGB split | SVG `feTurbulence`, scanline gradients, `feColorMatrix` channel offsets |
 | Section jumps + page changes | View Transitions (same-document and cross-document) |
-| Hidden "how it's built" panel | press `/` or open "Declassify the source" in the footer |
+| Hidden "how it's built" panel | press `?` or open "Declassify the source" in the footer |
+| Custom cursor | a trailing ring, only for a real mouse (`(hover: hover) and (pointer: fine)`); fades when the mouse leaves; touch, no-JS and reduced motion keep the normal cursor |
+| Right-click menu | native `popover="auto"` (Esc + click-away for free); Shift+F10 / Menu key work; Shift + right-click, links, images and selected text keep the browser menu |
+| Text selection | off page-wide with `user-select`, except the Discord handle, GitHub link and prices |
 
 `prefers-reduced-motion` turns off all motion, scares and flicker. `prefers-contrast: more` removes the darkness overlays. Browsers without scroll-driven animations get a static, fully visible page.
 
