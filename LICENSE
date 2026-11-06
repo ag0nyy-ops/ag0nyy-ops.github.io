@@ -1,0 +1,70 @@
+Source-Available Licence (View Only)
+
+Copyright (c) 2026 Jay (GitHub: ag0nyy-ops). All rights reserved.
+https://ag0nyy-ops.github.io/
+
+This licence covers everything in this repository that I made: the code,
+markup, stylesheets, scripts, text, graphics, banners and overall visual
+design of the site (together, "the Work"). Third-party material listed
+under "Exclusions" below is not covered.
+
+1. What you may do
+
+   You may view, read and study the Work, including in your browser's
+   developer tools and on GitHub, in order to learn how it is built. You
+   may write about it, link to it and quote short excerpts for commentary,
+   teaching or review, as long as you credit "Jay (ag0nyy-ops)" and link
+   to https://ag0nyy-ops.github.io/.
+
+   Ideas and general techniques you learn here (for example, how a CSS
+   feature works) are yours to use. This licence protects my expression of
+   them, not the techniques themselves.
+
+2. What you may not do without my prior written permission
+
+   a. copy, reproduce or redistribute the Work, in whole or in substantial
+      part;
+   b. publish, host or deploy the Work, or a modified or derivative version
+      of it, as your own website or as part of any other website, app,
+      template or theme;
+   c. use the Work, or a modified or derivative version of it, in any
+      commercial product, service or client work;
+   d. remove or alter this notice, the copyright notices, or the signature
+      comments in the source files.
+
+   "Modified or derivative version" includes a version with changed
+   colours, text, names, prices or images, if the result is still
+   substantially based on the Work.
+
+3. Forks on GitHub
+
+   GitHub's Terms of Service let other GitHub users view and fork public
+   repositories on GitHub. That permission exists only within GitHub. It
+   does not allow a fork to be deployed, hosted or reused outside GitHub,
+   or any of the uses in section 2.
+
+4. Permission
+
+   To ask for permission, contact me through the links on
+   https://ag0nyy-ops.github.io/. Permission only counts if I give it in
+   writing (a message from me counts).
+
+5. Termination
+
+   If you break these terms, any permission you had under this licence
+   ends automatically, and you must stop using and delete any copies of
+   the Work you made.
+
+6. No warranty
+
+   THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES
+   OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE WORK
+   OR ITS USE.
+
+Exclusions
+
+   The fonts in assets/fonts/ (IBM Plex Mono, IBM Plex Sans and
+   UnifrakturMaguntia) belong to their authors and are licensed under the
+   SIL Open Font License 1.1. Their licence texts are included next to the
+   font files, and that licence, not this one, applies to them.

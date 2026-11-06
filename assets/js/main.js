@@ -1,12 +1,20 @@
 /* JAY // DOSSIER — the only JavaScript on the page.
+   © 2026 Jay · https://ag0nyy-ops.github.io/ · source viewable, not reusable (LICENSE)
    Rule: JS never animates anything. It only does what CSS can't:
      1. tell CSS where the cursor is            (--mx, --my on <html>)
-     2. tell CSS where each eye sits            (--ex, --ey on each .eye)
+     2. tell CSS where each eye sits            (--jdx-ex, --jdx-ey on each .eye)
      3. notice idle / away / scares             (data-idle, data-away, data-scare)
      4. same-page view transitions, copy, the right-click menu, "?" shortcut
    Everything visual lives in style.css. */
 (() => {
   'use strict';
+
+  // signature for anyone who opens dev tools
+  console.info(
+    '%cJay%c  https://ag0nyy-ops.github.io/\nLooking at the source? Learn from it, don\u2019t lift it. Case jdx-hollow-81ca45.',
+    'font: 600 16px/1.6 "UnifrakturMaguntia", serif',
+    'font: 12px/1.6 "IBM Plex Mono", monospace; color: #888'
+  );
 
   const root = document.documentElement;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
@@ -49,8 +57,8 @@
     for (const el of onScreen) rects.push([el, el.getBoundingClientRect()]);   // reads…
     for (const [el, r] of rects) {                                              // …then writes
       if (!r.width) continue;
-      el.style.setProperty('--ex', (r.left + r.width / 2).toFixed(1));
-      el.style.setProperty('--ey', (r.top + r.height / 2).toFixed(1));
+      el.style.setProperty('--jdx-ex', (r.left + r.width / 2).toFixed(1));
+      el.style.setProperty('--jdx-ey', (r.top + r.height / 2).toFixed(1));
     }
   };
   if ('IntersectionObserver' in window) {
@@ -100,39 +108,96 @@
     update();
   }
 
-  /* 2c. low-power fallback. While the page scrolls, sample ~45 frames. If the
-     median frame is slower than ~40fps twice in a row, add .low-power,
-     which switches off the heaviest effects (see the a11y layer in the CSS).
-     It remembers the choice for the session. ?fx=low forces it on and
-     ?fx=full forces it off. People with reduced motion never need it. */
-  const fx = new URLSearchParams(location.search).get('fx');
-  let stored = null;
-  try { stored = sessionStorage.getItem('low-power'); } catch (e) {}
-  if (fx === 'low' || (fx !== 'full' && stored === '1')) root.classList.add('low-power');
-  if (fx !== 'full' && fx !== 'low') {
-    let sampling = false, strikes = 0;
-    const sample = () => {
-      if (sampling || reduce.matches || document.hidden || root.classList.contains('low-power')) return;
-      sampling = true;
-      const deltas = [];
-      let last = performance.now();
-      const step = (t) => {
-        deltas.push(t - last); last = t;
-        if (deltas.length < 45) return requestAnimationFrame(step);
-        sampling = false;
-        const sorted = deltas.slice(2).sort((a, b) => a - b);
-        const median = sorted[sorted.length >> 1];
-        // slower than ~40fps (a 60Hz screen is 16.7ms/frame, 120Hz is 8.3ms)
-        strikes = median > 25 ? strikes + 1 : 0;
-        if (strikes >= 2) {
-          root.classList.add('low-power');
-          try { sessionStorage.setItem('low-power', '1'); } catch (e) {}
-        }
-      };
-      requestAnimationFrame(step);
+  /* 2c. adaptive effects quality (full / balanced / low)
+     The inline script in <head> already set a provisional data-fx from the
+     URL, this visit's saved choice, or cheap hints. Here we measure real
+     frame times and make the call:
+       - first ~2s after load: the one moment the tier may go UP (if the
+         hints were too cautious) or down
+       - while scrolling: 1s windows; two windows in a row under ~45fps drop
+         one tier. It never goes back up mid-visit, so it can't flap.
+     A manual pick (toggle or ?fx=) switches the measuring off for the visit.
+     Stored in sessionStorage only. No cookies, nothing sent anywhere. */
+  const TIERS = ['low', 'balanced', 'full'];
+  const LABEL = { full: 'Full', balanced: 'Limited', low: 'Min' };
+  const fxState = {
+    tier: root.dataset.fx || 'full',
+    src: root.dataset.fxSrc || 'hints',
+    fps: null,
+  };
+  const saveFx = () => { try { sessionStorage.setItem('fx', JSON.stringify({ tier: fxState.tier, src: fxState.src })); } catch (e) {} };
+  const why = () => ({
+    url: 'set by ?fx= in the address',
+    manual: 'set by you',
+    'reduced-motion': 'your system asks for reduced motion',
+    hints: 'provisional, measuring…',
+    auto: fxState.fps ? `picked automatically (measured ${Math.round(fxState.fps)} fps)` : 'picked automatically',
+  })[fxState.src] || '';
+  const renderFx = () => {
+    root.dataset.fx = fxState.tier;
+    root.dataset.fxSrc = fxState.src;
+    document.querySelectorAll('[data-fx-label]').forEach((el) => { el.textContent = LABEL[fxState.tier]; });
+    document.querySelectorAll('[data-fx-why]').forEach((el) => { el.textContent = `— ${why()}`; });
+    const btn = document.querySelector('[data-sight]');
+    if (btn) btn.setAttribute('aria-label', `Visual effects: ${LABEL[fxState.tier]}. Change`);
+  };
+  const setFx = (tier, src) => { fxState.tier = tier; fxState.src = src; saveFx(); renderFx(); };
+  const stepDown = () => {
+    const i = TIERS.indexOf(fxState.tier);
+    if (i > 0) setFx(TIERS[i - 1], 'auto');
+  };
+
+  // count frames for `ms` milliseconds; resolves with fps (null if the tab was hidden)
+  const measureFps = (ms) => new Promise((resolve) => {
+    let frames = 0; const t0 = performance.now();
+    const step = (t) => {
+      if (document.hidden) return resolve(null);
+      frames++;
+      if (t - t0 < ms) requestAnimationFrame(step);
+      else resolve((frames * 1000) / (t - t0));
     };
-    addEventListener('scroll', sample, { passive: true });
+    requestAnimationFrame(step);
+  });
+
+  const autoFx = () => fxState.src === 'hints' || fxState.src === 'auto';
+  // 1) the initial pick: only on a fresh visit (provisional "hints" tier)
+  if (fxState.src === 'hints') {
+    setTimeout(async () => {
+      const fps = await measureFps(2000);
+      if (fps == null || fxState.src !== 'hints') return;
+      fxState.fps = fps;
+      let i = TIERS.indexOf(fxState.tier);
+      const saveData = !!(navigator.connection && navigator.connection.saveData);
+      if (fps < 45) i = Math.max(0, i - 1);                                   // struggling: one step down
+      else if (fps >= 55 && !saveData) i = Math.min(TIERS.length - 1, i + 1); // hints were too cautious: one step up
+      setFx(TIERS[i], 'auto');
+    }, 600);
   }
+  // 2) while scrolling: sustained slowness drops a tier, never raises it
+  let scrollSampling = false, slowWindows = 0;
+  addEventListener('scroll', async () => {
+    if (scrollSampling || !autoFx() || fxState.tier === 'low' || reduce.matches) return;
+    scrollSampling = true;
+    const fps = await measureFps(1000);
+    scrollSampling = false;
+    if (fps == null) return;
+    fxState.fps = fps;
+    slowWindows = fps < 45 ? slowWindows + 1 : 0;
+    if (slowWindows >= 2) { slowWindows = 0; stepDown(); }
+    else if (fxState.src === 'auto') renderFx();   // refresh the measured fps in the readout
+  }, { passive: true });
+
+  // 3) manual control: the SIGHT toggle cycles FULL → LIMITED → MIN
+  const sight = document.querySelector('[data-sight]');
+  if (sight) {
+    sight.hidden = false;
+    sight.addEventListener('click', () => {
+      const order = ['full', 'balanced', 'low'];
+      setFx(order[(order.indexOf(fxState.tier) + 1) % order.length], 'manual');
+    });
+  }
+  if (fxState.src === 'url') saveFx();   // a ?fx= choice holds for the rest of the visit
+  renderFx();
 
   /* 3a. cursor left the window → everything squints */
   document.addEventListener('mouseleave', () => { root.dataset.away = ''; });
