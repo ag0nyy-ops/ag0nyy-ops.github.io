@@ -35,24 +35,49 @@
   addEventListener('pointerdown', onPointer, { passive: true });
   flush();
 
-  /* 2. eye centres → CSS. CSS does the atan2/hypot trigonometry itself. */
+  /* 2. eye centres → CSS. CSS does the atan2/hypot trigonometry itself.
+     PERF: this used to run getBoundingClientRect() on every eye in every
+     scroll frame (~2ms/frame in the profile). Now: only eyes that are on
+     screen (IntersectionObserver), only once scrolling stops (scrollend, or a
+     debounce where that event doesn't exist), and all reads happen before
+     any writes so the browser never has to re-layout mid-loop. During the
+     scroll itself the pupils simply hold their last aim. */
   const eyes = [...document.querySelectorAll('.eye')];
-  let measuring = false;
+  const onScreen = new Set();
   const measure = () => {
-    measuring = false;
-    for (const el of eyes) {
-      const r = el.getBoundingClientRect();
-      if (r.bottom < -100 || r.top > innerHeight + 100 || !r.width) continue;
+    const rects = [];
+    for (const el of onScreen) rects.push([el, el.getBoundingClientRect()]);   // reads…
+    for (const [el, r] of rects) {                                              // …then writes
+      if (!r.width) continue;
       el.style.setProperty('--ex', (r.left + r.width / 2).toFixed(1));
       el.style.setProperty('--ey', (r.top + r.height / 2).toFixed(1));
     }
   };
-  const queueMeasure = () => { if (!measuring) { measuring = true; requestAnimationFrame(measure); } };
-  addEventListener('scroll', queueMeasure, { passive: true });
-  addEventListener('resize', queueMeasure, { passive: true });
-  measure();
+  if ('IntersectionObserver' in window) {
+    const eyeIO = new IntersectionObserver((entries) => {
+      for (const e of entries) e.isIntersecting ? onScreen.add(e.target) : onScreen.delete(e.target);
+      measure();
+    }, { rootMargin: '100px' });
+    eyes.forEach((el) => eyeIO.observe(el));
+  } else {
+    eyes.forEach((el) => onScreen.add(el));
+  }
+  let settleT;
+  if ('onscrollend' in window) addEventListener('scrollend', measure, { passive: true });
+  else addEventListener('scroll', () => { clearTimeout(settleT); settleT = setTimeout(measure, 120); }, { passive: true });
+  let resizeT;
+  addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(measure, 120); }, { passive: true });
   document.fonts?.ready.then(measure);
   setTimeout(measure, 1600); // after the intro lids have opened
+
+  /* PERF: pause the time-based loops (radar, sigil, blinking, marquee…) in
+     any area that's scrolled off screen. CSS reads .is-offscreen. */
+  if ('IntersectionObserver' in window) {
+    const areaIO = new IntersectionObserver((entries) => {
+      for (const e of entries) e.target.classList.toggle('is-offscreen', !e.isIntersecting);
+    }, { rootMargin: '200px' });
+    document.querySelectorAll('.hero, .tape, #services, .footer').forEach((el) => areaIO.observe(el));
+  }
 
   /* 2b. scroll progress fallback. Browsers with scroll-driven animations do
      this in pure CSS (scroll(root) timeline). Others get --progress (0..1)
@@ -75,6 +100,40 @@
     update();
   }
 
+  /* 2c. low-power fallback. While the page scrolls, sample ~45 frames. If the
+     median frame is slower than ~40fps twice in a row, add .low-power,
+     which switches off the heaviest effects (see the a11y layer in the CSS).
+     It remembers the choice for the session. ?fx=low forces it on and
+     ?fx=full forces it off. People with reduced motion never need it. */
+  const fx = new URLSearchParams(location.search).get('fx');
+  let stored = null;
+  try { stored = sessionStorage.getItem('low-power'); } catch (e) {}
+  if (fx === 'low' || (fx !== 'full' && stored === '1')) root.classList.add('low-power');
+  if (fx !== 'full' && fx !== 'low') {
+    let sampling = false, strikes = 0;
+    const sample = () => {
+      if (sampling || reduce.matches || document.hidden || root.classList.contains('low-power')) return;
+      sampling = true;
+      const deltas = [];
+      let last = performance.now();
+      const step = (t) => {
+        deltas.push(t - last); last = t;
+        if (deltas.length < 45) return requestAnimationFrame(step);
+        sampling = false;
+        const sorted = deltas.slice(2).sort((a, b) => a - b);
+        const median = sorted[sorted.length >> 1];
+        // slower than ~40fps (a 60Hz screen is 16.7ms/frame, 120Hz is 8.3ms)
+        strikes = median > 25 ? strikes + 1 : 0;
+        if (strikes >= 2) {
+          root.classList.add('low-power');
+          try { sessionStorage.setItem('low-power', '1'); } catch (e) {}
+        }
+      };
+      requestAnimationFrame(step);
+    };
+    addEventListener('scroll', sample, { passive: true });
+  }
+
   /* 3a. cursor left the window → everything squints */
   document.addEventListener('mouseleave', () => { root.dataset.away = ''; });
   document.addEventListener('mouseenter', () => { delete root.dataset.away; });
@@ -83,7 +142,13 @@
   const whisper = document.querySelector('.whisper');
   const edges = ['right', 'left', 'bottom'];
   let drowsyT, asleepT;
+  let lastWake = 0;
   function wake() {
+    // PERF: scroll/pointer fire every frame; resetting two timers that often is
+    // pointless, so only do it a few times a second (unless we're idle now)
+    const now = performance.now();
+    if (now - lastWake < 250 && !root.dataset.idle) return;
+    lastWake = now;
     if (root.dataset.idle) delete root.dataset.idle;
     clearTimeout(drowsyT); clearTimeout(asleepT);
     drowsyT = setTimeout(() => {
