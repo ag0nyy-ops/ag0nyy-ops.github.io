@@ -1,0 +1,8 @@
+# local ai tooling config
+CLAUDE.md
+.claude/
+
+# os / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
