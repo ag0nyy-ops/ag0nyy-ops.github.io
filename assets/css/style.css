@@ -28,12 +28,6 @@
 /* 0..1 "this nav link's section is on screen", driven by a view timeline */
 @property --active { syntax: "<number>"; inherits: true; initial-value: 0; }
 
-/* ink/smoke background: gradient positions + angle we can tween */
-@property --ink-x  { syntax: "<percentage>"; inherits: false; initial-value: 30%; }
-@property --ink-y  { syntax: "<percentage>"; inherits: false; initial-value: 40%; }
-@property --ink-x2 { syntax: "<percentage>"; inherits: false; initial-value: 70%; }
-@property --ink-y2 { syntax: "<percentage>"; inherits: false; initial-value: 65%; }
-@property --ink-a  { syntax: "<angle>";      inherits: false; initial-value: 0deg; }
 
 /* the light that runs around a case file's border on hover */
 @property --sweep { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
@@ -105,7 +99,10 @@
 
   /* :has() as a state machine: hovering any interactive thing anywhere on the
      page flips a variable on the root, and every eye reacts to it. */
-  :root:has(:is(a, button, summary, .redacted):is(:hover, :focus-visible)) { --dilate: 1; }
+  /* PERF: set on the pupils only. Setting it on :root made every hover change
+     (which happens constantly while content scrolls under the cursor)
+     restyle the whole document. */
+  :root:has(:is(a, button, summary, .redacted):is(:hover, :focus-visible)) .eye__pupil { --dilate: 1; }
 }
 
 
@@ -230,9 +227,10 @@
     display: flex; align-items: center; gap: clamp(1rem, 3vw, 2rem);
     padding: .7rem var(--gutter);
     /* frosted dark glass: backdrop-filter blurs and greys out whatever scrolls under it */
-    background: color-mix(in oklab, var(--bg) 55%, transparent);
-    backdrop-filter: blur(12px) saturate(0) contrast(1.15);
-    -webkit-backdrop-filter: blur(12px) saturate(0) contrast(1.15);
+    /* PERF: this used to be 55% + backdrop-filter: blur(), which re-blurred
+       whatever scrolled underneath on every frame (worst in Safari). A darker
+       plain fill reads the same against this almost-black page. */
+    background: color-mix(in oklab, var(--bg) 88%, transparent);
     border-bottom: 1px solid var(--line);
     font: 600 .7rem/1 var(--mono);
     letter-spacing: .16em; text-transform: uppercase;
@@ -451,6 +449,9 @@
   }
   .hero__layer {
     position: absolute; inset: 0;
+    /* PERF: the parallax scales these layers while you scroll. Without
+       will-change, Chrome re-rasterized the sigil at every new scale. */
+    will-change: transform, opacity;
     display: grid; place-items: center;
     padding-bottom: 8svh;
     pointer-events: none;
@@ -818,23 +819,36 @@
 @layer atmosphere {
 
   /* ---- ink / smoke ----
-     Animated @property gradients. The trick for 60fps: the element is only
-     a quarter of the viewport in each direction and gets scaled up 4× on the
-     compositor. Soft gradients survive the upscale, and the per-frame repaint
-     covers 1/16 of the screen. */
+     PERF: this used to animate @property gradient positions, which repainted
+     the whole viewport into the page's root layer on every frame (profiled at
+     ~5.6s of raster work per 11s of scrolling). Now each smoke blob is painted
+     once on its own compositor layer and only drifts with transform, which the
+     GPU does for free. Same blobs, same sizes, same drift paths. */
   .ink {
-    position: fixed; left: 0; top: 0; z-index: -1;
-    width: 25vw; height: 25vh;
-    transform-origin: 0 0; scale: 4;
+    position: fixed; inset: 0; z-index: -1;
+    overflow: hidden; contain: strict;
     pointer-events: none;
-    background:
-      radial-gradient(45% 55% at var(--ink-x) var(--ink-y),
-        color-mix(in oklab, var(--fg) 9%, transparent), transparent 70%),
-      radial-gradient(38% 48% at var(--ink-x2) var(--ink-y2),
-        color-mix(in oklab, var(--fg) 6%, transparent), transparent 70%),
-      conic-gradient(from var(--ink-a) at 55% 45%,
-        transparent, color-mix(in oklab, var(--fg) 3.5%, transparent) 25%,
-        transparent 50%, color-mix(in oklab, var(--fg) 2.5%, transparent) 75%, transparent);
+    /* draws nothing itself (so it's not a layer); its faint conic sheen now
+       lives in the shared .vhs overlay */
+  }
+  /* Each blob's layer is only as big as the blob itself: the gradient is
+     fully transparent past 70% of its radius, so a box of 2 × 0.7 × radius
+     holds all of it. (A full-screen layer per blob cost ~8× the pixels.)
+     `translate` centres the box on the viewport; `transform` does the drift. */
+  .ink::before, .ink::after {
+    content: ""; position: absolute; left: 50%; top: 50%;
+    translate: -50% -50%;
+    will-change: transform;
+  }
+  .ink::before {   /* radius 45vw × 55vh, like before */
+    width: 63vw; height: 77vh;
+    background: radial-gradient(71.43% 71.43% at 50% 50%, color-mix(in oklab, var(--fg) 9%, transparent), transparent 70%);
+    transform: translate(-25vw, -15vh);
+  }
+  .ink::after {    /* radius 38vw × 48vh */
+    width: 53.2vw; height: 67.2vh;
+    background: radial-gradient(71.43% 71.43% at 50% 50%, color-mix(in oklab, var(--fg) 6%, transparent), transparent 70%);
+    transform: translate(25vw, 20vh);
   }
 
   /* ---- the flashlight ----
@@ -868,30 +882,37 @@
   /* the stare scare dims everything, including the self-lit headline */
   .dim {
     position: fixed; inset: 0; z-index: 46; pointer-events: none;
+    will-change: opacity;
     background: #000;
     opacity: calc(var(--stare) * .32);
   }
 
   /* ---- VHS: scanlines + vignette, plus a slow tracking band ---- */
+  /* PERF: grain, scanlines, vignette and the smoke's faint conic sheen used
+     to be four separate full-screen layers the GPU blended on every frame.
+     They're one layer now. The grain tile has its 7.5% opacity baked in, and
+     it jitters by stepping background-position 3×/second (a cheap repaint of
+     this one layer) instead of moving its own full-screen layer. */
   .vhs {
     position: fixed; inset: 0; z-index: 47; pointer-events: none;
     background:
+      url("../img/grain.png") 0 0 / 128px 128px,
       repeating-linear-gradient(to bottom, rgb(255 255 255 / .022) 0 1px, transparent 1px 3px),
-      radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / .5) 100%);
+      radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / .5) 100%),
+      conic-gradient(from 0deg at 55% 45%,
+        transparent, color-mix(in oklab, var(--fg) 3.5%, transparent) 25%,
+        transparent 50%, color-mix(in oklab, var(--fg) 2.5%, transparent) 75%, transparent);
   }
   .vhs::after {
     content: ""; position: absolute; left: 0; right: 0; top: 0; height: 22vh;
     background: linear-gradient(transparent, rgb(255 255 255 / .03) 45%, rgb(255 255 255 / .05) 50%, transparent);
-    mix-blend-mode: screen;
+    /* PERF: no mix-blend-mode. "screen" with 3–5% white over a near-black page
+       is visually the same as plain alpha, but blending forced the GPU to
+       re-blend everything under the band on every scroll frame. */
     translate: 0 -25vh;
+    will-change: transform;
   }
 
-  /* ---- film grain: SVG turbulence as a tiled background ---- */
-  .grain {
-    position: fixed; inset: -50%; z-index: 48; pointer-events: none;
-    opacity: .075;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
 
   /* ---- custom cursor ----
      A ring that trails the mouse. Three rules keep it honest:
@@ -960,24 +981,35 @@
     .tape__strip--b .tape__track { animation-direction: reverse; animation-duration: 48s; }
     .vhs::after     { animation: tracking 9s linear infinite; }
     /* grain jitters in 3 steps per second (stays under the 3 flashes/s line) */
-    .grain          { animation: grain 1s steps(3) infinite; }
-    .ink            { animation: ink-drift 34s ease-in-out infinite alternate, ink-turn 80s linear infinite; }
+    .vhs            { animation: grain 1s steps(3) infinite; }
+    .ink::before    { animation: ink-drift-a 34s ease-in-out infinite alternate; }
+    .ink::after     { animation: ink-drift-b 34s ease-in-out infinite alternate; }
     .hero__scroll::after { animation: drip 2.4s var(--ease-ink) infinite; }
 
+    /* PERF: no point animating what nobody can see */
+    .is-offscreen :is(.radar, .sigil, .sigil__ticks, .eye__fibers, .eye__lid, .eye__lashes, .tape__track),
+    .is-offscreen.tape .tape__track {
+      animation-play-state: paused;
+    }
     @keyframes spin    { to { rotate: 1turn; } }
     @keyframes marquee { to { transform: translateX(-50%); } }
     @keyframes tracking { to { translate: 0 125vh; } }
-    @keyframes grain {
-      0%   { transform: translate(0, 0); }
-      33%  { transform: translate(-3%, 2%); }
-      66%  { transform: translate(2%, -3%); }
+    @keyframes grain {   /* only the grain layer (first background) moves */
+      0%   { background-position: 0 0, 0 0, 0 0, 0 0; }
+      33%  { background-position: -41px 29px, 0 0, 0 0, 0 0; }
+      66%  { background-position: 27px -43px, 0 0, 0 0, 0 0; }
     }
-    @keyframes ink-drift {
-      0%   { --ink-x: 25%; --ink-y: 35%; --ink-x2: 75%; --ink-y2: 70%; }
-      50%  { --ink-x: 60%; --ink-y: 55%; --ink-x2: 35%; --ink-y2: 30%; }
-      100% { --ink-x: 40%; --ink-y: 75%; --ink-x2: 65%; --ink-y2: 45%; }
+    /* same paths the gradients used to take, as translate offsets from the centre */
+    @keyframes ink-drift-a {
+      0%   { transform: translate(-25vw, -15vh); }
+      50%  { transform: translate(10vw, 5vh); }
+      100% { transform: translate(-10vw, 25vh); }
     }
-    @keyframes ink-turn { to { --ink-a: 360deg; } }
+    @keyframes ink-drift-b {
+      0%   { transform: translate(25vw, 20vh); }
+      50%  { transform: translate(-15vw, -20vh); }
+      100% { transform: translate(15vw, -5vh); }
+    }
     @keyframes drip {
       0% { scale: 1 0; transform-origin: top; }
       50% { scale: 1 1; transform-origin: top; }
@@ -1298,16 +1330,27 @@
     }
     *, *::before, *::after { transition: none !important; }
     /* no flashlight, no flicker, no scares: a calm, fully lit page */
-    .flashlight, .dim, .reticle, .whisper, .intro, .grain, .vhs::after { display: none !important; }
+    .flashlight, .dim, .reticle, .whisper, .intro, .vhs::after { display: none !important; }
     .eye__iris, .eye__lid, .eye__lashes { translate: none !important; }
     .glitch { filter: none !important; }
     /* reduced motion: no trailing ring, the normal system cursor comes back */
     :root[data-cursor] * { cursor: auto !important; }
   }
 
+  /* ---- low-power mode ----
+     main.js adds .low-power if scrolling stays below ~30fps. It switches off
+     the most expensive effects and keeps everything else. Force it with
+     ?fx=low, or keep the full effects with ?fx=full. */
+  .low-power .ink::before, .low-power .ink::after,
+  .low-power .vhs,
+  .low-power :is(.radar, .sigil, .sigil__ticks, .eye__fibers, .tape__track) { animation: none; }
+  .low-power .vhs::after { display: none; }
+  .low-power .glitch { filter: none; }
+  .low-power .distort::before, .low-power .distort::after { display: none; }
+
   /* people who ask for more contrast get the plain document */
   @media (prefers-contrast: more) {
-    .flashlight, .vhs, .grain, .ink, .dim { display: none !important; }
+    .flashlight, .vhs, .ink, .dim { display: none !important; }
     :root { --muted: var(--fg); --line-strong: color-mix(in oklab, var(--fg) 60%, var(--bg)); }
   }
 }
