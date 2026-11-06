@@ -20,15 +20,37 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap"></noscript>
-  <link rel="stylesheet" href="assets/css/style.css?v=11">
+  <link rel="stylesheet" href="assets/css/style.css?v=12">
   <script>
-    /* The only blocking JS: skip the eyelid intro on repeat visits this session. */
-    try {
-      if (sessionStorage.getItem('seen')) document.documentElement.classList.add('seen');
-      sessionStorage.setItem('seen', '1');
-    } catch (e) {}
+    /* The only blocking JS, kept tiny:
+       1. skip the eyelid intro on repeat visits this session
+       2. pick a provisional effects tier (data-fx) BEFORE first paint, so a
+          weak device never renders the heavy version first. main.js then
+          measures real frame times and makes the final call.
+       Order: ?fx= in the URL > a choice already made this visit > cheap hints.
+       Nothing here leaves the browser; sessionStorage only, no cookies. */
+    (function (d) {
+      var ss; try { ss = sessionStorage; } catch (e) {}
+      try { if (ss.getItem('seen')) d.classList.add('seen'); ss.setItem('seen', '1'); } catch (e) {}
+      var tiers = { full: 1, balanced: 1, low: 1 }, tier, src;
+      var q = new URLSearchParams(location.search).get('fx');
+      var saved = null; try { saved = JSON.parse(ss.getItem('fx')); } catch (e) {}
+      var mm = function (m) { return matchMedia(m).matches; };
+      if (tiers[q]) { tier = q; src = 'url'; }
+      else if (saved && tiers[saved.tier]) { tier = saved.tier; src = saved.src; }
+      else if (mm('(prefers-reduced-motion: reduce)')) { tier = 'low'; src = 'reduced-motion'; }
+      else {
+        var score = 0, c = navigator.connection, dpr = devicePixelRatio || 1;
+        if (c && c.saveData) score += 2;                                     /* asked to save data */
+        if (!mm('(hover: hover) and (pointer: fine)')) score += 1;          /* touch-first device */
+        if (screen.width * screen.height * dpr * dpr > 9e6) score += 1;     /* lots of pixels to fill (4K/5K) */
+        var hc = navigator.hardwareConcurrency; if (hc && hc <= 2) score += 1; /* weak hint: browsers cap/hide it */
+        tier = score >= 3 ? 'low' : score >= 1 ? 'balanced' : 'full'; src = 'hints';
+      }
+      d.setAttribute('data-fx', tier); d.setAttribute('data-fx-src', src);
+    })(document.documentElement);
   </script>
-  <script src="assets/js/main.js?v=11" defer></script>
+  <script src="assets/js/main.js?v=12" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -89,6 +111,8 @@
       </ul>
     </nav>
     <p class="topbar__progress" aria-hidden="true">Declassified <span class="pct"></span></p>
+    <!-- effects quality: FULL / LIMITED / MIN (shown once JS is running) -->
+    <button class="sight" type="button" hidden data-sight>Sight: <b data-fx-label>Full</b></button>
     <span class="topbar__bar" aria-hidden="true"></span>
   </header>
 
@@ -336,6 +360,7 @@
     <details class="source" id="source">
       <summary><span aria-hidden="true">◉</span> Declassify the source <kbd>?</kbd></summary>
       <div class="source__body">
+        <p class="source__fx">Sight level on this visit: <b data-fx-label>Full</b> <span data-fx-why></span></p>
         <p class="source__intro">You found the back room. Here is the CSS behind four of the effects on this page. JavaScript only tells CSS where your cursor is and where each eye sits; CSS does the rest.</p>
         <p class="source__cta"><b>Field note:</b> this whole file is a commission sample. A custom showpiece like it: <b data-price="custom-showpiece">quote on request</b>. <a href="#contact">Request one on Discord ↗</a></p>
 
