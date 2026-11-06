@@ -33,6 +33,26 @@ Plain HTML, CSS and a little JavaScript. No framework, no build step, no depende
 
 `prefers-reduced-motion` turns off all motion, scares and flicker. `prefers-contrast: more` removes the darkness overlays. Browsers without scroll-driven animations get a static, fully visible page.
 
+## Effect quality (sight levels)
+
+The site picks one of three tiers and sets `data-fx` on `<html>`. Every tier keeps the same look; lower tiers swap expensive tricks for cheaper ones.
+
+| Tier | Toggle label | What changes |
+| --- | --- | --- |
+| `full` | SIGHT: FULL | everything |
+| `balanced` | SIGHT: LIMITED | pre-rendered grain only, no live SVG filters, no blend modes on full-screen layers, flashlight stays a transformed element |
+| `low` | SIGHT: MIN | balanced + static smoke, simpler eyes (no fibres/lashes), no scanlines or VHS bands |
+
+How it's chosen:
+
+1. `?fx=full`, `?fx=balanced` or `?fx=low` in the URL always wins.
+2. Otherwise the choice saved earlier in this visit (sessionStorage, gone when the tab closes).
+3. `prefers-reduced-motion` forces `low`.
+4. Cheap hints give a first guess: data saver, touch vs mouse, screen pixels × devicePixelRatio, and (weakly) `hardwareConcurrency`. `deviceMemory` is not used.
+5. Frame sampling makes the real decision: ~2 s after load, then during scrolling. Below ~45 fps for two windows in a row drops one tier. It never goes back up during a visit.
+
+The SIGHT toggle in the top bar cycles tiers by hand, and the "how it's built" panel shows the current tier and why. No cookies, no analytics, nothing leaves the browser.
+
 ## Run locally
 
 ```bash
