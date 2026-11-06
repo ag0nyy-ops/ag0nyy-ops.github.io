@@ -15,13 +15,13 @@ const GRAIN = b64('assets/img/grain.png');
 const FG = '#ececec', MUTED = '#b4b4b4', LINE = '#3a3a3a', BG = '#060606';
 
 // the site's eye, drawn around (0,0) with ring radius 500 (so the sigil is 1000 wide)
-function sigil(id, { ring = true, ticks = true, tri = true, eye = true } = {}) {
+function sigil(id, { ring = true, ticks = true, tri = true, eye = true, ringText = true } = {}) {
   let s = `<g class="sigil">` + (eye ? `<circle r="500" fill="${BG}"/>` : '');
   if (tri) s += `<g fill="none" stroke="${LINE}" stroke-width="3" opacity=".8"><path d="M0 -440 L381 220 L-381 220Z"/><path d="M0 440 L381 -220 L-381 -220Z"/></g>`;
   if (ring) {
     s += `<circle r="495" fill="none" stroke="${LINE}" stroke-width="3"/>`;
     s += `<path id="${id}-ring" d="M0 0 m-430 0 a430 430 0 1 1 860 0 a430 430 0 1 1 -860 0" fill="none"/>`;
-    s += `<text font-family="IBM Plex Mono" font-weight="600" font-size="46" fill="${MUTED}"><textPath href="#${id}-ring" textLength="2650" lengthAdjust="spacing">SEES EVERYTHING · SHIPS REAL THINGS · SEES EVERYTHING · SHIPS REAL THINGS ·</textPath></text>`;
+    if (ringText) s += `<text font-family="IBM Plex Mono" font-weight="600" font-size="46" fill="${MUTED}"><textPath href="#${id}-ring" textLength="2650" lengthAdjust="spacing">SEES EVERYTHING · SHIPS REAL THINGS · SEES EVERYTHING · SHIPS REAL THINGS ·</textPath></text>`;
   }
   if (ticks) { s += `<g stroke="${LINE}" stroke-width="3">`; for (let i = 0; i < 72; i++) { const a = i * 5 * Math.PI / 180, r1 = i % 6 ? 360 : 345, r2 = 380; s += `<line x1="${(Math.cos(a)*r1).toFixed(1)}" y1="${(Math.sin(a)*r1).toFixed(1)}" x2="${(Math.cos(a)*r2).toFixed(1)}" y2="${(Math.sin(a)*r2).toFixed(1)}"/>`; } s += `</g>`; }
   if (!eye) return s + `</g>`;
@@ -69,10 +69,11 @@ ${body}
 
 const FORMATS = [
   // box = where every piece of text and the eye must sit (x, y, w, h)
-  // discord: the avatar sits over the left ~40% and bottom-left, so the text goes right and the
-  // left only gets decoration that's fine to lose behind the avatar
-  { name: 'discord-banner', W: 1200, H: 480, box: [575, 44, 585, 392], textOnly: true,
-    decor: (sig) => `<g transform="translate(250 230) scale(.46)" opacity=".45">${sig('bg', { eye: false })}</g>` },
+  // discord: shown tiny (~340px wide in the profile popout). The avatar covers the left and
+  // bottom-left, the avatar decoration the top, the custom status the bottom-right. So: only
+  // "Jay" + tagline, big, in the right half's middle band. Everything else is in the bio anyway.
+  { name: 'discord-banner', W: 1200, H: 480, box: [560, 88, 590, 262], textOnly: true, keep: ['jay', 'tag'],
+    decor: (sig) => `<g transform="translate(230 240) scale(.5)" opacity=".4">${sig('bg', { eye: false, ringText: false })}</g>` },
   { name: 'github-social-preview', W: 1280, H: 640, box: [256, 128, 768, 384] },
   { name: 'x-header', W: 1500, H: 500, box: [300, 90, 900, 320] },
   { name: 'youtube-banner', W: 2560, H: 1440, box: [557, 518, 1446, 404], bgSigil: true, wide: true },
@@ -96,13 +97,16 @@ const FORMATS = [
     await page.evaluate(() => document.fonts.ready);
     let info = {};
     if (!f.avatar) {
-      info = await page.evaluate(([box, wide]) => {
+      info = await page.evaluate(([box, wide, keep]) => {
         const q = (s) => document.querySelector(s), bb = (s) => q(s).getBBox();
         const s = q('.lockup .sigil'), txt = q('.txt');
         const stack = (keys, gap) => { let y = 0; for (const k of keys) { const el = q('.' + k); el.setAttribute('y', 0); el.setAttribute('x', 0); const b = el.getBBox(); y += gap[k] || 0; el.setAttribute('y', (y - b.y).toFixed(1)); y += b.height; } return y; };
         if (!wide) {
           // eye | stacked column: labels, Jay, tagline, sub line, url
-          stack(['lab', 'jay', 'tag', 'sub', 'url'], { jay: 40, tag: 30, sub: 34, url: 18 });
+          const keys = keep || ['lab', 'jay', 'tag', 'sub', 'url'];
+          for (const k of ['lab', 'jay', 'tag', 'sub', 'url']) if (!keys.includes(k)) q('.' + k).remove();
+          if (keep) { q('.jay').setAttribute('font-size', 250); q('.tag').setAttribute('letter-spacing', 7); }
+          stack(keys, { jay: 40, tag: 30, sub: 34, url: 18 });
         } else {
           // eye | Jay | stacked column — a long, low lockup for very wide safe areas
           const colH = stack(['lab', 'tag', 'sub', 'url'], { tag: 34, sub: 30, url: 16 });
@@ -121,8 +125,8 @@ const FORMATS = [
         const tx = box[0] + (box[2] - L.width * sc) / 2 - L.x * sc, ty = box[1] + (box[3] - L.height * sc) / 2 - L.y * sc;
         q('.lockup').setAttribute('transform', `translate(${tx.toFixed(1)} ${ty.toFixed(1)}) scale(${sc.toFixed(4)})`);
         const r = q('.lockup').getBoundingClientRect();
-        return { scale: +sc.toFixed(3), smallTextPx: +(46 * sc).toFixed(1), labelPx: +(32 * sc).toFixed(1), lockup: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] };
-      }, [f.box, !!f.wide]);
+        return { scale: +sc.toFixed(3), tagPx: +(60 * sc), smallTextPx: +(46 * sc).toFixed(1), labelPx: +(32 * sc).toFixed(1), lockup: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] };
+      }, [f.box, !!f.wide, f.keep || null]);
     }
     const final = await page.evaluate(() => document.querySelector('svg').outerHTML);
     fs.writeFileSync(OUT + f.name + '.svg', '<?xml version="1.0" encoding="UTF-8"?>\n' + final);
