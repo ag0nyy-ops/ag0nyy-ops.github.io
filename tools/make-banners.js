@@ -69,7 +69,10 @@ ${body}
 
 const FORMATS = [
   // box = where every piece of text and the eye must sit (x, y, w, h)
-  { name: 'discord-banner', W: 1200, H: 480, box: [120, 60, 960, 360], note: '600x240 shown, exported 2x' },
+  // discord: the avatar sits over the left ~40% and bottom-left, so the text goes right and the
+  // left only gets decoration that's fine to lose behind the avatar
+  { name: 'discord-banner', W: 1200, H: 480, box: [575, 44, 585, 392], textOnly: true,
+    decor: (sig) => `<g transform="translate(250 230) scale(.46)" opacity=".45">${sig('bg', { eye: false })}</g>` },
   { name: 'github-social-preview', W: 1280, H: 640, box: [256, 128, 768, 384] },
   { name: 'x-header', W: 1500, H: 500, box: [300, 90, 900, 320] },
   { name: 'youtube-banner', W: 2560, H: 1440, box: [557, 518, 1446, 404], bgSigil: true, wide: true },
@@ -84,8 +87,8 @@ const FORMATS = [
     if (f.avatar) {
       body = `<rect width="1024" height="1024" fill="url(#glow)"/><g transform="translate(512 512) scale(.96)">${sigil('a')}</g>`;
     } else {
-      body = (f.bgSigil ? `<g transform="translate(${f.W/2} ${f.H/2}) scale(1.3)" opacity=".2">${sigil('bg', { tri: true, eye: false })}</g>` : '')
-        + `<g class="lockup">${sigil('e', { tri: false, ticks: true })}${text()}</g>`;
+      body = (f.decor ? f.decor(sigil) : '') + (f.bgSigil ? `<g transform="translate(${f.W/2} ${f.H/2}) scale(1.3)" opacity=".2">${sigil('bg', { tri: true, eye: false })}</g>` : '')
+        + `<g class="lockup">${f.textOnly ? '' : sigil('e', { tri: false, ticks: true })}${text()}</g>`;
     }
     const svg = shell(f.W, f.H, body, { grain: f.W > 2000 ? 256 : 160 });
     await page.setViewportSize({ width: f.W, height: f.H });
@@ -110,8 +113,8 @@ const FORMATS = [
           jay.setAttribute('y', (-(jb2.y) + (colH - jb2.height) / 2).toFixed(1));
           jay.setAttribute('x', (-jb2.width - 70 - jb2.x).toFixed(1));
         }
-        const t = bb('.txt'), D = t.height * (wide ? 1.35 : 1.04), between = 80;
-        s.setAttribute('transform', `translate(${D/2} ${D/2}) scale(${(D/1000).toFixed(4)})`);
+        const t = bb('.txt'), D = s ? t.height * (wide ? 1.35 : 1.04) : 0, between = s ? 80 : 0;
+        if (s) s.setAttribute('transform', `translate(${D/2} ${D/2}) scale(${(D/1000).toFixed(4)})`);
         txt.setAttribute('transform', `translate(${D + between - t.x} ${(D - t.height)/2 - t.y})`);
         const L = bb('.lockup');
         const sc = Math.min(box[2] / L.width, box[3] / L.height);
