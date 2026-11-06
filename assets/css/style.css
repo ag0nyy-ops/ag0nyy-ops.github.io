@@ -113,7 +113,16 @@
    @layer base
    ========================================================================== */
 @layer base {
-  html { scroll-behavior: smooth; overflow-x: clip; background: var(--bg); color-scheme: dark; }
+  html {
+    scroll-behavior: smooth; overflow-x: clip; background: var(--bg); color-scheme: dark;
+    /* Hide the page's native scrollbar WITHOUT touching overflow: the page
+       still scrolls with wheel, trackpad, touch and keyboard (Space, arrows,
+       Page Up/Down, Home/End). The thin .scrollline replaces it visually. */
+    scrollbar-width: none;
+  }
+  /* Safari / older Chrome. Scoped to the page itself so inner scrollers
+     (like the code blocks in the source panel) keep their scrollbars. */
+  html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
   body {
     /* no body background: the page colour lives on <html> (the canvas), so
        the z-index:-1 smoke layer can sit between the canvas and the content */
@@ -252,12 +261,33 @@
 
   .topbar__progress { display: none; min-width: 14ch; text-align: right; font-weight: 400; color: var(--muted); }
   .topbar__progress .pct { color: var(--fg); }
+  /* ---- right-edge scroll progress line ----
+     2px track on the right edge; the fill scales from 0 to 1 on the same
+     scroll(root) timeline as the "Declassified %" counter, so the two can
+     never drift apart. scaleY = transform only, so it's composited. */
+  .scrollline {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 85;
+    width: 2px;
+    background: color-mix(in oklab, var(--fg) 10%, transparent);
+    pointer-events: none;
+  }
+  .scrollline__fill {
+    position: absolute; inset: 0;
+    background: linear-gradient(var(--line-strong), var(--fg));
+    transform-origin: top;
+    scale: 1 var(--progress, 0);   /* JS fallback writes --progress */
+  }
+  @media (prefers-contrast: more) { .scrollline { background: var(--line-strong); } }
+
   .topbar__bar {
     position: absolute; left: 0; bottom: -1px; width: 100%; height: 1px;
     background: var(--fg); transform-origin: left; scale: 0 1;
   }
 
   @media (max-width: 820px) { .topbar__nav li:not(:last-child) { display: none; } }
+  /* no scroll-driven animations? JS fills these in instead (see main.js) */
+  .no-sda .topbar__progress { display: block; }
+  .no-sda .topbar__bar { scale: var(--progress, 0) 1; }
   @media (max-width: 440px) { .topbar__progress { display: none !important; } }
 
   /* ---------------- buttons ---------------- */
@@ -1017,6 +1047,8 @@
     .topbar__progress .pct::after { content: counter(pct, decimal-leading-zero) "%"; }
     @keyframes count { to { --pct: 100; } }
     .topbar__bar { animation: fill-bar linear both; animation-timeline: scroll(root); }
+    .scrollline__fill { animation: fill-line linear both; animation-timeline: scroll(root); }
+    @keyframes fill-line { from { scale: 1 0; } to { scale: 1 1; } }
     @keyframes fill-bar { to { scale: 1 1; } }
 
     /* CSS-only scroll spy: each nav link reads its section's named view
@@ -1261,7 +1293,7 @@
     html { scroll-behavior: auto; }
     /* kill every animation except the scroll counter / bar / nav highlight,
        which are information that only changes when you scroll */
-    *:not(.topbar__progress, .topbar__bar, .topbar__nav a), *::before, *::after {
+    *:not(.topbar__progress, .topbar__bar, .scrollline__fill, .topbar__nav a), *::before, *::after {
       animation: none !important;
     }
     *, *::before, *::after { transition: none !important; }
