@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=UnifrakturMaguntia&display=swap">
-  <link rel="stylesheet" href="assets/css/style.css?v=3">
+  <link rel="stylesheet" href="assets/css/style.css?v=4">
   <script>
     (function (d) {
       d.classList.add('js');
@@ -32,7 +32,7 @@
       }, 4000);
     })(document.documentElement);
   </script>
-  <script src="assets/js/main.js?v=3" defer></script>
+  <script src="assets/js/main.js?v=4" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -53,6 +53,7 @@
     <span class="cursor__coords"></span>
   </div>
   <div class="preview" aria-hidden="true"></div>
+  <div class="static" aria-hidden="true"></div>
 
   <header class="topbar">
     <a class="topbar__logo" href="#top">
@@ -108,22 +109,22 @@
 
         <svg class="eye eye--main" viewBox="0 0 200 120">
           <defs>
-            <clipPath id="eye-clip"><path d="M8 60 Q100 -14 192 60 Q100 134 8 60Z"/></clipPath>
+            <clipPath id="eye-clip-0"><path class="eye__aperture" d="M8 60 Q100 -14 192 60 Q100 134 8 60Z"/></clipPath>
           </defs>
-          <g class="eye__lid">
-            <path class="eye__fill" d="M8 60 Q100 -14 192 60 Q100 134 8 60Z"/>
-            <path class="eye__outline" d="M8 60 Q100 -14 192 60 Q100 134 8 60Z"/>
-            <g clip-path="url(#eye-clip)">
-              <g class="eye__iris">
-                <circle class="eye__ring" cx="100" cy="60" r="35"/>
-                <g class="eye__rays"><path d="M100 26v10M100 84v10M66 60h10M124 60h10"/></g>
-                <circle class="eye__ring eye__ring--inner" cx="100" cy="60" r="23"/>
-                <circle class="eye__pupil" cx="100" cy="60" r="11"/>
-                <circle class="eye__glint" cx="95" cy="55" r="2.6"/>
-              </g>
+          <path class="eye__fill" d="M8 60 Q100 -14 192 60 Q100 134 8 60Z"/>
+          <g class="eye__inner" clip-path="url(#eye-clip-0)">
+            <g class="eye__iris">
+              <circle class="eye__ring" cx="100" cy="60" r="35"/>
+              <g class="eye__rays"><path d="M100 26v10M100 84v10M66 60h10M124 60h10"/></g>
+              <circle class="eye__ring eye__ring--inner" cx="100" cy="60" r="23"/>
+              <circle class="eye__pupil" cx="100" cy="60" r="11"/>
+              <circle class="eye__glint" cx="95" cy="55" r="2.6"/>
             </g>
-            <path class="eye__lash" d="M30 38l-8-10M55 22l-4-12M100 14V2M145 22l4-12M170 38l8-10"/>
           </g>
+          <path class="eye__crease" d="M24 48 Q100 -30 176 48"/>
+          <path class="eye__lid eye__lid--lower" d="M8 60 Q100 134 192 60"/>
+          <path class="eye__lid eye__lid--upper" d="M8 60 Q100 -14 192 60"/>
+          <path class="eye__lash" d="M30 38l-8-10M55 22l-4-12M100 14V2M145 22l4-12M170 38l8-10"/>
         </svg>
       </div>
       <div class="hero__minis" aria-hidden="true"></div>
