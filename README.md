@@ -8,6 +8,7 @@ My portfolio and commissions page: Discord bots, iOS apps, Roblox/Minecraft and 
 
 Plain HTML, CSS and a little JavaScript. No framework, no build step, no dependencies.
 
+- `assets/fonts/`: self-hosted IBM Plex Mono, IBM Plex Sans and UnifrakturMaguntia (OFL 1.1). No third-party requests.
 - `index.html`: the page, plus two SVG filters (chromatic aberration and a liquid warp)
 - `assets/css/style.css`: almost everything. It's organised in `@layer`s and commented so every effect can be explained.
 - `assets/js/main.js`: about 100 lines. It never animates anything; it only tells CSS what CSS can't know (cursor position, where each eye sits, idle/away state), plus the copy button and view transitions.
@@ -19,7 +20,7 @@ Plain HTML, CSS and a little JavaScript. No framework, no build step, no depende
 | --- | --- |
 | Flashlight | huge radial-gradient overlay moved with `translate` (composited); touch devices get a CSS Lissajous wander |
 | Eyes | no SVG: two-circle `mask-composite: intersect`, container query units, `atan2()`/`hypot()` pupil tracking in CSS |
-| Blinking | pure CSS keyframes on `transform`, per-eye `--blink` timing |
+| Blinking | pure CSS keyframes on `transform`, per-eye `--jdx-blink` timing |
 | Pupils dilate on hover | `:root:has(a:hover)` flips a variable |
 | Scroll reveals, redaction peel, title distortion, parallax | scroll-driven animations (`animation-timeline: view()` / `scroll()`) |
 | "Declassified %" counter + scroll spy | `@property` integer + CSS counter; named view timelines + `timeline-scope` |
@@ -32,6 +33,26 @@ Plain HTML, CSS and a little JavaScript. No framework, no build step, no depende
 | Text selection | off page-wide with `user-select`, except the Discord handle, GitHub link and prices |
 
 `prefers-reduced-motion` turns off all motion, scares and flicker. `prefers-contrast: more` removes the darkness overlays. Browsers without scroll-driven animations get a static, fully visible page.
+
+## Effect quality (sight levels)
+
+The site picks one of three tiers and sets `data-fx` on `<html>`. Every tier keeps the same look; lower tiers swap expensive tricks for cheaper ones.
+
+| Tier | Toggle label | What changes |
+| --- | --- | --- |
+| `full` | SIGHT: FULL | everything |
+| `balanced` | SIGHT: LIMITED | pre-rendered grain only, no live SVG filters, no blend modes on full-screen layers, flashlight stays a transformed element |
+| `low` | SIGHT: MIN | balanced + static smoke, simpler eyes (no fibres/lashes), no scanlines or VHS bands |
+
+How it's chosen:
+
+1. `?fx=full`, `?fx=balanced` or `?fx=low` in the URL always wins.
+2. Otherwise the choice saved earlier in this visit (sessionStorage, gone when the tab closes).
+3. `prefers-reduced-motion` forces `low`.
+4. Cheap hints give a first guess: data saver, touch vs mouse, screen pixels × devicePixelRatio, and (weakly) `hardwareConcurrency`. `deviceMemory` is not used.
+5. Frame sampling makes the real decision: ~2 s after load, then during scrolling. Below ~45 fps for two windows in a row drops one tier. It never goes back up during a visit.
+
+The SIGHT toggle in the top bar cycles tiers by hand, and the "how it's built" panel shows the current tier and why. No cookies, no analytics, nothing leaves the browser.
 
 ## Run locally
 
@@ -57,3 +78,11 @@ Search the code for `[` and `TODO` to find everything that still needs real cont
 
 - screenshots go in `assets/img/`, then replace the `[screenshot here]` spans with `<img src="assets/img/…" alt="…" loading="lazy">`
 - the Discord handle is `#discord-handle` in the Contact section
+
+## Social banners
+
+`assets/banners/` has the profile art (PNG to upload + self-contained SVG source with the fonts and grain embedded): Discord banner 1200×480 (600×240 at 2×), GitHub social preview 1280×640, X header 1500×500, YouTube banner 2560×1440 (text inside the 1546×423 safe area) and a 1024×1024 eye avatar. Rebuild them with `node tools/make-banners.js` (needs Playwright).
+
+## Licence
+
+Source-available, view only: you can read and learn from this code, but not copy, redistribute or reuse it (modified or not) as your own site or in commercial work without written permission. See [LICENSE](LICENSE). The self-hosted fonts in `assets/fonts/` are SIL Open Font License 1.1 (licence texts included).

@@ -9,3 +9,6 @@ Thumbs.db
 
 # local screenshots
 shots/
+
+# private notes (kept out of the repo)
+.private/

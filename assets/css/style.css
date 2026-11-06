@@ -1,5 +1,7 @@
 /* ==========================================================================
    JAY // DOSSIER — a classified file that watches you back
+   © 2026 Jay · https://ag0nyy-ops.github.io/ · case ref jdx-umbra-b8e5b4
+   Source is viewable for learning, not for reuse. See LICENSE.
    --------------------------------------------------------------------------
    How this file is organised
    - @layer sets the cascade order up front, so "later layer wins" is explicit
@@ -16,11 +18,43 @@
 @layer reset, tokens, base, layout, components, atmosphere, motion, scares, easter-egg, a11y;
 
 /* --------------------------------------------------------------------------
+   Fonts — self-hosted, no requests to Google or anyone else.
+   IBM Plex and UnifrakturMaguntia are SIL Open Font License 1.1;
+   the licence texts sit next to the files in assets/fonts/.
+   Each family is split into latin / latin-ext; unicode-range means the
+   browser only downloads the half it actually needs.
+   -------------------------------------------------------------------------- */
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("../fonts/ibm-plex-mono-400-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("../fonts/ibm-plex-mono-400-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 600; font-display: swap;
+    src: url("../fonts/ibm-plex-mono-600-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 600; font-display: swap;
+    src: url("../fonts/ibm-plex-mono-600-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 400 500; font-display: swap;
+    src: url("../fonts/ibm-plex-sans-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 400 500; font-display: swap;
+    src: url("../fonts/ibm-plex-sans-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'UnifrakturMaguntia'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("../fonts/unifrakturmaguntia-400-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+/* --------------------------------------------------------------------------
    Registered properties (must live at the top level, outside layers)
    -------------------------------------------------------------------------- */
 
+/* Naming: the eye system uses a jdx- prefix ("jay dossier") for its custom
+   properties and SVG filter ids, so it reads as one family in dev tools. */
+
 /* 0 = eyes follow the cursor, 1 = every eye snaps to stare at the visitor */
-@property --stare { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --jdx-stare { syntax: "<number>"; inherits: true; initial-value: 0; }
 
 /* scroll % printed by the "Declassified" counter */
 @property --pct { syntax: "<integer>"; inherits: false; initial-value: 0; }
@@ -336,10 +370,10 @@
   .eye {
     --R: 62.5cqw;                  /* radius of both circles */
     --stroke: max(1px, 1.1cqw);    /* outline thickness scales with the eye */
-    --lid-top: 0cqw;               /* resting offsets, changed by states (idle, away…) */
-    --lid-bottom: 0cqw;
-    --blink: 6s;                   /* per-eye rhythm, set inline in the HTML */
-    --blink-delay: 0s;
+    --jdx-lid-top: 0cqw;               /* resting offsets, changed by states (idle, away…) */
+    --jdx-lid-bottom: 0cqw;
+    --jdx-blink: 6s;                   /* per-eye rhythm, set inline in the HTML */
+    --jdx-blink-delay: 0s;
     container-type: inline-size;
     position: relative; display: block;
     aspect-ratio: 2 / 1;
@@ -356,13 +390,13 @@
     background: radial-gradient(60% 90% at 50% 50%, color-mix(in oklab, var(--fg) 7%, var(--bg)), var(--bg) 75%);
   }
 
-  /* Iris. JS writes --ex/--ey (this eye's centre) and --mx/--my (cursor).
+  /* Iris. JS writes --jdx-ex/--jdx-ey (this eye's centre) and --mx/--my (cursor).
      CSS does the trigonometry: angle = atan2(dy, dx), distance = hypot(dx, dy). */
   .eye__iris {
-    --dx: calc(var(--mx) - var(--ex, var(--mx)));
-    --dy: calc(var(--my) - var(--ey, var(--my)));
+    --dx: calc(var(--mx) - var(--jdx-ex, var(--mx)));
+    --dy: calc(var(--my) - var(--jdx-ey, var(--my)));
     --reach: min(1, calc(hypot(var(--dx), var(--dy)) / 420));   /* 0 near, 1 far */
-    --look: calc(var(--reach) * (1 - var(--stare)));             /* stare = look straight at you */
+    --look: calc(var(--reach) * (1 - var(--jdx-stare)));             /* stare = look straight at you */
     position: absolute; left: 50%; top: 50%;
     width: 34cqw; aspect-ratio: 1; margin: -17cqw 0 0 -17cqw;
     border-radius: 50%;
@@ -384,7 +418,7 @@
     position: absolute; inset: 33%; border-radius: 50%;
     background: var(--fg);
     /* dilates on hover (:has above) and when the eyes stare */
-    scale: calc(1 + var(--dilate) * .45 + var(--stare) * .6);
+    scale: calc(1 + var(--dilate) * .45 + var(--jdx-stare) * .6);
     transition: scale .6s var(--ease-spring);
   }
   .eye__pupil::after {   /* catch-light */
@@ -405,7 +439,7 @@
       transparent calc(var(--R) - var(--stroke)),
       var(--fg)   calc(var(--R) - var(--stroke)) var(--R),
       var(--bg)   var(--R));
-    translate: 0 var(--lid-top);
+    translate: 0 var(--jdx-lid-top);
     transition: translate .9s var(--ease-spring);
   }
   .eye__lid--bottom {
@@ -414,7 +448,7 @@
       transparent calc(var(--R) - var(--stroke)),
       var(--fg)   calc(var(--R) - var(--stroke)) var(--R),
       var(--bg)   var(--R));
-    translate: 0 var(--lid-bottom);
+    translate: 0 var(--jdx-lid-bottom);
     transition: translate .9s var(--ease-spring);
   }
 
@@ -433,7 +467,7 @@
     mask-composite: intersect;
     -webkit-mask-composite: source-in;
     transform-origin: 50% 14cqw;   /* pivot on the lid edge */
-    translate: 0 var(--lid-top);
+    translate: 0 var(--jdx-lid-top);
     transition: translate .9s var(--ease-spring);
     will-change: transform;
   }
@@ -536,7 +570,7 @@
      shoved sideways, then settle. Step timing keeps changes under 3 per second. */
   .glitch {
     position: relative; display: inline-block;
-    filter: url(#rgb-split);   /* resting chromatic aberration from the SVG filter */
+    filter: url(#jdx-rgb-split);   /* resting chromatic aberration from the SVG filter */
   }
   .glitch::before, .glitch::after {
     content: attr(data-text);
@@ -884,7 +918,7 @@
     position: fixed; inset: 0; z-index: 46; pointer-events: none;
     will-change: opacity;
     background: #000;
-    opacity: calc(var(--stare) * .32);
+    opacity: calc(var(--jdx-stare) * .32);
   }
 
   /* ---- VHS: scanlines + vignette, plus a slow tracking band ---- */
@@ -1026,12 +1060,12 @@
     }
 
     /* ---- blinking: pure CSS keyframes on transform ----
-       Each eye has its own --blink duration and negative --blink-delay
+       Each eye has its own --jdx-blink duration and negative --jdx-blink-delay
        (inline in the HTML), so they never blink in sync by accident.
        Close in ~80ms (ease-in), hold, open in ~170ms (ease-out). */
-    .eye__lid--top    { animation: blink-top    var(--blink) var(--blink-delay) infinite; }
-    .eye__lid--bottom { animation: blink-bottom var(--blink) var(--blink-delay) infinite; }
-    .eye__lashes      { animation: blink-lashes var(--blink) var(--blink-delay) infinite; }
+    .eye__lid--top    { animation: blink-top    var(--jdx-blink) var(--jdx-blink-delay) infinite; }
+    .eye__lid--bottom { animation: blink-bottom var(--jdx-blink) var(--jdx-blink-delay) infinite; }
+    .eye__lashes      { animation: blink-lashes var(--jdx-blink) var(--jdx-blink-delay) infinite; }
     @keyframes blink-top {
       0%, 91%   { transform: none; animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
       92.4%     { transform: translateY(40cqw); }
@@ -1218,15 +1252,15 @@
    ========================================================================== */
 @layer scares {
   @media (prefers-reduced-motion: no-preference) {
-    /* --stare is a registered number, so this transition actually tweens
+    /* --jdx-stare is a registered number, so this transition actually tweens
        it, and every eye inherits the in-between value */
-    :root { transition: --stare .4s var(--ease-liquid); }
-    :root[data-scare="stare"] { --stare: 1; }
-    :root[data-scare="stare"] .eye { --lid-top: -2cqw; }
+    :root { transition: --jdx-stare .4s var(--ease-liquid); }
+    :root[data-scare="stare"] { --jdx-stare: 1; }
+    :root[data-scare="stare"] .eye { --jdx-lid-top: -2cqw; }
 
-    :root[data-away] .eye { --lid-top: 17cqw; --lid-bottom: -3cqw; }
-    :root[data-idle="drowsy"] .eye { --lid-top: 21cqw; --lid-bottom: -2cqw; }
-    :root[data-idle="asleep"] .eye { --lid-top: 40cqw; --lid-bottom: -11cqw; }
+    :root[data-away] .eye { --jdx-lid-top: 17cqw; --jdx-lid-bottom: -3cqw; }
+    :root[data-idle="drowsy"] .eye { --jdx-lid-top: 21cqw; --jdx-lid-bottom: -2cqw; }
+    :root[data-idle="asleep"] .eye { --jdx-lid-top: 40cqw; --jdx-lid-bottom: -11cqw; }
     :root[data-idle="asleep"] .eye__iris { translate: 0 4cqw; }
     :root[data-idle="asleep"] .eye__lashes { scale: 1 -.7; }
 
@@ -1240,10 +1274,10 @@
     .glitch::before  { animation: glitch-r 21s steps(1, end) 6s infinite; }
     .glitch::after   { animation: glitch-c 21s steps(1, end) 6s infinite; }
     @keyframes glitch-base {
-      0%, 90%  { transform: none; filter: url(#rgb-split); }
-      91%      { transform: skewX(-7deg) translateX(-.015em); filter: url(#warp); }
-      93%      { transform: skewX(4deg) translateX(.02em); filter: url(#warp); }
-      95%      { transform: none; filter: url(#rgb-split); }
+      0%, 90%  { transform: none; filter: url(#jdx-rgb-split); }
+      91%      { transform: skewX(-7deg) translateX(-.015em); filter: url(#jdx-warp); }
+      93%      { transform: skewX(4deg) translateX(.02em); filter: url(#jdx-warp); }
+      95%      { transform: none; filter: url(#jdx-rgb-split); }
     }
     @keyframes glitch-r {
       0%, 90%  { opacity: 0; clip-path: inset(0); transform: none; }
@@ -1337,16 +1371,49 @@
     :root[data-cursor] * { cursor: auto !important; }
   }
 
-  /* ---- low-power mode ----
-     main.js adds .low-power if scrolling stays below ~30fps. It switches off
-     the most expensive effects and keeps everything else. Force it with
-     ?fx=low, or keep the full effects with ?fx=full. */
-  .low-power .ink::before, .low-power .ink::after,
-  .low-power .vhs,
-  .low-power :is(.radar, .sigil, .sigil__ticks, .eye__fibers, .tape__track) { animation: none; }
-  .low-power .vhs::after { display: none; }
-  .low-power .glitch { filter: none; }
-  .low-power .distort::before, .low-power .distort::after { display: none; }
+  /* ---- adaptive effects quality: html[data-fx="full" | "balanced" | "low"] ----
+     The inline script in <head> picks a provisional tier before first paint;
+     main.js confirms or lowers it from measured frame times. FULL is the
+     page exactly as designed. Each tier keeps the look as close as it can.
+
+     BALANCED ("LIMITED"): no live SVG filters, no blend modes.
+       (Grain is already a pre-rendered tile and the flashlight already moves
+       as a transformed element in every tier.)
+       - the name's RGB split: SVG feColorMatrix filter → two text-shadows
+       - the glitch keeps its slices and shove, minus the SVG warp frames
+       - colour-split copies on the titles/name: screen blend → plain alpha */
+  :root:is([data-fx="balanced"], [data-fx="low"]) .glitch {
+    filter: none;
+    text-shadow: -1.2px 0 var(--fringe-r), 1.2px 0 var(--fringe-c);
+    animation-name: glitch-lite;
+  }
+  :root:is([data-fx="balanced"], [data-fx="low"]) :is(.glitch, .distort)::before,
+  :root:is([data-fx="balanced"], [data-fx="low"]) :is(.glitch, .distort)::after {
+    mix-blend-mode: normal;
+  }
+  @keyframes glitch-lite {   /* glitch-base without the filter swaps */
+    0%, 90%  { transform: none; }
+    91%      { transform: skewX(-7deg) translateX(-.015em); }
+    93%      { transform: skewX(4deg) translateX(.02em); }
+    95%      { transform: none; }
+  }
+
+  /* LOW ("MIN"): balanced, plus
+       - static smoke (the blobs stay where they are) and static grain
+       - simplified eyes: no spinning iris fibres, no lashes (still blink + track)
+       - no scanlines, no VHS tracking band */
+  [data-fx="low"] .ink::before, [data-fx="low"] .ink::after { animation: none; }
+  [data-fx="low"] .eye__fibers, [data-fx="low"] .eye__lashes { display: none; }
+  [data-fx="low"] .vhs {
+    animation: none;
+    background:
+      url("../img/grain.png") 0 0 / 128px 128px,
+      radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / .5) 100%),
+      conic-gradient(from 0deg at 55% 45%,
+        transparent, color-mix(in oklab, var(--fg) 3.5%, transparent) 25%,
+        transparent 50%, color-mix(in oklab, var(--fg) 2.5%, transparent) 75%, transparent);
+  }
+  [data-fx="low"] .vhs::after { display: none; }
 
   /* people who ask for more contrast get the plain document */
   @media (prefers-contrast: more) {
@@ -1452,4 +1519,27 @@
       from { opacity: 0; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 0, 0 0); }
     }
   }
+}
+
+
+/* ==========================================================================
+   SIGHT toggle (effects quality) + its readout in the source panel
+   ========================================================================== */
+@layer components {
+  .sight {
+    padding: .35rem .55rem;
+    border: 1px solid var(--line-strong);
+    background: transparent; color: var(--muted);
+    font: 400 .75rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
+    cursor: pointer;
+    transition: color .25s, border-color .25s;
+  }
+  .sight b { color: var(--fg); font-weight: 600; }
+  .sight:hover, .sight:focus-visible { color: var(--fg); border-color: var(--fg); }
+  .sight[hidden] { display: none; }
+  .source__fx {
+    grid-column: 1 / -1;
+    font: 400 .8rem/1.6 var(--mono); letter-spacing: .08em; color: var(--muted);
+  }
+  .source__fx b { color: var(--fg); letter-spacing: .16em; text-transform: uppercase; }
 }
