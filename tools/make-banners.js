@@ -53,7 +53,7 @@ function text(sw) {
     <text class="lab" x="0" y="0" font-size="32" letter-spacing="5" fill="${MUTED}">FILE NO. J-018 · CLASS: PUBLIC · STATUS: <tspan fill="${FG}" font-weight="600">ACTIVE</tspan></text>
     ${jayPath(sw)}
     <text class="tag" x="0" y="0" font-size="60" font-weight="600" letter-spacing="15" fill="${FG}">SHIPS REAL THINGS</text>
-    <text class="sub" x="0" y="0" font-size="46" fill="${MUTED}">discord bots · web apps · ios · builds</text>
+    <text class="sub" x="0" y="0" font-size="46" fill="${MUTED}">discord bots · websites · web apps · ios</text>
     <text class="url" x="0" y="0" font-size="46" font-weight="600" fill="${FG}">ag0nyy-ops.github.io</text>
   </g>`;
 }
