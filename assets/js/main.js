@@ -253,7 +253,7 @@
     });
   });
 
-  /* 4b. copy the Discord handle (button, the handle itself, or the menu) */
+  /* 4b. copy the Discord handle or the email (button, the text itself, or the menu) */
   const toast = document.querySelector('.toast');
   let toastT;
   const say = (msg) => {
@@ -266,21 +266,33 @@
       toastT = setTimeout(() => toast.classList.remove('is-on'), 2200);
     }
   };
-  const copyHandle = async () => {
-    const handle = document.getElementById('discord-handle')?.textContent.trim();
+  // the email is split in the HTML (data-u + data-d) so scrapers don't find it; join it here
+  const email = document.getElementById('email');
+  if (email?.dataset.u) {
+    const addr = `${email.dataset.u}@${email.dataset.d}`;
+    email.textContent = addr;
+    const send = document.getElementById('email-send');
+    if (send) { send.href = `mailto:${addr}`; send.hidden = false; }
+  }
+
+  const copyText = async (el) => {
+    const text = el?.textContent.trim();
+    if (!text) return;
+    const what = el.id === 'email' ? 'email' : 'handle';
     try {
-      await navigator.clipboard.writeText(handle);
-      say(`> copied ${handle}. send me a DM.`);
+      await navigator.clipboard.writeText(text);
+      say(what === 'email' ? `> copied ${text}.` : `> copied ${text}. send me a DM.`);
     } catch {
-      say('> copy failed. select the handle and copy it manually.');
+      say(`> copy failed. select the ${what} and copy it manually.`);
     }
   };
+  const copyHandle = () => copyText(document.getElementById('discord-handle'));
   document.querySelectorAll('[data-copy]').forEach((el) => {
     el.addEventListener('click', () => {
       // if they're drag-selecting the text, let them; don't hijack it
       const sel = getSelection();
       if (sel && !sel.isCollapsed && el.contains(sel.anchorNode)) return;
-      copyHandle();
+      copyText(document.querySelector(el.dataset.copy));
     });
   });
 
