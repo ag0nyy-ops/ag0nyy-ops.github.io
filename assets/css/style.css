@@ -600,13 +600,12 @@
      Each card is a size container, so its layout responds to how wide
      the CARD is, not the screen. The featured card goes side-by-side;
      narrow cards stack. */
-  /* four files: the feature on top, then three in a row on wide screens,
-     one column below that (two columns would leave an orphan) */
+  /* only finished work is on file: each case gets the full width (image + text side by side
+     on wide screens). If more files come back, a 3-up row under the first one balances well. */
   .cases {
     display: grid; gap: clamp(1rem, 2vw, 1.5rem);
     grid-template-columns: minmax(0, 1fr);
   }
-  @media (min-width: 64rem) { .cases { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .case--feature { grid-column: 1 / -1; }
   .case {
     container: case / inline-size;
