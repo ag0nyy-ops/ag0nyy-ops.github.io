@@ -19,7 +19,7 @@
   <!-- fonts are self-hosted (assets/fonts); preload the two the first screen needs -->
   <link rel="preload" href="assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/css/style.css?v=13">
+  <link rel="stylesheet" href="assets/css/style.css?v=14">
   <script>
     /* The only blocking JS, kept tiny:
        1. skip the eyelid intro on repeat visits this session
@@ -49,7 +49,7 @@
       d.setAttribute('data-fx', tier); d.setAttribute('data-fx-src', src);
     })(document.documentElement);
   </script>
-  <script src="assets/js/main.js?v=13" defer></script>
+  <script src="assets/js/main.js?v=14" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -111,7 +111,7 @@
     </nav>
     <p class="topbar__progress" aria-hidden="true">Declassified <span class="pct"></span></p>
     <!-- effects quality: FULL / LIMITED / MIN (shown once JS is running) -->
-    <button class="sight" type="button" hidden data-sight>Sight: <b data-fx-label>Full</b></button>
+    <button class="sight" type="button" hidden data-sight><span class="sight__k">Sight: </span><b data-fx-label>Full</b></button>
     <span class="topbar__bar" aria-hidden="true"></span>
   </header>
 
@@ -163,7 +163,7 @@
           <p class="hero__pitch">I build <strong>Discord bots</strong>, <strong>iOS apps</strong>, <strong>Roblox &amp; Minecraft</strong> worlds and <strong>websites</strong>, and I ship them fast.</p>
           <ul class="hero__links">
             <li><a class="btn" href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener">GitHub ↗</a></li>
-            <li><a class="btn" href="#contact">Discord</a></li>
+            <li><a class="btn" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">Discord ↗</a></li>
             <li><a class="btn btn--solid" href="#contact">Hire me</a></li>
           </ul>
         </div>
@@ -181,7 +181,7 @@
     <section class="section" id="projects" tabindex="-1" aria-labelledby="projects-title">
       <span class="section__ghost" aria-hidden="true">01</span>
       <header class="sh">
-        <p class="sh__label">File 01 / Case files / 5 records</p>
+        <p class="sh__label">File 01 / Case files / 4 records</p>
         <h2 class="sh__title distort" id="projects-title" data-text="Projects">Projects</h2>
       </header>
 
@@ -189,11 +189,11 @@
         <article class="case case--feature bleed">
           <header class="case__tab"><span>Case 001</span><span class="stamp">Shipped</span></header>
           <div class="case__body">
-            <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
+            <figure class="case__media"><img src="assets/img/skyscrob-diagram.png" width="1600" height="1000" loading="lazy" alt="Diagram, not a screenshot: your devices play songs, Apple Music lists them as recently played, skyscrob polls that list every minute and sends now playing and scrobbles to Last.fm."></figure>
             <div class="case__text">
               <h3 class="case__title">Skyscrob</h3>
               <p class="case__desc"><span class="redact">Scrobbles your Apple Music listening to Last.fm. Public repo, shipped and working.</span></p>
-              <ul class="case__tech" aria-label="Tech used"><li>[tech]</li><li>Apple Music</li><li>Last.fm API</li></ul>
+              <ul class="case__tech" aria-label="Tech used"><li>TypeScript</li><li>Cloudflare Workers</li><li>Apple Music</li><li>Last.fm API</li></ul>
               <a class="case__link" href="https://github.com/ag0nyy-ops/skyscrob" target="_blank" rel="noopener">View repo <span aria-hidden="true">↗</span></a>
             </div>
           </div>
@@ -202,13 +202,14 @@
         <article class="case bleed">
           <header class="case__tab"><span>Case 002</span><span class="stamp">Live</span></header>
           <div class="case__body">
-            <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
+            <!-- TODO: swap for a real screenshot of Jinzo / Cosmou when there is one -->
+            <figure class="case__media"><img src="assets/img/bots-terminal.png" width="1600" height="1000" loading="lazy" alt="Preview card listing what each bot does. Jinzo: warn, timeout, kick and ban logged as cases, purge, lock and modlog, automod, the art catalog, chat replies, truth or dare and dice. Cosmou: role applications reviewed by staff, welcome messages, server rules, a counting game, quizzes and chat replies."></figure>
             <div class="case__text">
               <h3 class="case__title">Jinzo &amp; Cosmou</h3>
               <p class="case__desc"><span class="redact">Two Discord bots. Jinzo runs moderation and chat; Cosmou handles helping and server management.</span></p>
-              <ul class="case__tech" aria-label="Tech used"><li>[tech]</li><li>Discord API</li></ul>
-              <!-- TODO: replace href with bot invite / info link -->
-              <a class="case__link" href="#contact">[invite link here] <span aria-hidden="true">↗</span></a>
+              <ul class="case__tech" aria-label="Tech used"><li>Node.js</li><li>discord.js</li><li>Discord API</li></ul>
+              <!-- TODO: bot invite / info link goes here:
+              <a class="case__link" href="BOT-INVITE-URL" target="_blank" rel="noopener">Add the bots <span aria-hidden="true">↗</span></a> -->
             </div>
           </div>
         </article>
@@ -216,39 +217,27 @@
         <article class="case bleed">
           <header class="case__tab"><span>Case 003</span><span class="stamp">Finished</span></header>
           <div class="case__body">
-            <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
+            <!-- TODO: Minecraft screenshot goes here:
+            <figure class="case__media"><img src="assets/img/minecraft.jpg" width="1600" height="1000" loading="lazy" alt="…"></figure> -->
             <div class="case__text">
               <h3 class="case__title">Minecraft Landmarks</h3>
               <p class="case__desc"><span class="redact">Large-scale builds of the Golden Gate Bridge and the Colosseum.</span></p>
-              <ul class="case__tech" aria-label="Tech used"><li>Minecraft</li><li>[tools used]</li></ul>
-              <!-- TODO: replace href with gallery / video link -->
-              <a class="case__link" href="#contact">[gallery link here] <span aria-hidden="true">↗</span></a>
-            </div>
-          </div>
-        </article>
-
-        <article class="case bleed">
-          <header class="case__tab"><span>Case 004</span><span class="stamp">Live</span></header>
-          <div class="case__body">
-            <div class="case__media" aria-hidden="true"><span>[channel banner here]</span></div>
-            <div class="case__text">
-              <h3 class="case__title">Static Archive</h3>
-              <p class="case__desc"><span class="redact">A faceless horror YouTube channel.</span></p>
-              <ul class="case__tech" aria-label="Tech used"><li>YouTube</li><li>[editing tools]</li></ul>
-              <!-- TODO: replace href with channel URL -->
-              <a class="case__link" href="#contact">[channel link here] <span aria-hidden="true">↗</span></a>
+              <ul class="case__tech" aria-label="Tech used"><li>Minecraft</li><!-- TODO: tools used, e.g. <li>WorldEdit</li> --></ul>
+              <!-- TODO: gallery / video link goes here:
+              <a class="case__link" href="GALLERY-URL" target="_blank" rel="noopener">See the builds <span aria-hidden="true">↗</span></a> -->
             </div>
           </div>
         </article>
 
         <article class="case case--wip bleed">
-          <header class="case__tab"><span>Case 005</span><span class="stamp stamp--wip">In progress</span></header>
+          <header class="case__tab"><span>Case 004</span><span class="stamp stamp--wip">In progress</span></header>
           <div class="case__body">
-            <div class="case__media" aria-hidden="true"><span>[screenshot here]</span></div>
+            <!-- TODO: workout app screenshot goes here:
+            <figure class="case__media"><img src="assets/img/workout.jpg" width="1600" height="1000" loading="lazy" alt="…"></figure> -->
             <div class="case__text">
               <h3 class="case__title">Workout App</h3>
               <p class="case__desc"><span class="redact">A custom iOS workout app. In progress, not released yet.</span></p>
-              <ul class="case__tech" aria-label="Tech used"><li>iOS</li><li>[Swift / SwiftUI?]</li></ul>
+              <ul class="case__tech" aria-label="Tech used"><li>iOS</li><!-- TODO: tools used, e.g. <li>Swift</li><li>SwiftUI</li> --></ul>
               <p class="case__note">Not public yet</p>
             </div>
           </div>
@@ -256,9 +245,9 @@
       </div>
 
       <aside class="file-cta bleed" aria-label="Commission">
-        <p class="file-cta__k">Case files: 5 closed.<br>Case 006: unassigned.</p>
+        <p class="file-cta__k">Case files: 4 on record.<br>Case 005: unassigned.</p>
         <p class="file-cta__big">Your project could be the next file.</p>
-        <a class="btn btn--solid" href="#contact">Open a case on Discord</a>
+        <a class="btn btn--solid" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">Open a case on Discord ↗</a>
       </aside>
     </section>
 
@@ -275,19 +264,19 @@
            Each <b data-price="…"> is filled from that file ("from $75" etc.);
            "quote on request" is what shows if JS is off or a price is null. -->
       <ol class="prices">
-        <li class="price bleed"><span class="price__no">01</span><h3 class="price__name">Websites + landing pages</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="websites">quote on request</b></p><p class="price__desc">Fast, good-looking sites and single pages that do their job.</p><a class="price__cta" href="#contact">DM to book <span aria-hidden="true">↗</span></a></li>
-        <li class="price bleed"><span class="price__no">02</span><h3 class="price__name">Custom web apps + tools</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="web-apps">quote on request</b></p><p class="price__desc">Dashboards, internal tools and small apps built around what you need.</p><a class="price__cta" href="#contact">DM to book <span aria-hidden="true">↗</span></a></li>
-        <li class="price bleed"><span class="price__no">03</span><h3 class="price__name">AI chatbots + integrations</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="ai">quote on request</b></p><p class="price__desc">Chatbots and AI features wired into your site, server or workflow.</p><a class="price__cta" href="#contact">DM to book <span aria-hidden="true">↗</span></a></li>
-        <li class="price bleed"><span class="price__no">04</span><h3 class="price__name">Automation + scripts</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="automation">quote on request</b></p><p class="price__desc">Scripts that take the boring, repetitive work off your hands.</p><a class="price__cta" href="#contact">DM to book <span aria-hidden="true">↗</span></a></li>
-        <li class="price bleed"><span class="price__no">05</span><h3 class="price__name">Discord bots + server setup</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="discord-bots">quote on request</b></p><p class="price__desc">Custom bots, roles, channels and permissions, set up properly.</p><a class="price__cta" href="#contact">DM to book <span aria-hidden="true">↗</span></a></li>
-        <li class="price bleed"><span class="price__no">06</span><h3 class="price__name">iOS / mobile prototypes</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="mobile">quote on request</b></p><p class="price__desc">Clickable app prototypes to test an idea before building it all.</p><a class="price__cta" href="#contact">DM to book <span aria-hidden="true">↗</span></a></li>
-        <li class="price bleed"><span class="price__no">07</span><h3 class="price__name">Fixes + maintenance</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="maintenance">quote on request</b></p><p class="price__desc">One-off fixes, or a care plan that keeps things running.</p><a class="price__cta" href="#contact">DM to book <span aria-hidden="true">↗</span></a></li>
+        <li class="price bleed"><span class="price__no">01</span><h3 class="price__name">Websites + landing pages</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="websites">quote on request</b></p><p class="price__desc">Fast, good-looking sites and single pages that do their job.</p><a class="price__cta" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a></li>
+        <li class="price bleed"><span class="price__no">02</span><h3 class="price__name">Custom web apps + tools</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="web-apps">quote on request</b></p><p class="price__desc">Dashboards, internal tools and small apps built around what you need.</p><a class="price__cta" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a></li>
+        <li class="price bleed"><span class="price__no">03</span><h3 class="price__name">AI chatbots + integrations</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="ai">quote on request</b></p><p class="price__desc">Chatbots and AI features wired into your site, server or workflow.</p><a class="price__cta" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a></li>
+        <li class="price bleed"><span class="price__no">04</span><h3 class="price__name">Automation + scripts</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="automation">quote on request</b></p><p class="price__desc">Scripts that take the boring, repetitive work off your hands.</p><a class="price__cta" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a></li>
+        <li class="price bleed"><span class="price__no">05</span><h3 class="price__name">Discord bots + server setup</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="discord-bots">quote on request</b></p><p class="price__desc">Custom bots, roles, channels and permissions, set up properly.</p><a class="price__cta" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a></li>
+        <li class="price bleed"><span class="price__no">06</span><h3 class="price__name">iOS / mobile prototypes</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="mobile">quote on request</b></p><p class="price__desc">Clickable app prototypes to test an idea before building it all.</p><a class="price__cta" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a></li>
+        <li class="price bleed"><span class="price__no">07</span><h3 class="price__name">Fixes + maintenance</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt"><b data-price="maintenance">quote on request</b></p><p class="price__desc">One-off fixes, or a care plan that keeps things running.</p><a class="price__cta" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a></li>
       </ol>
 
       <p class="showpiece bleed">
         <span class="showpiece__name">Custom showpiece site <span>(like this one)</span></span>
         <span class="price__amt"><b data-price="custom-showpiece">quote on request</b></span>
-        <a class="price__cta" href="#contact">DM to book <span aria-hidden="true">↗</span></a>
+        <a class="price__cta" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
       </p>
 
       <p class="scope-note bleed">Final price depends on scope. <a href="#contact">DM me with what you need.</a></p>
@@ -296,7 +285,7 @@
       <div class="callout bleed">
         <div>
           <p class="callout__k">Custom project?</p>
-          <a class="callout__big" href="#contact">DM me on Discord</a>
+          <a class="callout__big" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM me on Discord ↗</a>
         </div>
         <span class="stamp stamp--big">Open for commissions</span>
       </div>
@@ -315,7 +304,7 @@
       <div class="about">
         <figure class="figure bleed">
           <!-- the photo sits inside an eye-shaped (lens) mask -->
-          <div class="figure__frame"><span>[photo or avatar here]</span></div>
+          <div class="figure__frame"><img src="assets/img/jay.jpg" width="800" height="600" loading="lazy" alt="Jay's avatar: a hand-drawn eye inside a ring of text"></div>
           <figcaption>Fig. 01 — Subject, in their natural habitat (a dark room)</figcaption>
         </figure>
 
@@ -344,6 +333,14 @@
         <p class="handle"><span id="discord-handle" data-copy="#discord-handle" title="Click to copy">.jaypatty</span></p>
         <button class="btn btn--small" type="button" data-copy="#discord-handle">Copy handle</button>
         <p class="contact__status" role="status" aria-live="polite"></p>
+        <a class="btn btn--solid contact__join" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">Join the Discord server ↗</a>
+
+        <!-- email: the address is never in the HTML in one piece, so scrapers reading the raw
+             source don't get it. main.js joins data-u + data-d into the text and the mailto. -->
+        <p class="contact__k">Or email</p>
+        <p class="handle handle--email"><span id="email" data-copy="#email" data-u="ag0nyy" data-d="icloud.com" title="Click to copy">ag0nyy<span class="at"></span>icloud.com</span></p>
+        <a class="btn btn--small" id="email-send" href="#contact" hidden>Send an email</a>
+
         <ul class="contact__links">
           <li><a href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener">GitHub / ag0nyy-ops ↗</a></li>
         </ul>
@@ -361,7 +358,7 @@
       <div class="source__body">
         <p class="source__fx">Sight level on this visit: <b data-fx-label>Full</b> <span data-fx-why></span></p>
         <p class="source__intro">You found the back room. Here is the CSS behind four of the effects on this page. JavaScript only tells CSS where your cursor is and where each eye sits; CSS does the rest.</p>
-        <p class="source__cta"><b>Field note:</b> this whole file is a commission sample. A custom showpiece like it: <b data-price="custom-showpiece">quote on request</b>. <a href="#contact">Request one on Discord ↗</a></p>
+        <p class="source__cta"><b>Field note:</b> this whole file is a commission sample. A custom showpiece like it: <b data-price="custom-showpiece">quote on request</b>. <a href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">Request one on Discord ↗</a></p>
 
         <figure class="snippet">
           <figcaption><b>01 / The flashlight</b> One huge overlay with a transparent hole in a radial gradient. It only ever moves with <code>translate</code>, so the GPU composites it and nothing repaints.</figcaption>
