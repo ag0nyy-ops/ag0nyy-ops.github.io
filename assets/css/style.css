@@ -178,11 +178,11 @@
   body { -webkit-user-select: none; user-select: none; }
   /* …except what people actually need to copy: contact details and prices.
      Pure CSS, so it works the same with JavaScript off. */
-  #discord-handle, .contact__links a, .price__amt, [data-price],
+  #discord-handle, #email, .contact__links a, .price__amt, [data-price],
   input, textarea, [contenteditable] {
     -webkit-user-select: text; user-select: text;
   }
-  #discord-handle::selection, .price__amt ::selection { background: var(--fg); color: var(--bg); }
+  #discord-handle::selection, #email::selection, .price__amt ::selection { background: var(--fg); color: var(--bg); }
 
   .skip {
     position: absolute; left: 16px; top: -100px; z-index: 400;
@@ -264,7 +264,7 @@
     /* PERF: this used to be 55% + backdrop-filter: blur(), which re-blurred
        whatever scrolled underneath on every frame (worst in Safari). A darker
        plain fill reads the same against this almost-black page. */
-    background: color-mix(in oklab, var(--bg) 88%, transparent);
+    background: color-mix(in oklab, var(--bg) 95%, transparent);   /* 88% let big headings ghost through on phones */
     border-bottom: 1px solid var(--line);
     font: 600 .7rem/1 var(--mono);
     letter-spacing: .16em; text-transform: uppercase;
@@ -600,10 +600,13 @@
      Each card is a size container, so its layout responds to how wide
      the CARD is, not the screen. The featured card goes side-by-side;
      narrow cards stack. */
+  /* four files: the feature on top, then three in a row on wide screens,
+     one column below that (two columns would leave an orphan) */
   .cases {
     display: grid; gap: clamp(1rem, 2vw, 1.5rem);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
+  @media (min-width: 64rem) { .cases { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .case--feature { grid-column: 1 / -1; }
   .case {
     container: case / inline-size;
@@ -650,6 +653,7 @@
     background: repeating-linear-gradient(45deg, transparent 0 9px, color-mix(in oklab, var(--fg) 4%, transparent) 9px 10px);
     font: .76rem/1 var(--mono); color: var(--muted);
   }
+  figure.case__media { margin: 0; }
   .case__media img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.1); }
   .case__media::after {   /* scan line that sweeps the screenshot on hover */
     content: ""; position: absolute; inset: 0;
@@ -818,7 +822,13 @@
   }
   .handle:hover { text-shadow: -.04em 0 0 var(--fringe-r), .04em 0 0 var(--fringe-c); }
   .btn--small { padding: .75em 1.1em; font-size: .75rem; }
-  .contact__status { min-height: 1.6em; margin: .9rem 0 2rem; font: .78rem/1.6 var(--mono); color: var(--muted); }
+  .contact__status { min-height: 1.6em; margin: .9rem 0 1.2rem; font: .78rem/1.6 var(--mono); color: var(--muted); }
+  .contact__join { margin-bottom: 2.5rem; }
+  .contact__k { margin-bottom: .4rem; font: .78rem/1.5 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .handle--email { font-size: clamp(1.5rem, 5.5vw, 4rem); }
+  /* the @ comes from CSS so the raw HTML never holds the whole address (JS swaps in the real text) */
+  .handle .at::before { content: "@"; }
+  #email-send { margin-bottom: 2rem; }
   .contact__links a { font: 600 clamp(1rem, 2vw, 1.3rem)/1 var(--mono); text-decoration: none; border-bottom: 1px solid var(--line-strong); padding-bottom: .3rem; }
   .contact__links a:hover { border-color: var(--fg); }
 
@@ -1542,4 +1552,26 @@
     font: 400 .8rem/1.6 var(--mono); letter-spacing: .08em; color: var(--muted);
   }
   .source__fx b { color: var(--fg); letter-spacing: .16em; text-transform: uppercase; }
+}
+
+/* --------------------------------------------------------------------------
+   Touch: every link and button gets at least a 44px tall hit area
+   (Apple's / WCAG's minimum). Only for coarse pointers, so the desktop look
+   stays exactly as it was.
+   -------------------------------------------------------------------------- */
+@layer a11y {
+  @media (pointer: coarse) {
+    .topbar__logo, .topbar__nav a, .sight, .case__link, .price__cta, .contact__links a {
+      min-height: 44px; display: inline-flex; align-items: center;
+    }
+    .topbar { padding-block: .35rem; }
+    /* inline links in running text: padding grows the hit area without moving the line */
+    .footer a, .source__cta a { padding-block: .9em; }
+  }
+  /* 320px phones: the topbar was 8px too wide */
+  @media (max-width: 360px) {
+    .topbar { gap: .6rem; }
+    .sight { padding-inline: .4rem; letter-spacing: .04em; }
+    .sight__k { display: none; }   /* "MIN" alone still makes sense next to the eye */
+  }
 }
