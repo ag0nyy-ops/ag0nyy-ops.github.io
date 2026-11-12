@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>John&#x27;s Tailors | Custom Suits &amp; Alterations | Roseville, MN</title>
+<meta name="description" content="Custom suits, shirts and alterations for men and women at Lexington Plaza in Roseville, MN. Over 30 years in business.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--ink:#16202e;--muted:#5a6271;--card:#fffdf8;--soft:#e7e3d6;--field:#fff;--line:#e0d9c8;--line-strong:#c9bfa8;--accent:#16202e;--accent-ink:#8a6a2f;--on-accent:#f4efe3;--hdr:rgba(244,241,234,.93);--radius:4px;--radius-lg:6px;--display:'Cormorant Garamond',Georgia,serif;--display-weight:600;--body:'Jost',system-ui,sans-serif}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+img,iframe{max-width:100%}
+.wrap{width:min(1120px,100% - 32px);margin-inline:auto}
+.sample{background:#111;color:#eee;font:13px/1.4 system-ui,sans-serif;text-align:center;padding:8px 16px}
+.sample b{color:#fff}
+header.top{position:sticky;top:0;z-index:20;background:var(--hdr);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:64px}
+.brand{font-family:var(--display);font-size:1.3rem;text-decoration:none;line-height:1.1;font-weight:var(--display-weight,400)}
+nav.links{display:flex;gap:22px;font-size:.95rem}
+nav.links a{text-decoration:none;opacity:.85}
+nav.links a:hover{opacity:1;text-decoration:underline;text-underline-offset:4px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:var(--radius);background:var(--accent);color:var(--on-accent);text-decoration:none;border:2px solid var(--accent);transition:transform .15s ease,filter .15s ease;cursor:pointer;font:inherit;font-weight:600}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.07)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line-strong)}
+.btn svg,.ic svg{width:18px;height:18px;fill:currentColor;flex:none}
+.btn.sm{padding:9px 14px;font-size:.92rem}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+section{padding:84px 0}
+.eyebrow{font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin:0 0 10px}
+h1,h2,h3{font-family:var(--display);line-height:1.08;margin:0 0 16px;font-weight:var(--display-weight,400)}
+h1{font-size:clamp(2.6rem,7vw,5rem)}
+h2{font-size:clamp(2rem,4.5vw,3rem)}
+h3{font-size:1.3rem}
+.lead{font-size:1.15rem;color:var(--muted);max-width:60ch}
+.muted{color:var(--muted)}
+.grid{display:grid;gap:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);padding:26px}
+.price-list{list-style:none;margin:0;padding:0}
+.price-list li{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px dashed var(--line-strong)}
+.price-list li:last-child{border-bottom:0}
+.price-list span:last-child{font-weight:700;white-space:nowrap;color:var(--accent-ink)}
+.ticklist{list-style:none;margin:0;padding:0}
+.ticklist li{padding:8px 0 8px 28px;position:relative;border-bottom:1px solid var(--line)}
+.ticklist li:last-child{border-bottom:0}
+.ticklist li::before{content:"";position:absolute;left:4px;top:15px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.hours{width:100%;border-collapse:collapse}
+.hours td{padding:10px 0;border-bottom:1px solid var(--line)}
+.hours td:last-child{text-align:right;font-weight:600}
+.hours tr.closed td:last-child{color:var(--muted);font-weight:400}
+.hours tr.today td{color:var(--accent-ink)}
+.hours tr.today td:first-child::after{content:" \00b7  today";font-size:.8em;opacity:.8}
+.map{border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--line);min-height:320px;background:var(--card)}
+.map iframe{width:100%;height:100%;min-height:320px;border:0;display:block}
+.info-row{display:flex;gap:12px;align-items:flex-start;margin:0 0 14px}
+.info-row .ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--accent-ink);flex:none}
+.note{font-size:.9rem;color:var(--muted)}
+form.contact{display:grid;gap:14px}
+form.contact label{display:grid;gap:6px;font-size:.92rem;font-weight:600}
+form.contact input,form.contact textarea,form.contact select{font:inherit;font-weight:400;padding:12px 14px;border:1px solid var(--line-strong);border-radius:12px;background:var(--field);color:var(--ink)}
+form.contact textarea{min-height:110px;resize:vertical}
+.form-msg{display:none;font-size:.92rem;background:var(--soft);padding:12px 14px;border-radius:12px;margin:0}
+.split{grid-template-columns:1fr}
+.ticks{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.ticks span{font-size:.9rem;padding:7px 14px;border-radius:999px;border:1px solid var(--line-strong);background:var(--card)}
+footer{padding:34px 0 110px;border-top:1px solid var(--line);font-size:.9rem;color:var(--muted)}
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
+.callbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:10px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--hdr);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+.callbar .btn{flex:1;justify-content:center}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+@media (min-width:860px){.split{grid-template-columns:1fr 1fr;align-items:center;gap:48px}.callbar{display:none}footer{padding-bottom:34px}.cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:859px){nav.links{display:none}.hide-sm{display:none}section{padding:64px 0}}
+
+
+.hero{padding:0;background:#16202e;color:#f4efe3}
+.hero .wrap{display:grid;gap:40px;padding:96px 0 90px}
+.hero h1 em{font-style:italic;color:#d6b675;font-weight:500}
+.hero .lead{color:#c9cfdb}
+.hero .btn{background:#d6b675;border-color:#d6b675;color:#16202e}
+.hero .btn.ghost{background:transparent;color:#f4efe3;border-color:#46536a}
+.hero .eyebrow{color:#d6b675}
+.hero-card{border:1px solid #46536a;padding:30px;border-radius:6px;align-self:center}
+.hero-card p{margin:0 0 14px;color:#c9cfdb}
+.hero-card strong{display:block;font-family:var(--display);font-size:2.6rem;color:#f4efe3;line-height:1}
+.stitch{height:14px;background:repeating-linear-gradient(90deg,#d6b675 0 14px,transparent 14px 24px);opacity:.55;margin:0 auto;width:min(1120px,100% - 32px);background-size:24px 2px;background-repeat:repeat-x;background-position:center}
+.svc h3{border-bottom:1px solid var(--line);padding-bottom:10px}
+.promise{background:var(--soft)}
+.promise blockquote{font-family:var(--display);font-size:clamp(1.6rem,3.5vw,2.4rem);line-height:1.25;margin:0;max-width:30ch;font-style:italic}
+@media (min-width:860px){.hero .wrap{grid-template-columns:1.4fr 1fr}}
+
+</style>
+</head>
+<body>
+<div class="sample"><b>Sample redesign</b> made for John&#x27;s Tailors as a preview. This is not the business's official website.</div>
+<header class="top "><div class="wrap"><a class="brand" href="#top">John's Tailors</a><nav class="links"><a href="#services">Services</a><a href="#promise">Our promise</a><a href="#visit">Visit</a><a href="#book">Appointments</a></nav><a class="btn sm" href="tel:+16514872110"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg><span class="hide-sm">651-487-2110</span></a></div></header>
+<main id="top">
+<section class="hero"><div class="wrap">
+  <div class="reveal"><p class="eyebrow">Roseville &middot; Lexington Plaza</p>
+  <h1>Made to fit.<br><em>Made to last.</em></h1>
+  <p class="lead">Custom suits and shirts, and alterations for men and women. From everyday office wear to the biggest day of your year, John's Tailors has been getting the fit right for over 30 years.</p>
+  <div class="btns"><a class="btn" href="tel:+16514872110"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg> Book a fitting</a><a class="btn ghost" href="#services">See services</a></div></div>
+  <div class="hero-card reveal"><p><strong>30+</strong> years tailoring in the Twin Cities</p><p>Custom suits &amp; shirts for men and women</p><p style="margin:0">Every job guaranteed</p></div>
+</div></section>
+
+<section id="services"><div class="wrap">
+  <p class="eyebrow">Services</p><h2>Custom work &amp; alterations</h2>
+  <p class="lead">Bring it in, or start from the bolt. Fabrics are the finest quality, and the work is done in house.</p>
+  <div class="grid cols-3" style="margin-top:30px">
+    <div class="card svc reveal"><h3>Custom &amp; bespoke</h3><ul class="ticklist"><li>Suits for men and women</li><li>Shirts</li><li>Jackets, sport jackets &amp; blazers</li><li>Trousers</li><li>Overcoats</li></ul></div>
+    <div class="card svc reveal"><h3>Alterations</h3><ul class="ticklist"><li>Men&#x27;s and women&#x27;s garments</li><li>Major and standard alterations</li><li>Office wear and special occasions</li><li>Hems, sleeves, waists and more</li></ul></div>
+    <div class="card svc reveal"><h3>Repair</h3><ul class="ticklist"><li>Patching and reweaving</li><li>Leather work</li><li>General repairs</li></ul></div>
+  </div>
+</div></section>
+<div class="stitch" aria-hidden="true"></div>
+<section id="promise" class="promise"><div class="wrap grid split">
+  <blockquote class="reveal">&ldquo;If anything isn't right, we'll work with you and do everything to make it right.&rdquo;</blockquote>
+  <div class="reveal"><p class="eyebrow">Our promise</p><p class="lead" style="margin:0">Every product and every service is guaranteed. We aim for exceptional quality, finished on time, with service you'll come back for. It's why John's Tailors is one of the most recommended tailor shops in Minnesota.</p></div>
+</div></section>
+
+<section id="visit"><div class="wrap grid split">
+  <div class="reveal"><p class="eyebrow">Visit</p><h2>Lexington Plaza, Roseville</h2>
+    <p class="info-row"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></span><span><a href="https://www.google.com/maps/search/?api=1&amp;query=1714+N+Lexington+Ave%2C+Roseville%2C+MN+55113" target="_blank" rel="noopener">1714 N Lexington Ave, Roseville, MN 55113</a><br><span class="note">In Lexington Plaza</span></span></p><p class="info-row"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg></span><span><a href="tel:+16514872110">651-487-2110</a></span></p><p class="info-row"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H19.6zM4 8.6V17h16V8.6l-8 5.4z"/></svg></span><span><a href="mailto:John@Johnstailors.net">John@Johnstailors.net</a></span></p>
+    <p class="info-row"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 10.4 3.6 2.1-.9 1.6L11 13V6h2z"/></svg></span><span>Stop in, or call ahead to schedule a fitting.</span></p></div>
+  <div class="map reveal" style="filter:grayscale(.5)"><iframe title="Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=1714+N+Lexington+Ave%2C+Roseville%2C+MN+55113&amp;output=embed"></iframe></div>
+</div></section>
+
+<section id="book" style="background:var(--soft)"><div class="wrap grid split">
+  <div class="reveal"><p class="eyebrow">Appointments</p><h2>Schedule a fitting</h2><p class="lead">Tell us what you need and when works for you, and we'll get back to you to set a time.</p></div>
+  <div class="card reveal"><form class="contact"><label>Name<input name="name" type="text" required autocomplete="name"></label><label>Phone or email<input name="reply" type="text" required autocomplete="email"></label><label>I&#x27;m interested in<select name="kind"><option>Alterations</option><option>A custom suit</option><option>Custom shirts</option><option>Repair or reweaving</option><option>Leather work</option><option>Something else</option></select></label><label>Tell us a little more<textarea name="message" required placeholder="Garment, event date, anything we should know"></textarea></label><button class="btn" type="submit">Request a fitting</button><p class="form-msg">Sample preview: on the live site this form goes straight to the shop&#x27;s inbox.</p></form></div>
+</div></section>
+</main>
+<footer><div class="wrap"><span>&copy; <span id="yr"></span> John&#x27;s Tailors &middot; Lexington Plaza, Roseville, MN</span><span>Sample redesign preview</span></div></footer>
+<div class="callbar"><a class="btn" href="tel:+16514872110"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg> Call</a><a class="btn ghost" style="background:var(--card)" href="https://www.google.com/maps/search/?api=1&amp;query=1714+N+Lexington+Ave%2C+Roseville%2C+MN+55113" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg> Directions</a></div>
+<script>
+(function(){
+  var io='IntersectionObserver' in window?new IntersectionObserver(function(es){es.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target);}})},{threshold:.12}):null;
+  document.querySelectorAll('.reveal').forEach(function(el){io?io.observe(el):el.classList.add('in');});
+  var d=new Date().getDay();var row=document.querySelector('.hours tr[data-day="'+d+'"]');if(row){row.classList.add('today');}
+  var y=document.getElementById('yr');if(y){y.textContent=new Date().getFullYear();}
+  document.querySelectorAll('form.contact').forEach(function(f){
+    f.addEventListener('submit',function(ev){ev.preventDefault();var m=f.querySelector('.form-msg');if(m){m.style.display='block';}});
+  });
+})();
+</script>
+</body>
+</html>

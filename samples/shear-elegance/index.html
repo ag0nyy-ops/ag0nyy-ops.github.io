@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shear Elegance Pet Grooming | White Bear Ave, St. Paul</title>
+<meta name="description" content="Family-run dog grooming on White Bear Ave in St. Paul since 1994. Hand-scissored cuts, baths, nails and more.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fffaf0;--ink:#1f2a44;--muted:#5d6680;--card:#fff;--soft:#ffefc2;--field:#fff;--line:#f0e4c8;--line-strong:#e2cf9f;--accent:#1f2a44;--accent-ink:#c46a00;--on-accent:#fff;--hdr:rgba(255,250,240,.93);--radius:999px;--radius-lg:26px;--display:'Fredoka',system-ui,sans-serif;--display-weight:700;--body:'Nunito',system-ui,sans-serif}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+img,iframe{max-width:100%}
+.wrap{width:min(1120px,100% - 32px);margin-inline:auto}
+.sample{background:#111;color:#eee;font:13px/1.4 system-ui,sans-serif;text-align:center;padding:8px 16px}
+.sample b{color:#fff}
+header.top{position:sticky;top:0;z-index:20;background:var(--hdr);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:64px}
+.brand{font-family:var(--display);font-size:1.3rem;text-decoration:none;line-height:1.1;font-weight:var(--display-weight,400)}
+nav.links{display:flex;gap:22px;font-size:.95rem}
+nav.links a{text-decoration:none;opacity:.85}
+nav.links a:hover{opacity:1;text-decoration:underline;text-underline-offset:4px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:var(--radius);background:var(--accent);color:var(--on-accent);text-decoration:none;border:2px solid var(--accent);transition:transform .15s ease,filter .15s ease;cursor:pointer;font:inherit;font-weight:600}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.07)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line-strong)}
+.btn svg,.ic svg{width:18px;height:18px;fill:currentColor;flex:none}
+.btn.sm{padding:9px 14px;font-size:.92rem}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+section{padding:84px 0}
+.eyebrow{font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin:0 0 10px}
+h1,h2,h3{font-family:var(--display);line-height:1.08;margin:0 0 16px;font-weight:var(--display-weight,400)}
+h1{font-size:clamp(2.6rem,7vw,5rem)}
+h2{font-size:clamp(2rem,4.5vw,3rem)}
+h3{font-size:1.3rem}
+.lead{font-size:1.15rem;color:var(--muted);max-width:60ch}
+.muted{color:var(--muted)}
+.grid{display:grid;gap:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);padding:26px}
+.price-list{list-style:none;margin:0;padding:0}
+.price-list li{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px dashed var(--line-strong)}
+.price-list li:last-child{border-bottom:0}
+.price-list span:last-child{font-weight:700;white-space:nowrap;color:var(--accent-ink)}
+.ticklist{list-style:none;margin:0;padding:0}
+.ticklist li{padding:8px 0 8px 28px;position:relative;border-bottom:1px solid var(--line)}
+.ticklist li:last-child{border-bottom:0}
+.ticklist li::before{content:"";position:absolute;left:4px;top:15px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.hours{width:100%;border-collapse:collapse}
+.hours td{padding:10px 0;border-bottom:1px solid var(--line)}
+.hours td:last-child{text-align:right;font-weight:600}
+.hours tr.closed td:last-child{color:var(--muted);font-weight:400}
+.hours tr.today td{color:var(--accent-ink)}
+.hours tr.today td:first-child::after{content:" \00b7  today";font-size:.8em;opacity:.8}
+.map{border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--line);min-height:320px;background:var(--card)}
+.map iframe{width:100%;height:100%;min-height:320px;border:0;display:block}
+.info-row{display:flex;gap:12px;align-items:flex-start;margin:0 0 14px}
+.info-row .ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--accent-ink);flex:none}
+.note{font-size:.9rem;color:var(--muted)}
+form.contact{display:grid;gap:14px}
+form.contact label{display:grid;gap:6px;font-size:.92rem;font-weight:600}
+form.contact input,form.contact textarea,form.contact select{font:inherit;font-weight:400;padding:12px 14px;border:1px solid var(--line-strong);border-radius:12px;background:var(--field);color:var(--ink)}
+form.contact textarea{min-height:110px;resize:vertical}
+.form-msg{display:none;font-size:.92rem;background:var(--soft);padding:12px 14px;border-radius:12px;margin:0}
+.split{grid-template-columns:1fr}
+.ticks{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.ticks span{font-size:.9rem;padding:7px 14px;border-radius:999px;border:1px solid var(--line-strong);background:var(--card)}
+footer{padding:34px 0 110px;border-top:1px solid var(--line);font-size:.9rem;color:var(--muted)}
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
+.callbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:10px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--hdr);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+.callbar .btn{flex:1;justify-content:center}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+@media (min-width:860px){.split{grid-template-columns:1fr 1fr;align-items:center;gap:48px}.callbar{display:none}footer{padding-bottom:34px}.cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:859px){nav.links{display:none}.hide-sm{display:none}section{padding:64px 0}}
+
+
+.hero{padding:70px 0 80px;background:radial-gradient(600px 300px at 90% 0,#ffd66b55,transparent 70%)}
+.hero .wrap{display:grid;gap:30px;align-items:center}
+.hero h1 span{color:var(--accent-ink)}
+.bubble{background:#ffd66b;border-radius:48% 52% 45% 55%/55% 45% 55% 45%;aspect-ratio:1;display:grid;place-items:center;text-align:center;font-family:var(--display);color:var(--ink);font-size:1.4rem;max-width:300px;justify-self:center;width:100%}
+.bubble b{display:block;font-size:4.4rem;line-height:1}
+.paws{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.paws div{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:18px 20px;font-weight:700}
+.awards{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.awards span{background:var(--card);border:2px solid var(--line-strong);border-radius:999px;padding:8px 14px;font-weight:600;font-size:.92rem}
+.heads-up{background:var(--soft);border-radius:22px;padding:18px 22px;margin-top:20px}
+@media (min-width:860px){.hero .wrap{grid-template-columns:1.3fr .7fr}}
+
+</style>
+</head>
+<body>
+<div class="sample"><b>Sample redesign</b> made for Shear Elegance Pet Grooming as a preview. This is not the business's official website.</div>
+<header class="top "><div class="wrap"><a class="brand" href="#top">Shear Elegance <span style='color:var(--accent-ink)'>&#10022;</span></a><nav class="links"><a href="#grooming">Grooming</a><a href="#about">About</a><a href="#visit">Visit</a><a href="#book">Book</a></nav><a class="btn sm" href="tel:+16515281157"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg><span class="hide-sm">(651) 528-1157</span></a></div></header>
+<main id="top">
+<section class="hero"><div class="wrap">
+  <div class="reveal"><p class="eyebrow">Dog grooming &middot; St. Paul's east side</p>
+  <h1>Happy dogs leave <span>looking sharp.</span></h1>
+  <p class="lead">Hand-scissored cuts, show cuts and easy-care trims from Michael and Deb, grooming dogs on White Bear Ave since 1994.</p>
+  <div class="btns"><a class="btn" href="tel:+16515281157"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg> Call to book</a><a class="btn ghost" href="#grooming">What's included</a></div></div>
+  <div class="bubble reveal" aria-hidden="true"><div><b>30+</b>years of<br>good dogs</div></div>
+</div></section>
+
+<section id="grooming"><div class="wrap">
+  <p class="eyebrow">Grooming</p><h2>Everything for a fresh pup</h2>
+  <div class="paws" style="margin-top:24px">
+    <div class="reveal">Hand-scissored cuts</div><div class="reveal">Show cuts</div><div class="reveal">Easy-maintenance cuts</div>
+    <div class="reveal">Baths, shampoo &amp; blow dry</div><div class="reveal">Brushing &amp; combing</div><div class="reveal">Nail trims</div>
+    <div class="reveal">Teeth brushing</div><div class="reveal">Pet massage</div>
+  </div>
+  <div class="heads-up reveal"><b>Good to know:</b> we groom dogs only (sorry, no cats). Prices depend on your dog, so call for a quote. Military members get 10% off. We no longer take credit cards.</div>
+</div></section>
+
+<section id="about" style="background:var(--card);border-block:2px solid var(--line)"><div class="wrap grid split">
+  <div class="reveal"><p class="eyebrow">About us</p><h2>Family-run since 1994</h2><p class="lead" style="margin:0">Shear Elegance is Michael and Deb's shop. Neighbors have been voting for it for years.</p></div>
+  <div class="reveal"><div class="awards"><span>Readers' Choice, Best Pet Grooming (2012 to 2016)</span><span>People's Choice, Best Pet Groomer 2013</span><span>Nextdoor Neighborhood Fave 2023</span><span>ThreeBestRated 2023</span></div></div>
+</div></section>
+
+<section id="visit"><div class="wrap grid split">
+  <div class="reveal"><p class="eyebrow">Visit</p><h2>Hours</h2>
+  <table class="hours"><tbody><tr data-day="1"><td>Monday</td><td>9am to 6pm</td></tr><tr data-day="2" class="closed"><td>Tuesday</td><td>Closed</td></tr><tr data-day="3" class="closed"><td>Wednesday</td><td>Closed</td></tr><tr data-day="4"><td>Thursday</td><td>9am to 6pm</td></tr><tr data-day="5"><td>Friday</td><td>9am to 6pm</td></tr><tr data-day="6"><td>Saturday</td><td>9am to 6pm</td></tr><tr data-day="0"><td>Sunday</td><td>9am to 6pm</td></tr></tbody></table>
+  <div style="margin-top:22px"><p class="info-row"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></span><span><a href="https://www.google.com/maps/search/?api=1&amp;query=1469+White+Bear+Ave+N%2C+St+Paul%2C+MN+55106" target="_blank" rel="noopener">1469 White Bear Ave N, St Paul, MN 55106</a></span></p><p class="info-row"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.4 7H19.6zM4 8.6V17h16V8.6l-8 5.4z"/></svg></span><span><a href="mailto:deb@shearelegancepetgrooming.com">deb@shearelegancepetgrooming.com</a></span></p></div></div>
+  <div class="map reveal"><iframe title="Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=1469+White+Bear+Ave+N%2C+St+Paul%2C+MN+55106&amp;output=embed"></iframe></div>
+</div></section>
+
+<section id="book" style="background:var(--soft)"><div class="wrap grid split">
+  <div class="reveal"><p class="eyebrow">Book</p><h2>Request an appointment</h2><p class="lead">Tell us about your dog and when you'd like to come in, and we'll call you back to confirm.</p></div>
+  <div class="card reveal"><form class="contact"><label>Your name<input name="name" type="text" required autocomplete="name"></label><label>Phone<input name="reply" type="tel" required autocomplete="tel"></label><label>Dog&#x27;s name &amp; breed<input name="dog" type="text" required></label><label>Service<select name="svc"><option>Full groom</option><option>Bath &amp; brush</option><option>Nail trim</option><option>Not sure</option></select></label><label>Preferred days<textarea name="message" required placeholder="e.g. Thursday or Friday morning"></textarea></label><button class="btn" type="submit">Request appointment</button><p class="form-msg">Sample preview: on the live site this form goes straight to the shop&#x27;s inbox.</p></form></div>
+</div></section>
+</main>
+<footer><div class="wrap"><span>&copy; <span id="yr"></span> Shear Elegance Pet Grooming &middot; White Bear Ave, St. Paul</span><span>Sample redesign preview</span></div></footer>
+<div class="callbar"><a class="btn" href="tel:+16515281157"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg> Call</a><a class="btn ghost" style="background:var(--card)" href="https://www.google.com/maps/search/?api=1&amp;query=1469+White+Bear+Ave+N%2C+St+Paul%2C+MN+55106" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg> Directions</a></div>
+<script>
+(function(){
+  var io='IntersectionObserver' in window?new IntersectionObserver(function(es){es.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target);}})},{threshold:.12}):null;
+  document.querySelectorAll('.reveal').forEach(function(el){io?io.observe(el):el.classList.add('in');});
+  var d=new Date().getDay();var row=document.querySelector('.hours tr[data-day="'+d+'"]');if(row){row.classList.add('today');}
+  var y=document.getElementById('yr');if(y){y.textContent=new Date().getFullYear();}
+  document.querySelectorAll('form.contact').forEach(function(f){
+    f.addEventListener('submit',function(ev){ev.preventDefault();var m=f.querySelector('.form-msg');if(m){m.style.display='block';}});
+  });
+})();
+</script>
+</body>
+</html>
