@@ -10,7 +10,7 @@ window.BUILDER_CONFIG = {
      2. claimEmail: opens the visitor's email app with everything filled in.
      3. both blank: the visitor gets their details to copy and your Discord. */
   claimEndpoint: '',   // TODO: paste the form endpoint URL
-  claimEmail: 'jaymz@icloud.com',
+  claimEmail: 'jay.mz@icloud.com',
   discord: '.jaypatty',
 
   /* Prices. amount is in dollars. Kept the same as the Fiverr gig packages. */
