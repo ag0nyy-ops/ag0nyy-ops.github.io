@@ -12,6 +12,7 @@ Plain HTML, CSS and a little JavaScript. No framework, no build step, no depende
 - `index.html`: the page, plus two SVG filters (chromatic aberration and a liquid warp)
 - `assets/css/style.css`: almost everything. It's organised in `@layer`s and commented so every effect can be explained.
 - `assets/js/main.js`: about 100 lines. It never animates anything; it only tells CSS what CSS can't know (cursor position, where each eye sits, idle/away state), plus the copy button and view transitions.
+- `build/`: the site builder. Shop owners answer a few questions and get a sample one-page site made in the browser (`generator.js`), with a package pitch and a "Claim this site" button. Prices and where claims go live in `build/config.js`.
 - `uploader/` and `privacy.html`: homepage and privacy policy for my uploader app (keep these URLs stable)
 
 ### Effects and how they're built
