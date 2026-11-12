@@ -1,0 +1,197 @@
+<!doctype html>
+<!-- jay. site builder — © 2026 Jay — https://ag0nyy-ops.github.io/build/
+     Source is viewable for learning, not for reuse. See LICENSE. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Site builder · jay.</title>
+  <meta name="description" content="Type in a few things about your business and get a free sample website in seconds. Like it? Claim it and Jay builds it for real.">
+  <meta name="theme-color" content="#060606">
+  <meta name="color-scheme" content="dark">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="See your business as a website, free">
+  <meta property="og:description" content="A few answers, one sample site, made on the spot. Claim it and Jay builds it for real.">
+  <meta property="og:url" content="https://ag0nyy-ops.github.io/build/">
+  <meta property="og:image" content="https://ag0nyy-ops.github.io/assets/og-image.jpg">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="../assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="build.css?v=1">
+  <script src="config.js?v=1" defer></script>
+  <script src="generator.js?v=1" defer></script>
+  <script src="app.js?v=1" defer></script>
+</head>
+<body>
+  <a class="skip" href="#form">Skip to the form</a>
+
+  <header class="bar">
+    <a class="logo" href="../">jay<span>.</span></a>
+    <p class="bar__label">File 05 / Site builder</p>
+    <a class="bar__link" href="../#contact">Talk to me ↗</a>
+  </header>
+
+  <main class="page">
+    <section class="intro">
+      <h1>See your business as a website. <span>Free, in seconds.</span></h1>
+      <p>Answer a few questions and a sample site builds itself. Shuffle until you love it, then claim it and I’ll build it for real.</p>
+    </section>
+
+    <div class="layout">
+      <!-- ===== the questions ===== -->
+      <form class="panel form" id="form" autocomplete="on" novalidate>
+        <div class="field">
+          <label for="f-name">Business name <i>required</i></label>
+          <input id="f-name" name="name" maxlength="60" placeholder="Northside Barber Co." autocomplete="organization" required>
+        </div>
+        <div class="field">
+          <label for="f-type">What kind of business?</label>
+          <select id="f-type" name="type"></select>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="f-city">City</label>
+            <input id="f-city" name="city" maxlength="50" placeholder="Saint Paul, MN" autocomplete="address-level2">
+          </div>
+          <div class="field">
+            <label for="f-phone">Phone</label>
+            <input id="f-phone" name="phone" maxlength="30" inputmode="tel" placeholder="(651) 555-0123" autocomplete="tel">
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-services">Your services or menu <i>one per line or commas, add prices if you like</i></label>
+          <textarea id="f-services" name="services" rows="4" maxlength="600"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-hours">Hours</label>
+          <input id="f-hours" name="hours" maxlength="160" placeholder="Mon–Fri 9am–6pm, Sat 10am–4pm">
+        </div>
+
+        <fieldset class="field">
+          <legend>Vibe</legend>
+          <div class="chips" id="vibes"></div>
+        </fieldset>
+        <fieldset class="field">
+          <legend>Color</legend>
+          <div class="swatches" id="colors"></div>
+        </fieldset>
+
+        <div class="field">
+          <label for="f-goals">What should your site do for you? <i>optional</i></label>
+          <input id="f-goals" name="goals" maxlength="200" placeholder="get more bookings, show my work, Spanish too…">
+        </div>
+
+        <details class="more">
+          <summary>More options</summary>
+          <div class="field">
+            <label for="f-tagline">Slogan <i>leave blank and I’ll write one</i></label>
+            <input id="f-tagline" name="tagline" maxlength="80">
+          </div>
+          <div class="field">
+            <label for="f-logo">Logo letters <i>up to 4</i></label>
+            <input id="f-logo" name="logo" maxlength="4" placeholder="NB">
+          </div>
+        </details>
+
+        <p class="privacy">Everything you type stays in your browser. Nothing is sent anywhere unless you press <b>Claim this site</b>. The preview loads its fonts from Google Fonts.</p>
+      </form>
+
+      <!-- ===== the preview ===== -->
+      <section class="viewer" aria-label="Your sample site">
+        <div class="toolbar">
+          <div class="seg" role="group" aria-label="Preview size">
+            <button type="button" data-device="desktop" aria-pressed="true">Desktop</button>
+            <button type="button" data-device="phone" aria-pressed="false">Phone</button>
+          </div>
+          <span class="code" title="Design code">design <b id="seed-code">——</b></span>
+          <div class="tools">
+            <button type="button" class="tbtn" id="shuffle" title="New design (S)">⟳ Shuffle design</button>
+            <button type="button" class="tbtn" id="fullscreen" title="Full screen (F)">⤢ <span class="hide-xs">Full screen</span></button>
+          </div>
+        </div>
+        <div class="stage" id="stage">
+          <div class="frame" id="frame">
+            <iframe id="preview" title="Sample website preview" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" loading="eager"></iframe>
+          </div>
+          <p class="demo-note" id="demo-note">Example shown. Type your business name to make it yours.</p>
+        </div>
+
+        <!-- ===== the pitch ===== -->
+        <div class="offer" id="offer" aria-live="polite">
+          <p class="offer__k">Like it?</p>
+          <h2 class="offer__head" id="offer-head">Get this live.</h2>
+          <div class="tiers" id="tiers" role="radiogroup" aria-label="Package"></div>
+          <div class="offer__actions">
+            <button type="button" class="cta" id="claim">Claim this site</button>
+            <button type="button" class="ghost" id="shuffle-2">Not quite? Shuffle again</button>
+          </div>
+          <p class="offer__fine">No payment now. Claiming sends me this design and your answers, and I’ll reply with a final quote. <span id="care"></span></p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <button type="button" class="jump" id="jump" hidden>See my site ↓</button>
+
+  <footer class="foot">
+    <a href="../">← back to jay.</a>
+    <span>Sample sites are previews. Names and details you type are only shown back to you.</span>
+  </footer>
+
+  <!-- full screen preview -->
+  <div class="fs" id="fs" hidden>
+    <div class="fs__bar">
+      <div class="seg" role="group" aria-label="Preview size">
+        <button type="button" data-device="desktop" aria-pressed="true">Desktop</button>
+        <button type="button" data-device="phone" aria-pressed="false">Phone</button>
+      </div>
+      <button type="button" class="tbtn" id="fs-shuffle">⟳ Shuffle</button>
+      <button type="button" class="cta sm" id="fs-claim">Claim this site</button>
+      <button type="button" class="tbtn" id="fs-close" aria-label="Close full screen">✕ <span class="hide-xs">Close</span></button>
+    </div>
+    <div class="fs__stage"><iframe id="fs-frame" title="Sample website, full screen" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe></div>
+  </div>
+
+  <!-- claim -->
+  <dialog class="claim" id="claim-dialog" aria-labelledby="claim-title">
+    <form method="dialog" id="claim-form" novalidate>
+      <button class="claim__x" value="cancel" aria-label="Close">✕</button>
+      <div class="claim__step" id="claim-ask">
+        <h2 id="claim-title">Claim <span id="claim-name">this site</span></h2>
+        <p class="claim__pkg" id="claim-pkg"></p>
+        <div class="field">
+          <label for="c-who">Your name</label>
+          <input id="c-who" maxlength="60" autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="c-reach">Email or phone so I can reply <i>required</i></label>
+          <input id="c-reach" maxlength="80" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="c-note">Anything else? <i>optional</i></label>
+          <textarea id="c-note" rows="3" maxlength="600" placeholder="Changes you want, a domain you already own, a deadline…"></textarea>
+        </div>
+        <p class="err" id="claim-err" role="alert"></p>
+        <button type="button" class="cta" id="claim-send">Send it to Jay</button>
+        <p class="privacy">This sends your answers above, this design and your contact info to Jay. Nothing else, no payment.</p>
+      </div>
+      <div class="claim__step" id="claim-done" hidden>
+        <h2>Got it.</h2>
+        <p id="claim-done-msg">I’ll get back to you soon with a final quote. Keep this tab if you want to look at your design again.</p>
+        <button class="cta" value="done">Back to my site</button>
+      </div>
+      <div class="claim__step" id="claim-copy" hidden>
+        <h2>Almost there</h2>
+        <p>Copy this and send it to me on Discord at <b class="sel" id="claim-discord"></b>.</p>
+        <textarea id="claim-text" rows="8" readonly></textarea>
+        <div class="row-btns">
+          <button type="button" class="cta" id="claim-copy-btn">Copy</button>
+          <a class="ghost" href="../#contact">Other ways to reach me</a>
+        </div>
+        <p class="status" id="claim-copy-status" role="status"></p>
+      </div>
+    </form>
+  </dialog>
+
+  <noscript><p class="noscript">The builder needs JavaScript. <a href="../#contact">Message me instead.</a></p></noscript>
+</body>
+</html>
