@@ -13,7 +13,11 @@ window.PRICES = {
   label: 'from',                      // word in front of every price
   onRequest: 'quote on request',      // shown when amount is null
   items: {
-    'websites':         { amount: 75 },                     // 01 websites + landing pages
+    'data':             { amount: 60 },                     // data analysis + dashboards
+    'it-support':       { amount: 20, per: '/session' },    // IT support + troubleshooting
+    'security':         { amount: 100 },                    // security basics: logins, tokens, protection
+    'backends':         { amount: 100 },                    // APIs, backends + hosting
+    'websites':         { amount: 75 },                     // websites + landing pages
     'web-apps':         { amount: 150 },                    // 02 custom web apps + tools
     'ai':               { amount: 100 },                    // 03 ai chatbots + integrations
     'automation':       { amount: 40 },                     // 04 automation + scripts
