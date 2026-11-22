@@ -1619,6 +1619,49 @@
   .callout--unusual { margin-top: 0; margin-bottom: clamp(1.5rem, 4vw, 2.5rem); }
   .unusual__text { max-width: 52ch; margin-top: 1rem; color: var(--muted); }
 
+  /* ---- levels: a card that has them opens like a dropdown (native <details>, no JavaScript).
+     Each level is a <details name="…"> too, so opening one closes the others where the browser
+     supports exclusive groups. An open card spans the whole row so the levels have room. ---- */
+  .want--levels { padding: 0; display: block; }
+  .want__d { display: block; height: 100%; }
+  .want__d > summary { display: flex; flex-direction: column; gap: .7rem; height: 100%; padding: 1.25rem 1.25rem 1.1rem; cursor: pointer; list-style: none; }
+  .want--main.want--levels { padding: 0; }
+  .want--main .want__d > summary { padding: 1.5rem 1.5rem 1.25rem; }
+  .want__d > summary::-webkit-details-marker, .level > summary::-webkit-details-marker { display: none; }
+  .want__d > summary::marker, .level > summary::marker { content: ""; }
+  .want__d[open] > summary { height: auto; }
+  .want--levels:has(> .want__d[open]) { grid-column: 1 / -1; border-color: var(--fg); }
+  .want__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; padding-top: .8rem; border-top: 1px dashed var(--line-strong); }
+  .want__foot .want__price { padding: 0; border: 0; }
+  .want__more { display: inline-flex; align-items: center; gap: .5em; font: 600 .7rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .want__more i { width: .55em; height: .55em; border: solid currentColor; border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -.12em; transition: rotate .4s var(--ease-spring); }
+  .want__d[open] .want__more i { rotate: -135deg; translate: 0 .12em; }
+  .want__d:hover .want__more { color: var(--fg); }
+
+  .levels { display: grid; gap: .6rem; padding: .4rem 1.25rem 1.25rem; }
+  .want--main .levels { padding: .4rem 1.5rem 1.5rem; }
+  @media (min-width: 52rem) { .levels { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; } }
+  .level { border: 1px solid var(--line-strong); background: var(--bg); }
+  .level > summary { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: .95rem 1rem; cursor: pointer; list-style: none; }
+  .level__name { font: 600 1.02rem/1.2 var(--mono); letter-spacing: -.02em; }
+  .level__no { margin-right: .7rem; font: 400 .72rem/1 var(--mono); color: var(--muted); }
+  .level__price { font: .72rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: right; }
+  .level__price b { font-size: .95rem; letter-spacing: 0; text-transform: none; color: var(--fg); }
+  .level:hover { border-color: var(--fg); }
+  .level[open] { border-color: var(--fg); background: var(--bg-2); }
+  .level__body { display: grid; gap: .8rem; padding: .2rem 1rem 1.1rem; }
+  .level__line { margin: 0; color: var(--fg); }
+  .level__body ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .35rem; list-style: square; color: var(--muted); }
+  .level__body li::marker { color: var(--fg); }
+  .level__fit { margin: 0; font-size: .88rem; color: var(--muted); }
+  .level__fit span { margin-right: .5em; font: .68rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--fg); }
+  .level__body .btn { justify-self: start; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .want__d::details-content, .level::details-content { block-size: 0; overflow: clip; transition: block-size .4s var(--ease-liquid), content-visibility .4s allow-discrete; }
+    .want__d[open]::details-content, .level[open]::details-content { block-size: auto; }
+  }
+
   /* the current page in the top bar stays fully lit */
   .topbar__nav a[aria-current="page"] { opacity: 1; }
 }

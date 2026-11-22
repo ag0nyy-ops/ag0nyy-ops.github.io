@@ -23,7 +23,7 @@
   <!-- fonts are self-hosted (assets/fonts); preload the two the first screen needs -->
   <link rel="preload" href="assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/css/style.css?v=17">
+  <link rel="stylesheet" href="assets/css/style.css?v=18">
   <script>
     /* The only blocking JS, kept tiny:
        1. skip the eyelid intro on repeat visits this session
@@ -132,50 +132,288 @@
 
       <!-- PRICES: every price comes from assets/data/prices.js, same as the home page -->
       <ul class="wants wants--main">
-        <li class="want bleed want--main">
-          <h3 class="want__goal">Make sense of my data</h3>
-          <p class="want__what">Clean up messy spreadsheets and exports, answer your questions with queries and charts, and set up a report or dashboard you can reuse. Clear answers, no hype.</p>
-          <p class="want__price"><b data-price="data">quote on request</b></p>
+        <li class="want bleed want--main want--levels">
+          <details class="want__d">
+            <summary>
+              <h3 class="want__goal">Make sense of my data</h3>
+              <p class="want__what">Clean up messy spreadsheets and exports, answer your questions with queries and charts, and set up a report or dashboard you can reuse. Clear answers, no hype.</p>
+          
+              <span class="want__foot"><span class="want__price"><b data-price="data">quote on request</b></span><span class="want__more" aria-hidden="true">3 levels <i></i></span></span>
+            </summary>
+            <div class="levels">
+            <details class="level" name="lv-make-sense-of-my-dat">
+              <summary><span class="level__name"><span class="level__no">1</span>Quick answer</span><span class="level__price"><b data-price="data">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">One dataset, one question.</p>
+                <ul><li>Clean up the messy data</li><li>Answer it with queries or a chart</li><li>A short written summary of what I found</li></ul>
+                <p class="level__fit"><span>Good for</span> a one-off question, or a spreadsheet that fights back</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-make-sense-of-my-dat">
+              <summary><span class="level__name"><span class="level__no">2</span>Report</span><span class="level__price"><b data-price="data-report">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">Several sources, one repeatable report.</p>
+                <ul><li>Join and clean data from a few places</li><li>A report you can re-run yourself</li><li>Charts you can reuse, plus a walkthrough</li></ul>
+                <p class="level__fit"><span>Good for</span> monthly numbers, member or sales stats</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-make-sense-of-my-dat">
+              <summary><span class="level__name"><span class="level__no">3</span>Dashboard</span><span class="level__price"><b data-price="data-dashboard">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">A dashboard that keeps itself up to date.</p>
+                <ul><li>Fed automatically from your data</li><li>Documented so you can maintain it</li><li>Small tweaks after launch included</li></ul>
+                <p class="level__fit"><span>Good for</span> numbers you check every week</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            </div>
+          </details>
         </li>
-        <li class="want bleed want--main">
-          <h3 class="want__goal">Fix my computer, accounts or setup</h3>
-          <p class="want__what">Troubleshooting, setting up devices, email, accounts, backups and two-factor login, and fixing the annoying stuff that won't work. We go through it over Discord or a call.</p>
-          <p class="want__price"><b data-price="it-support">quote on request</b></p>
+        <li class="want bleed want--main want--levels">
+          <details class="want__d">
+            <summary>
+              <h3 class="want__goal">Fix my computer, accounts or setup</h3>
+              <p class="want__what">Troubleshooting, setting up devices, email, accounts, backups and two-factor login, and fixing the annoying stuff that won't work. We go through it over Discord or a call.</p>
+          
+              <span class="want__foot"><span class="want__price"><b data-price="it-support">quote on request</b></span><span class="want__more" aria-hidden="true">3 levels <i></i></span></span>
+            </summary>
+            <div class="levels">
+            <details class="level" name="lv-fix-my-computer-acco">
+              <summary><span class="level__name"><span class="level__no">1</span>Quick fix</span><span class="level__price"><b data-price="it-support">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">One problem, one session over Discord or a call.</p>
+                <ul><li>Find out what&#x27;s actually wrong</li><li>Fix it, or tell you straight if it needs someone else</li><li>Notes on what I changed</li></ul>
+                <p class="level__fit"><span>Good for</span> a single annoying problem</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-fix-my-computer-acco">
+              <summary><span class="level__name"><span class="level__no">2</span>Setup day</span><span class="level__price"><b data-price="it-setup">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">Get everything set up properly in one go.</p>
+                <ul><li>Devices, accounts and email set up right</li><li>Backups and two-factor login turned on</li><li>A password manager and written notes so you can keep it up</li></ul>
+                <p class="level__fit"><span>Good for</span> a new computer, a new team, or a mess to clean up</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-fix-my-computer-acco">
+              <summary><span class="level__name"><span class="level__no">3</span>Support plan</span><span class="level__price"><b data-price="it-plan">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">Ongoing help for a monthly fee.</p>
+                <ul><li>A regular check-in</li><li>Fixes as they come up</li><li>A short list of what to improve next</li></ul>
+                <p class="level__fit"><span>Good for</span> a small team or server that always has something</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            </div>
+          </details>
         </li>
-        <li class="want bleed want--main">
-          <h3 class="want__goal">Add logins and protect my app or site</h3>
-          <p class="want__what">OAuth2 logins (Discord, Google, GitHub), tokens stored and refreshed safely, sessions and cookies locked down, security headers, and secrets kept out of your code. Basic protection, not a security audit, and I'll tell you what it doesn't cover.</p>
+        <li class="want bleed want--main want--levels">
+          <details class="want__d">
+            <summary>
+              <h3 class="want__goal">Add logins and protect my app or site</h3>
+              <p class="want__what">OAuth2 logins (Discord, Google, GitHub), tokens stored and refreshed safely, sessions and cookies locked down, security headers, and secrets kept out of your code. Basic protection, not a security audit, and I'll tell you what it doesn't cover.</p>
           <p class="want__proof">Built into my own project <a href="https://github.com/ag0nyy-ops/skyscrob" target="_blank" rel="noopener">skyscrob</a>: encrypted token storage, CSRF-protected sessions, security headers and a scanner that checks git history for leaked secrets.</p>
-          <p class="want__price"><b data-price="security">quote on request</b></p>
+          
+              <span class="want__foot"><span class="want__price"><b data-price="security">quote on request</b></span><span class="want__more" aria-hidden="true">3 levels <i></i></span></span>
+            </summary>
+            <div class="levels">
+            <details class="level" name="lv-add-logins-and-prote">
+              <summary><span class="level__name"><span class="level__no">1</span>Basics</span><span class="level__price"><b data-price="security">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">One thing done right.</p>
+                <ul><li>OAuth2 login with safe token handling, or a protection pass on your existing site</li><li>A written list of what I changed or what to fix</li></ul>
+                <p class="level__fit"><span>Good for</span> adding Discord, Google or GitHub login, or a quick once-over</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-add-logins-and-prote">
+              <summary><span class="level__name"><span class="level__no">2</span>Standard</span><span class="level__price"><b data-price="security-standard">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">The full basics for an app with real users.</p>
+                <ul><li>OAuth2 login with tokens stored and refreshed safely</li><li>Sessions and cookies locked down, CSRF protection</li><li>Security headers set, secrets moved out of your code</li></ul>
+                <p class="level__fit"><span>Good for</span> an app with real accounts</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-add-logins-and-prote">
+              <summary><span class="level__name"><span class="level__no">3</span>Full basics</span><span class="level__price"><b data-price="security-full">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">Standard, plus the checks that catch mistakes later.</p>
+                <ul><li>Everything in Standard</li><li>A secret scanner on your repo</li><li>A review of how your data and tokens are stored</li><li>A short write-up of what is covered and what is not</li></ul>
+                <p class="level__fit"><span>Good for</span> an app that holds other people&#x27;s data. Still basics: not an audit or a penetration test</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            </div>
+          </details>
         </li>
       </ul>
 
       <p class="label more__k bleed">More I build</p>
       <ul class="wants">
-        <li class="want bleed">
-          <h3 class="want__goal">Keep spam and raids out</h3>
-          <p class="want__what">A moderation bot: spam, repeated-message and invite-link detection, blocked terms, and every action saved as a case you can look up later.</p>
-          <p class="want__price"><b data-price="discord-bots">quote on request</b></p>
+        <li class="want bleed want--levels">
+          <details class="want__d">
+            <summary>
+              <h3 class="want__goal">Keep spam and raids out</h3>
+              <p class="want__what">A moderation bot: spam, repeated-message and invite-link detection, blocked terms, and every action saved as a case you can look up later.</p>
+          
+              <span class="want__foot"><span class="want__price"><b data-price="discord-bots">quote on request</b></span><span class="want__more" aria-hidden="true">3 levels <i></i></span></span>
+            </summary>
+            <div class="levels">
+            <details class="level" name="lv-keep-spam-and-raids-">
+              <summary><span class="level__name"><span class="level__no">1</span>Built-in AutoMod</span><span class="level__price"><b data-price="discord-bots">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">Discord&#x27;s own AutoMod, set up properly.</p>
+                <ul><li>Rules for spam, invite links and blocked words</li><li>Alerts to a staff channel</li><li>Staff shown how to use it</li></ul>
+                <p class="level__fit"><span>Good for</span> a small server that needs the basics covered</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-keep-spam-and-raids-">
+              <summary><span class="level__name"><span class="level__no">2</span>Moderation bot</span><span class="level__price"><b data-price="discord-bot">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">A custom bot with real moderation tools.</p>
+                <ul><li>Warn, timeout, kick and ban commands</li><li>Every action saved as a case you can look up</li><li>Deployed and running, commands explained to your staff</li></ul>
+                <p class="level__fit"><span>Good for</span> a server with a moderation team</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-keep-spam-and-raids-">
+              <summary><span class="level__name"><span class="level__no">3</span>Full moderation</span><span class="level__price"><b data-price="discord-system">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">Moderation that handles repeat offenders.</p>
+                <ul><li>Everything in Moderation bot</li><li>Automatic escalation for repeat rule breakers</li><li>Appeals and a mod log, like my bot Jinzo</li></ul>
+                <p class="level__fit"><span>Good for</span> a big or busy server</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            </div>
+          </details>
         </li>
-        <li class="want bleed">
-          <h3 class="want__goal">Run my server for me</h3>
-          <p class="want__what">Roles, channels and permissions set up properly, role applications with staff review, welcome messages and a rules command.</p>
-          <p class="want__price"><b data-price="discord-bots">quote on request</b></p>
+        <li class="want bleed want--levels">
+          <details class="want__d">
+            <summary>
+              <h3 class="want__goal">Run my server for me</h3>
+              <p class="want__what">Roles, channels and permissions set up properly, role applications with staff review, welcome messages and a rules command.</p>
+          
+              <span class="want__foot"><span class="want__price"><b data-price="discord-bots">quote on request</b></span><span class="want__more" aria-hidden="true">3 levels <i></i></span></span>
+            </summary>
+            <div class="levels">
+            <details class="level" name="lv-run-my-server-for-me">
+              <summary><span class="level__name"><span class="level__no">1</span>Server setup</span><span class="level__price"><b data-price="discord-bots">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">Roles, channels and permissions, done properly.</p>
+                <ul><li>Roles, channels and permissions set up right</li><li>A welcome message and a rules command</li><li>Staff and member roles that make sense</li></ul>
+                <p class="level__fit"><span>Good for</span> a new server or a messy one</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-run-my-server-for-me">
+              <summary><span class="level__name"><span class="level__no">2</span>One custom bot</span><span class="level__price"><b data-price="discord-bot">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">A bot built for one job.</p>
+                <ul><li>Moderation, role applications or a quiz, your pick</li><li>Deployed and running</li><li>Commands explained so your staff can use them</li></ul>
+                <p class="level__fit"><span>Good for</span> one repeated job you want automated</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-run-my-server-for-me">
+              <summary><span class="level__name"><span class="level__no">3</span>The full system</span><span class="level__price"><b data-price="discord-system">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">The whole thing, end to end.</p>
+                <ul><li>Moderation with logged cases, role applications and welcome</li><li>An AI chat bot that knows your real rules</li><li>Set up and handed over, like Jinzo and Cosmou</li></ul>
+                <p class="level__fit"><span>Good for</span> a server that wants it all</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            </div>
+          </details>
         </li>
         <li class="want bleed">
           <h3 class="want__goal">A bot that feels like part of the server</h3>
           <p class="want__what">Replies in character, looks up your real rules and server info instead of guessing, and only moderates when a mod confirms it with a button.</p>
           <p class="want__price"><b data-price="ai">quote on request</b></p>
         </li>
-        <li class="want bleed">
-          <h3 class="want__goal">A site for my business</h3>
-          <p class="want__what">A fast single page or small site that looks sharp on a phone and does one job: get people to contact you.</p>
-          <p class="want__price"><b data-price="websites">quote on request</b></p>
+        <li class="want bleed want--levels">
+          <details class="want__d">
+            <summary>
+              <h3 class="want__goal">A site for my business</h3>
+              <p class="want__what">A fast single page or small site that looks sharp on a phone and does one job: get people to contact you.</p>
+          
+              <span class="want__foot"><span class="want__price"><b data-price="websites">quote on request</b></span><span class="want__more" aria-hidden="true">3 levels <i></i></span></span>
+            </summary>
+            <div class="levels">
+            <details class="level" name="lv-a-site-for-my-busine">
+              <summary><span class="level__name"><span class="level__no">1</span>Landing page</span><span class="level__price"><b data-price="websites">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">One page that does one job.</p>
+                <ul><li>Looks sharp on a phone</li><li>Your text and links, live on a free host</li><li>One round of small tweaks included</li></ul>
+                <p class="level__fit"><span>Good for</span> a business that needs a link to send people to</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-a-site-for-my-busine">
+              <summary><span class="level__name"><span class="level__no">2</span>Small site</span><span class="level__price"><b data-price="website-small">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">A few pages that work together.</p>
+                <ul><li>Up to about five pages</li><li>A contact path that works</li><li>Your own look, not a template</li></ul>
+                <p class="level__fit"><span>Good for</span> a small business or a portfolio</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-a-site-for-my-busine">
+              <summary><span class="level__name"><span class="level__no">3</span>Showpiece</span><span class="level__price"><b data-price="custom-showpiece">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">A site people remember.</p>
+                <ul><li>A custom look, like my home page</li><li>Hand-built effects and animation</li><li>Fast, accessible and tested on phones</li></ul>
+                <p class="level__fit"><span>Good for</span> when the site itself is the pitch</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            </div>
+          </details>
         </li>
-        <li class="want bleed">
-          <h3 class="want__goal">A custom web app or tool</h3>
-          <p class="want__what">Internal tools and small web apps built around how you actually work.</p>
-          <p class="want__price"><b data-price="web-apps">quote on request</b></p>
+        <li class="want bleed want--levels">
+          <details class="want__d">
+            <summary>
+              <h3 class="want__goal">A custom web app or tool</h3>
+              <p class="want__what">Internal tools and small web apps built around how you actually work.</p>
+          
+              <span class="want__foot"><span class="want__price"><b data-price="web-apps">quote on request</b></span><span class="want__more" aria-hidden="true">3 levels <i></i></span></span>
+            </summary>
+            <div class="levels">
+            <details class="level" name="lv-a-custom-web-app-or-">
+              <summary><span class="level__name"><span class="level__no">1</span>Small tool</span><span class="level__price"><b data-price="web-apps">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">One job done well.</p>
+                <ul><li>No logins needed</li><li>Deployed so you can use it</li><li>A short note on how it works</li></ul>
+                <p class="level__fit"><span>Good for</span> a calculator, tracker or one-off tool</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-a-custom-web-app-or-">
+              <summary><span class="level__name"><span class="level__no">2</span>App with accounts</span><span class="level__price"><b data-price="web-app-standard">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">Logins and a database.</p>
+                <ul><li>Logins and a database</li><li>Hosting set up and running</li><li>A handover so you can keep going</li></ul>
+                <p class="level__fit"><span>Good for</span> something your team or members use</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            <details class="level" name="lv-a-custom-web-app-or-">
+              <summary><span class="level__name"><span class="level__no">3</span>Full app</span><span class="level__price"><b data-price="web-app-full">quote on request</b></span></summary>
+              <div class="level__body">
+                <p class="level__line">A bigger app with several parts.</p>
+                <ul><li>Several features and user roles</li><li>Security basics built in</li><li>Written notes on how it all works</li></ul>
+                <p class="level__fit"><span>Good for</span> a real product, not a quick tool</p>
+                <a class="btn btn--small" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+              </div>
+            </details>
+            </div>
+          </details>
         </li>
         <li class="want bleed">
           <h3 class="want__goal">A backend or API</h3>
