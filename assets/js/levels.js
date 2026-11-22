@@ -15,7 +15,11 @@
   const root = document.documentElement;
   const cards = [...section.querySelectorAll('.want')];
   const label = section.querySelector('.more__k');
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  // devices that ask for reduced motion get a plain dropdown. Opening the page with ?motion=on
+  // forces the animation anyway, so it can be tried on a device that has that setting turned on.
+  const media = matchMedia('(prefers-reduced-motion: reduce)');
+  const force = new URLSearchParams(location.search).get('motion') === 'on';
+  const reduce = { get matches() { return media.matches && !force; } };
   root.classList.add('js-levels');
 
   let busy = false;
