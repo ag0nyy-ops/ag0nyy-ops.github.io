@@ -8,7 +8,7 @@ How everything Jay makes should look and sound: websites, apps, bots, banners, i
 
 ## 1. Paste this to a future Claude
 
-> Build it in Jay's style. It's a **classified-file / surveillance-dossier** look: pure black and white, a watching eye as the mascot, blackletter for names and big titles, small wide-spaced uppercase mono labels like a case file ("FILE 01 / CASE FILES"), hairline borders, rubber stamps (SHIPPED, LIVE, OPEN), film grain and a vignette. Fonts: UnifrakturMaguntia (titles and the name "Jay"), IBM Plex Mono (labels, UI, prices), IBM Plex Sans (reading text), all self-hosted. Colours: `#060606` background, `#ececec` text, and greys made with `color-mix` from those two. No other colours. Motion is CSS only, springy and quiet, and does nothing for `prefers-reduced-motion`. Plain HTML/CSS/JS, no framework, no trackers, no third-party requests. Copy is short, dry and honest: no invented testimonials, stats, clients or claims, and unfinished things are hidden, not shown as placeholders. Import `style/tokens.css` and follow `style/STYLE.md`.
+> Build it in Jay's style. It's a **classified-file / surveillance-dossier** look: pure black and white, a watching eye as the mascot, blackletter for names and big titles, small wide-spaced uppercase mono labels like a case file ("FILE 01 / CASE FILES"), hairline borders, rubber stamps (SHIPPED, LIVE, OPEN), film grain and a vignette. Fonts: UnifrakturMaguntia (titles and the name "Jay"), IBM Plex Mono (labels, UI, prices), IBM Plex Sans (reading text), all self-hosted. Colours: `#060606` background, `#ececec` text, and greys made with `color-mix` from those two. No other colours. Motion is CSS only, springy and quiet, and does nothing on its own for `prefers-reduced-motion` (animations that only run after a click, like cards pushing aside, still play). Plain HTML/CSS/JS, no framework, no trackers, no third-party requests. Copy is short, dry and honest: no invented testimonials, stats, clients or claims, and unfinished things are hidden, not shown as placeholders. Import `style/tokens.css` and follow `style/STYLE.md`.
 
 ---
 
@@ -61,6 +61,9 @@ All are in `tokens.css` and shown in `demo.html`.
 - **Card** `.card`: a "case file", with a tab label like "CASE 001" and a stamp in the corner.
 - **Redaction bars**: descriptions can sit under a solid `--fg` bar that peels away on scroll.
 - **Callout**: a box with a 1px `--fg` border and small solid square corners on two opposite corners, a big blackletter link, and a big stamp.
+- **Level tabs** `.level-tabs` / `.level-tab` / `.level-panel`: a card with levels (Quick fix / Setup / Plan) shows them as 3 tabs with a price each; the selected tab is inverted and the box below swaps to that level's info, sliding in from the side. Every tab has its own price.
+- **Draggable boxes** `.wall` > `.thing` (with `.thing__grip` tab, `__cat`, `__title`, `__line`, `__foot`, `__price`, `__tag`; `--built` tag = "built it before"): `assets/js/wall.js` (`JayWall(el)`) lets you drag a box by its top tab. Boxes it hits get knocked away, then all of them spring back to their grid spot, with collisions the whole time, so nothing passes through anything. Stage clips its edges, so no sideways scroll.
+- **Prices on everything**: every item gets its own "from $N" (monospace, in the card footer), never "ask me". Honest estimates, kept in one data file, editable in one place. Things that are unproven are not priced as sure things ("yes or no first").
 - **Atmosphere**: one film-grain layer plus a vignette (`.atmosphere`). Grain is a pre-rendered 46 KB PNG tiled at 128px with its transparency baked in. Do not use a live SVG noise filter for it (slow).
 
 ## 7. Imagery
@@ -79,6 +82,8 @@ All are in `tokens.css` and shown in `demo.html`.
 - Easing: `--ease-liquid` for glides, `--ease-ink` for slow-fast-slow pours, `--ease-spring` for anything that should overshoot and settle. Animated avatars and loops use real damped springs, and the last move settles into the first frame so the loop is seamless.
 - Scares are subtle and rare: a brief chromatic glitch, a blink. **Never strobe or flash.**
 - `prefers-reduced-motion` turns off all motion and glitches. `prefers-contrast: more` removes the darkness overlays. Browsers without scroll-driven animation get a static, fully visible page.
+- **Push-aside cards.** Opening a card on a grid row shoves only the other cards on that same row off the screen sideways (staggered, nearest first, rotating slightly, by transform only), then the card widens into the gap; closing runs it backwards. Cards on other rows stay put. It uses the Web Animations API on click, so it always plays, even with reduced motion (it only runs after a click, never on its own). Never allow sideways scroll: `overflow-x: clip` on html and body.
+- **Fade-in walls.** A big set of boxes fades in with a short stagger (opacity plus the `translate` property, WAAPI) instead of popping in.
 - **Adaptive quality (3 tiers).** The live site picks `full`, `balanced` or `low` from cheap hints and measured frame rate, never goes back up in a visit, remembers it in `sessionStorage` only, and offers a "SIGHT: FULL / LIMITED / MIN" toggle plus `?fx=full|balanced|low`. Copy that pattern for anything effect-heavy.
 
 ## 9. Performance
