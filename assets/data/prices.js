@@ -28,13 +28,17 @@ window.PRICES = {
     'website-small':    { amount: 150 },                    // websites: small site
     'web-app-standard': { amount: 300 },                    // web apps: app with accounts
     'web-app-full':     { amount: 500 },                    // web apps: full app
+    // --- the big jobs (estimates: the final price is quoted after a feasibility check) ---
+    'embedded':         { amount: 300 },                    // embedded + hardware projects
+    'ios-app':          { amount: 500 },                    // a full custom iOS app
+    'ai-assistant':     { amount: 300 },                    // an AI assistant wired into your tools
     'backends':         { amount: 100 },                    // APIs, backends + hosting
     'websites':         { amount: 75 },                     // websites + landing pages
     'web-apps':         { amount: 150 },                    // 02 custom web apps + tools
     'ai':               { amount: 100 },                    // 03 ai chatbots + integrations
     'automation':       { amount: 40 },                     // 04 automation + scripts
     'discord-bots':     { amount: 50 },                     // 05 discord bots + server setup
-    'mobile':           { amount: null },                   // 06 ios / mobile prototypes
+    'mobile':           { amount: 100 },                    // ios / mobile prototypes
     'maintenance':      { amount: 15, per: ' per fix',      // 07 fixes + maintenance
                           or: { amount: 15, per: '/mo care plan' } },
     'custom-showpiece': { amount: 300 },                    // the "like this one" line
