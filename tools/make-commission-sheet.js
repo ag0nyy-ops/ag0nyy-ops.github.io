@@ -33,6 +33,7 @@ const rows = [
   ['Fixes + care plan', price('maintenance').replace(', or ', ' / ').replace(' per fix', '/fix').replace('/mo care plan', '/mo')],
   ['iOS / mobile prototypes', price('mobile')],
   ['Custom showpiece site', price('custom-showpiece')],
+  ['Something unusual? ask', 'straight yes or no'],
 ];
 
 function body() {
@@ -45,29 +46,29 @@ function body() {
 
   // price rows with dotted leaders, like the site's rate sheet
   rows.forEach(([name, amt], i) => {
-    const y = 382 + i * 60;
+    const y = 380 + i * 55;
     s += `<text x="${X0}" y="${y}" font-size="31" font-weight="600" fill="${FG}">${esc(name)}</text>`;
     s += `<text x="${X1}" y="${y}" font-size="29" text-anchor="end" fill="${MUTED}">${esc(amt)}</text>`;
     s += `<path d="M${X0} ${y + 20} H${X1}" stroke="${LINE}" stroke-width="2" stroke-dasharray="2 8"/>`;
   });
 
   // paying
-  const py = 382 + rows.length * 60 + 36;
+  const py = 380 + rows.length * 55 + 34;
   s += `<text x="${X0}" y="${py}" font-size="26" letter-spacing="7" fill="${MUTED}">HOW PAYING WORKS</text>`;
   const pay = [['UNDER $40', 'after it works'], ['$40 – $149', 'everything up front'], ['$150 AND UP', 'half to start, half on delivery']];
   pay.forEach(([a, b], i) => {
-    const y = py + 54 + i * 50;
+    const y = py + 50 + i * 44;
     s += `<text x="${X0}" y="${y}" font-size="29" font-weight="600" fill="${FG}">${esc(a)}</text>`;
     s += `<text x="${X0 + 270}" y="${y}" font-size="29" fill="${MUTED}">${esc(b)}</text>`;
   });
-  const ay = py + 54 + 3 * 50 + 14;
+  const ay = py + 50 + 3 * 44;
   s += `<text x="${X0}" y="${ay}" font-size="26" letter-spacing="7" fill="${MUTED}">ACCEPTED</text>`;
   s += `<text x="${X0 + 270}" y="${ay}" font-size="29" font-weight="600" fill="${FG}">Cash App · Venmo · Zelle</text>`;
 
   // how to book
   const by = H - 168;
   s += `<path d="M${X0} ${by - 52} H${X1}" stroke="${LINE}" stroke-width="3"/>`;
-  s += `<text x="${X0}" y="${by + 6}" font-size="34" font-weight="600" fill="${FG}">DM .jaypatty to commission</text>`;
+  s += `<text x="${X0}" y="${by + 6}" font-size="34" font-weight="600" fill="${FG}">DM me to commission</text>`;
   s += `<text x="${X0}" y="${by + 50}" font-size="27" fill="${MUTED}">discord.gg/nGysyw7MgS</text>`;
   s += `<text x="${X0}" y="${by + 90}" font-size="27" fill="${MUTED}">ag0nyy-ops.github.io/commissions.html</text>`;
   s += `<text x="${X0}" y="${by + 138}" font-size="23" fill="${DIM()}">Prices start low while I build my portfolio. They'll go up.</text>`;
