@@ -62,6 +62,39 @@
         <p style="color:var(--muted);margin:0">One honest sentence about what it does.</p>
       </div>
     </section>
+    <section>
+      <p class="label">Level tabs (click one: the box swaps)</p>
+      <div style="margin-top:1rem;max-width:44rem">
+        <div class="level-tabs" role="tablist" id="lt">
+          <button class="level-tab" role="tab" aria-selected="true"><span>Quick fix</span><b>from $20</b></button>
+          <button class="level-tab" role="tab" aria-selected="false"><span>Setup</span><b>from $60</b></button>
+          <button class="level-tab" role="tab" aria-selected="false"><span>Support plan</span><b>from $40/mo</b></button>
+        </div>
+        <div class="level-panel"><div class="level-panel__inner" id="lp"></div></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="label">Draggable boxes (grab the top tab, they collide and spring home)</p>
+      <div class="wall" id="wall" style="margin-top:1rem">
+        <article class="thing"><div class="thing__grip" aria-label="Drag"><i></i><i></i><i></i></div><div class="thing__body"><p class="thing__cat">Data</p><h3 class="thing__title">Clean up a spreadsheet</h3><p class="thing__line">Dupes, typos and formats fixed.</p><div class="thing__foot"><span class="thing__price">from $60</span></div></div></article>
+        <article class="thing"><div class="thing__grip" aria-label="Drag"><i></i><i></i><i></i></div><div class="thing__body"><p class="thing__cat">Data</p><h3 class="thing__title">Moderation bot</h3><p class="thing__line">Warns, timeouts, logs, appeals.</p><div class="thing__foot"><span class="thing__price">from $100</span><span class="thing__tag thing__tag--built">built it before</span></div></div></article>
+        <article class="thing"><div class="thing__grip" aria-label="Drag"><i></i><i></i><i></i></div><div class="thing__body"><p class="thing__cat">Data</p><h3 class="thing__title">Fix my slow PC</h3><p class="thing__line">Find what is slowing it down.</p><div class="thing__foot"><span class="thing__price">from $20/session</span></div></div></article>
+        <article class="thing"><div class="thing__grip" aria-label="Drag"><i></i><i></i><i></i></div><div class="thing__body"><p class="thing__cat">Data</p><h3 class="thing__title">Landing page</h3><p class="thing__line">One clean page that loads fast.</p><div class="thing__foot"><span class="thing__price">from $75</span></div></div></article>
+        <article class="thing"><div class="thing__grip" aria-label="Drag"><i></i><i></i><i></i></div><div class="thing__body"><p class="thing__cat">Data</p><h3 class="thing__title">Weekly report</h3><p class="thing__line">Numbers turned into a short page.</p><div class="thing__foot"><span class="thing__price">from $120</span></div></div></article>
+        <article class="thing"><div class="thing__grip" aria-label="Drag"><i></i><i></i><i></i></div><div class="thing__body"><p class="thing__cat">Data</p><h3 class="thing__title">Login with Discord</h3><p class="thing__line">OAuth2 sign-in done properly.</p><div class="thing__foot"><span class="thing__price">from $200</span></div></div></article>
+      </div>
+    </section>
   </main>
+  <script src="../assets/js/wall.js"></script>
+  <script>
+    // level tabs: swap the panel (the site also slides it and pushes sibling cards aside, see STYLE.md section 8)
+    const L = [['Quick fix','from $20','One thing is broken, I fix it.'],['Setup','from $60','A fresh machine or account set up right.'],['Support plan','from $40/mo','I keep an eye on it and fix things as they come up.']];
+    const tabs = [...document.querySelectorAll('#lt .level-tab')], panel = document.getElementById('lp');
+    const show = (i) => { tabs.forEach((t, j) => t.setAttribute('aria-selected', j === i));
+      panel.innerHTML = '<div class="level__head"><span class="level__title">' + L[i][0] + '</span><b>' + L[i][1] + '</b></div><p style="margin:0;color:var(--muted)">' + L[i][2] + '</p>'; };
+    tabs.forEach((t, i) => t.addEventListener('click', () => show(i))); show(0);
+    JayWall(document.getElementById('wall'));
+  </script>
 </body>
 </html>
