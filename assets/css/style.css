@@ -1585,6 +1585,12 @@
   /* what people ask for: a grid of goal cards, each with its price from prices.js */
   .wants { display: grid; gap: clamp(.8rem, 1.6vw, 1.2rem); grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); margin-bottom: clamp(2rem, 5vw, 3rem); }
   .want { display: flex; flex-direction: column; gap: .7rem; padding: 1.25rem 1.25rem 1.1rem; background: var(--bg-2); border: 1px solid var(--line-strong); }
+  .wants--main { grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); margin-bottom: 1.2rem; }
+  .want--main { border-color: var(--fg); padding: 1.5rem 1.5rem 1.25rem; }
+  .want--main .want__goal { font-size: clamp(1.3rem, 2.2vw, 1.7rem); }
+  .want__proof { font-size: .86rem; line-height: 1.5; color: var(--muted); padding-top: .6rem; border-top: 1px dashed var(--line-strong); }
+  .want__proof a { color: var(--fg); text-underline-offset: .2em; }
+  .more__k { margin: 2.2rem 0 1rem; }
   .want__goal { font: 600 clamp(1.15rem, 2vw, 1.4rem)/1.15 var(--mono); letter-spacing: -.035em; }
   .want__what { color: var(--muted); flex: 1; }
   .want__price { padding-top: .8rem; border-top: 1px dashed var(--line-strong); font: .76rem/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; }

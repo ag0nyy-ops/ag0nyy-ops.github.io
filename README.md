@@ -1,6 +1,6 @@
 # ag0nyy-ops.github.io
 
-My portfolio and commissions page: Discord bots, iOS apps, Roblox and websites.
+My portfolio and commissions page: data analysis, IT support, basic app security, Discord bots and websites.
 
 **Live:** [https://ag0nyy-ops.github.io](https://ag0nyy-ops.github.io/)
 

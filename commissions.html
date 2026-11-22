@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Commissions — jay.</title>
-  <meta name="description" content="Jay's commission sheet: Discord bots, websites, web apps, AI chatbots and automation. What it costs, what you get and how paying works.">
+  <meta name="description" content="Jay's commission sheet: data analysis, IT support, basic app security, Discord bots and websites. What it costs, what you get and how paying works.">
   <meta name="theme-color" content="#060606">
   <meta name="color-scheme" content="dark">
   <meta property="og:type" content="website">
@@ -23,7 +23,7 @@
   <!-- fonts are self-hosted (assets/fonts); preload the two the first screen needs -->
   <link rel="preload" href="assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/css/style.css?v=16">
+  <link rel="stylesheet" href="assets/css/style.css?v=17">
   <script>
     /* The only blocking JS, kept tiny:
        1. skip the eyelid intro on repeat visits this session
@@ -128,9 +128,29 @@
         <h1 class="sh__title distort" id="wants-title" data-text="Commissions">Commissions</h1>
       </header>
 
-      <p class="lede bleed">What server owners and small businesses actually ask me for, what it costs, and how paying works. Prices start low while I build my portfolio. They'll go up.</p>
+      <p class="lede bleed">What people actually ask me for, what it costs, and how paying works. Mostly data, IT help and basic security, plus the Discord and web work I'm known for. Prices start low while I build my portfolio. They'll go up.</p>
 
       <!-- PRICES: every price comes from assets/data/prices.js, same as the home page -->
+      <ul class="wants wants--main">
+        <li class="want bleed want--main">
+          <h3 class="want__goal">Make sense of my data</h3>
+          <p class="want__what">Clean up messy spreadsheets and exports, answer your questions with queries and charts, and set up a report or dashboard you can reuse. Clear answers, no hype.</p>
+          <p class="want__price"><b data-price="data">quote on request</b></p>
+        </li>
+        <li class="want bleed want--main">
+          <h3 class="want__goal">Fix my computer, accounts or setup</h3>
+          <p class="want__what">Troubleshooting, setting up devices, email, accounts, backups and two-factor login, and fixing the annoying stuff that won't work. We go through it over Discord or a call.</p>
+          <p class="want__price"><b data-price="it-support">quote on request</b></p>
+        </li>
+        <li class="want bleed want--main">
+          <h3 class="want__goal">Add logins and protect my app or site</h3>
+          <p class="want__what">OAuth2 logins (Discord, Google, GitHub), tokens stored and refreshed safely, sessions and cookies locked down, security headers, and secrets kept out of your code. Basic protection, not a security audit, and I'll tell you what it doesn't cover.</p>
+          <p class="want__proof">Built into my own project <a href="https://github.com/ag0nyy-ops/skyscrob" target="_blank" rel="noopener">skyscrob</a>: encrypted token storage, CSRF-protected sessions, security headers and a scanner that checks git history for leaked secrets.</p>
+          <p class="want__price"><b data-price="security">quote on request</b></p>
+        </li>
+      </ul>
+
+      <p class="label more__k bleed">More I build</p>
       <ul class="wants">
         <li class="want bleed">
           <h3 class="want__goal">Keep spam and raids out</h3>
@@ -138,8 +158,8 @@
           <p class="want__price"><b data-price="discord-bots">quote on request</b></p>
         </li>
         <li class="want bleed">
-          <h3 class="want__goal">Let members apply for roles</h3>
-          <p class="want__what">An application form with proof upload, a staff review inbox, and approve or deny with the member told the result.</p>
+          <h3 class="want__goal">Run my server for me</h3>
+          <p class="want__what">Roles, channels and permissions set up properly, role applications with staff review, welcome messages and a rules command.</p>
           <p class="want__price"><b data-price="discord-bots">quote on request</b></p>
         </li>
         <li class="want bleed">
@@ -148,19 +168,19 @@
           <p class="want__price"><b data-price="ai">quote on request</b></p>
         </li>
         <li class="want bleed">
-          <h3 class="want__goal">Welcome people and show the rules</h3>
-          <p class="want__what">Welcome and goodbye messages, a rules command, role setup, channels and permissions set up properly.</p>
-          <p class="want__price"><b data-price="discord-bots">quote on request</b></p>
-        </li>
-        <li class="want bleed">
           <h3 class="want__goal">A site for my business</h3>
           <p class="want__what">A fast single page or small site that looks sharp on a phone and does one job: get people to contact you.</p>
           <p class="want__price"><b data-price="websites">quote on request</b></p>
         </li>
         <li class="want bleed">
-          <h3 class="want__goal">A custom app or dashboard</h3>
-          <p class="want__what">Internal tools, dashboards and small web apps built around how you actually work.</p>
+          <h3 class="want__goal">A custom web app or tool</h3>
+          <p class="want__what">Internal tools and small web apps built around how you actually work.</p>
           <p class="want__price"><b data-price="web-apps">quote on request</b></p>
+        </li>
+        <li class="want bleed">
+          <h3 class="want__goal">A backend or API</h3>
+          <p class="want__what">A small backend with a database, deployed and running, so your app has something to talk to.</p>
+          <p class="want__price"><b data-price="backends">quote on request</b></p>
         </li>
         <li class="want bleed">
           <h3 class="want__goal">Take the boring work off my hands</h3>
@@ -224,6 +244,7 @@
       <ul class="goodtoknow bleed">
         <li>The timeline is agreed before I start. I won't promise a date I can't keep.</li>
         <li>Prices on this page are starting prices; the quote is what counts.</li>
+        <li>Security work is the basics. I add sensible protection and tell you what it doesn't cover. It isn't an audit, a penetration test or a guarantee, and I won't say it is.</li>
         <li>Not on the menu: Minecraft builds. Anything else, ask. If I can't do it well I'll say no, not take your money and wing it.</li>
       </ul>
     </section>
