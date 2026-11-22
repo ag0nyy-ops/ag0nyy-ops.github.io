@@ -1,5 +1,5 @@
 // node tools/make-commission-sheet.js — the price sheet to post and pin in Discord
-//   assets/commissions/sheet.png   1080x1350 (4:5), exported at 2x
+//   assets/commissions/sheet.png   1080x1500, exported at 2x
 //   assets/commissions/sheet.svg   self-contained source (fonts + grain embedded, no external requests)
 // Prices are read from assets/data/prices.js, so the sheet and the site can't disagree.
 // Payment rules and wording mirror commissions.html. Change them in both places.
@@ -20,18 +20,21 @@ const money = (p) => P.currency + p.amount + (p.per || '');
 const price = (key) => { const i = P.items[key]; return i.amount == null ? P.onRequest : `${P.label} ${money(i)}${i.or ? ', or ' + money(i.or) : ''}`; };
 
 const FG = '#ececec', MUTED = '#b4b4b4', LINE = '#3a3a3a', BG = '#060606';
-const W = 1080, H = 1350, X0 = 72, X1 = W - 72;
+const W = 1080, H = 1500, X0 = 72, X1 = W - 72;
 const JAY = JSON.parse(fs.readFileSync(R + 'tools/jay-outline.json', 'utf8'));
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 const rows = [
+  ['Data analysis + dashboards', price('data')],
+  ['IT support + troubleshooting', price('it-support')],
+  ['Security basics: logins + protection', price('security')],
   ['Discord bots + server setup', price('discord-bots')],
   ['Websites + landing pages', price('websites')],
-  ['AI chatbots + integrations', price('ai')],
   ['Custom web apps + tools', price('web-apps')],
+  ['APIs, backends + hosting', price('backends')],
+  ['AI chatbots + integrations', price('ai')],
   ['Automation + scripts', price('automation')],
   ['Fixes + care plan', price('maintenance').replace(', or ', ' / ').replace(' per fix', '/fix').replace('/mo care plan', '/mo')],
-  ['iOS / mobile prototypes', price('mobile')],
   ['Custom showpiece site', price('custom-showpiece')],
   ['Something unusual? ask', 'straight yes or no'],
 ];
@@ -46,14 +49,14 @@ function body() {
 
   // price rows with dotted leaders, like the site's rate sheet
   rows.forEach(([name, amt], i) => {
-    const y = 380 + i * 55;
+    const y = 380 + i * 52;
     s += `<text x="${X0}" y="${y}" font-size="31" font-weight="600" fill="${FG}">${esc(name)}</text>`;
     s += `<text x="${X1}" y="${y}" font-size="29" text-anchor="end" fill="${MUTED}">${esc(amt)}</text>`;
     s += `<path d="M${X0} ${y + 20} H${X1}" stroke="${LINE}" stroke-width="2" stroke-dasharray="2 8"/>`;
   });
 
   // paying
-  const py = 380 + rows.length * 55 + 34;
+  const py = 380 + rows.length * 52 + 34;
   s += `<text x="${X0}" y="${py}" font-size="26" letter-spacing="7" fill="${MUTED}">HOW PAYING WORKS</text>`;
   const pay = [['UNDER $40', 'after it works'], ['$40 – $149', 'everything up front'], ['$150 AND UP', 'half to start, half on delivery']];
   pay.forEach(([a, b], i) => {
