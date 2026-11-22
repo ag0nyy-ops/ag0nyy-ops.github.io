@@ -23,7 +23,7 @@
   <!-- fonts are self-hosted (assets/fonts); preload the two the first screen needs -->
   <link rel="preload" href="assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/css/style.css?v=19">
+  <link rel="stylesheet" href="assets/css/style.css?v=21">
   <script>
     /* The only blocking JS, kept tiny:
        1. skip the eyelid intro on repeat visits this session
@@ -54,7 +54,10 @@
     })(document.documentElement);
   </script>
   <script src="assets/js/main.js?v=14" defer></script>
-  <script src="assets/js/levels.js?v=2" defer></script>
+  <script src="assets/js/levels.js?v=3" defer></script>
+  <script src="assets/data/everything.js?v=1" defer></script>
+  <script src="assets/js/wall.js?v=2" defer></script>
+  <script src="assets/js/everything.js?v=1" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -513,6 +516,21 @@
           <li><a href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener">GitHub / ag0nyy-ops ↗</a></li>
         </ul>
       </div>
+    </section>
+
+    <!-- ================= EVERYTHING ================= -->
+    <section class="section everything" id="everything" tabindex="-1" aria-labelledby="everything-title">
+      <span class="section__ghost" aria-hidden="true">04</span>
+      <header class="sh">
+        <p class="sh__label">File 05 / Everything</p>
+        <h2 class="sh__title distort" id="everything-title" data-text="Everything">Everything</h2>
+      </header>
+      <noscript><p class="everything__note">This part needs JavaScript. Ask me on Discord what I can do and I'll tell you straight.</p></noscript>
+      <div class="everything__bar bleed">
+        <button class="btn btn--solid everything__btn" type="button" hidden aria-expanded="false" aria-controls="everything-stage">I want to see EVERYTHING you can do</button>
+        <p class="everything__note" hidden>100 different things, each with its own level and price. Every box is something I would take on. The ones marked "built it before" I already have, like in skyscrob and my Discord bots. The rest I would work out with you first, and I tell you which before any money moves. Try it: grab a box by its top tab and drag it around.</p>
+      </div>
+      <div class="everything__stage" id="everything-stage" hidden></div>
     </section>
   </main>
 

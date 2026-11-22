@@ -1657,15 +1657,61 @@
   .level__fit span { margin-right: .5em; font: .68rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--fg); }
   .level__body .btn { justify-self: start; }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .want__d::details-content, .level::details-content { block-size: 0; overflow: clip; transition: block-size .4s var(--ease-liquid), content-visibility .4s allow-discrete; }
-    .want__d[open]::details-content, .level[open]::details-content { block-size: auto; }
-  }
+  /* these only ever run right after a click, so they play even with reduce-motion on */
+  .want__d::details-content, .level::details-content { block-size: 0; overflow: clip; transition: block-size .4s var(--ease-liquid), content-visibility .4s allow-discrete; }
+  .want__d[open]::details-content, .level[open]::details-content { block-size: auto; }
+
+  /* ---- level tabs: with JavaScript the levels become tabs and the box swaps to the chosen level ---- */
+  .js-levels .want--levels .levels { display: none; }
+  .level-ui { display: grid; gap: 1rem; padding: .4rem 1.25rem 1.25rem; }
+  .want--main .level-ui { padding: .4rem 1.5rem 1.5rem; }
+  .level-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+  @media (max-width: 40rem) { .level-tabs { grid-template-columns: 1fr; } }
+  .level-tab { display: flex; justify-content: space-between; align-items: baseline; gap: .8rem; padding: .9rem 1rem;
+    border: 1px solid var(--line-strong); background: var(--bg); color: var(--fg); cursor: pointer; text-align: left;
+    font: 600 1rem/1.2 var(--mono); letter-spacing: -.02em; transition: background .25s, color .25s, border-color .25s; }
+  .level-tab:hover { border-color: var(--fg); }
+  .level-tab[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .level-tab .level__price, .level-tab .level__price b, .level-tab .level__no { color: inherit; }
+  .level-tab .level__no { opacity: .6; }
+  .level-panel { overflow: clip; }
+  .level-panel__inner { display: grid; gap: .9rem; padding: 1.2rem; border: 1px solid var(--fg); background: var(--bg-2); }
+  .level-panel__inner ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .35rem; list-style: square; color: var(--muted); }
+  .level-panel__inner li::marker { color: var(--fg); }
+  .level-panel__inner .level__line { margin: 0; }
+  .level-panel__inner .btn { justify-self: start; }
+  .level__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .4rem 1rem; }
+  .level__title { font: 600 clamp(1.3rem, 2.6vw, 1.8rem)/1.1 var(--mono); letter-spacing: -.04em; }
+  .js-levels .want--levels.is-open .want__foot { justify-content: flex-end; border-top: 0; padding-top: 0; }
+  .js-levels .want--levels.is-open .want__foot .want__price { display: none; }
 
   /* ---- the push-aside animation (assets/js/levels.js) ---- */
   .want[hidden], .more__k[hidden] { display: none !important; }
   .wants:not(:has(> .want:not([hidden]))) { display: none; }
   .want--levels.is-open { grid-column: 1 / -1; border-color: var(--fg); }
+
+  /* ---- "I want to see EVERYTHING": 100 draggable boxes (assets/js/everything.js + wall.js) ---- */
+  .everything__bar { display: grid; gap: 1.1rem; justify-items: start; margin-bottom: 1.5rem; }
+  .everything__btn { font-size: clamp(.8rem, 2.2vw, 1rem); padding: 1.2em 1.6em; text-align: left; }
+  .everything__note { max-width: 62ch; margin: 0; color: var(--muted); }
+  .everything__stage { position: relative; display: grid; gap: 12px; padding: 14px; overflow: clip;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); border: 1px dashed var(--line-strong); }
+  .everything__stage[hidden] { display: none; }
+  .thing { position: relative; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line-strong); will-change: transform; }
+  .thing.is-dragging { z-index: 5; border-color: var(--fg); box-shadow: 0 20px 48px rgb(0 0 0 / .65); }
+  .thing__grip { display: flex; align-items: center; justify-content: center; gap: 5px; height: 1.7rem; cursor: grab; touch-action: none;
+    border-bottom: 1px solid var(--line-strong); background: color-mix(in oklab, var(--fg) 7%, var(--bg)); }
+  .thing.is-dragging .thing__grip { cursor: grabbing; background: var(--fg); }
+  .thing__grip i { width: 4px; height: 4px; background: var(--muted); }
+  .thing.is-dragging .thing__grip i { background: var(--bg); }
+  .thing__body { display: grid; gap: .45rem; flex: 1; padding: .9rem 1rem 1rem; align-content: start; }
+  .thing__cat { margin: 0; font: .66rem/1.35 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .thing__title { margin: 0; font: 600 1.08rem/1.2 var(--mono); letter-spacing: -.03em; }
+  .thing__line { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.45; }
+  .thing__foot { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; margin-top: auto; padding-top: .7rem; border-top: 1px dashed var(--line-strong); }
+  .thing__price { font: 600 1rem/1.2 var(--mono); }
+  .thing__tag { font: .62rem/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); text-align: right; }
+  .thing__tag--built { padding: .25rem .4rem; border: 1px solid var(--line-strong); color: var(--fg); }
 
   /* the current page in the top bar stays fully lit */
   .topbar__nav a[aria-current="page"] { opacity: 1; }
