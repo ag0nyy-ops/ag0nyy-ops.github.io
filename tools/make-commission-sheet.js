@@ -58,7 +58,7 @@ function body() {
   // paying
   const py = 380 + rows.length * 52 + 34;
   s += `<text x="${X0}" y="${py}" font-size="26" letter-spacing="7" fill="${MUTED}">HOW PAYING WORKS</text>`;
-  const pay = [['UNDER $40', 'after it works'], ['$40 – $149', 'everything up front'], ['$150 AND UP', 'half to start, half on delivery']];
+  const pay = [['UNDER $25', 'after it works'], ['$25 – $79', 'everything up front'], ['$80 AND UP', 'half to start, half on delivery']];
   pay.forEach(([a, b], i) => {
     const y = py + 50 + i * 44;
     s += `<text x="${X0}" y="${y}" font-size="29" font-weight="600" fill="${FG}">${esc(a)}</text>`;

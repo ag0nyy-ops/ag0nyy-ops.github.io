@@ -1622,14 +1622,14 @@
   /* ---- levels: a card that has them opens like a dropdown (native <details>, no JavaScript).
      Each level is a <details name="…"> too, so opening one closes the others where the browser
      supports exclusive groups. An open card spans the whole row so the levels have room. ---- */
-  .want--levels { padding: 0; display: block; }
-  .want__d { display: block; height: 100%; }
-  .want__d > summary { display: flex; flex-direction: column; gap: .7rem; height: 100%; padding: 1.25rem 1.25rem 1.1rem; cursor: pointer; list-style: none; }
+  .want--levels { padding: 0; display: flex; flex-direction: column; gap: 0; }
+  .want__d { display: flex; flex-direction: column; flex: 1; }
+  .want__d > summary { display: flex; flex-direction: column; gap: .7rem; flex: 1; padding: 1.25rem 1.25rem 1.1rem; cursor: pointer; list-style: none; }
   .want--main.want--levels { padding: 0; }
   .want--main .want__d > summary { padding: 1.5rem 1.5rem 1.25rem; }
   .want__d > summary::-webkit-details-marker, .level > summary::-webkit-details-marker { display: none; }
   .want__d > summary::marker, .level > summary::marker { content: ""; }
-  .want__d[open] > summary { height: auto; }
+  .want__d[open] > summary { flex: none; }
   .want--levels:has(> .want__d[open]) { grid-column: 1 / -1; border-color: var(--fg); }
   .want__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; padding-top: .8rem; border-top: 1px dashed var(--line-strong); }
   .want__foot .want__price { padding: 0; border: 0; }
@@ -1694,8 +1694,9 @@
   .everything__bar { display: grid; gap: 1.1rem; justify-items: start; margin-bottom: 1.5rem; }
   .everything__btn { font-size: clamp(.8rem, 2.2vw, 1rem); padding: 1.2em 1.6em; text-align: left; }
   .everything__note { max-width: 62ch; margin: 0; color: var(--muted); }
-  .everything__stage { position: relative; display: grid; gap: 12px; padding: 14px; overflow: clip;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); border: 1px dashed var(--line-strong); }
+  .everything { margin: clamp(2rem, 5vw, 3.2rem) 0; }
+  .everything__stage { position: relative; display: grid; gap: clamp(22px, 3vw, 36px); padding: clamp(18px, 3vw, 36px);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); border: 1px dashed var(--line-strong); }
   .everything__stage[hidden] { display: none; }
   .thing { position: relative; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line-strong); will-change: transform; }
   .thing.is-dragging { z-index: 5; border-color: var(--fg); box-shadow: 0 20px 48px rgb(0 0 0 / .65); }
@@ -1704,7 +1705,13 @@
   .thing.is-dragging .thing__grip { cursor: grabbing; background: var(--fg); }
   .thing__grip i { width: 4px; height: 4px; background: var(--muted); }
   .thing.is-dragging .thing__grip i { background: var(--bg); }
-  .thing__body { display: grid; gap: .45rem; flex: 1; padding: .9rem 1rem 1rem; align-content: start; }
+  .thing__body { display: grid; gap: .5rem; flex: 1; padding: 1.1rem 1.2rem 1.2rem; align-content: start; }
+  /* the commission cards get the same grip tab (added by levels.js) */
+  .want > .thing__grip { margin: -1.25rem -1.25rem .1rem; flex: none; }
+  .want--levels > .thing__grip, .want--main > .thing__grip { margin: 0; }
+  .want.is-dragging { position: relative; z-index: 5; border-color: var(--fg); box-shadow: 0 20px 48px rgb(0 0 0 / .65); }
+  .want.is-dragging > .thing__grip { cursor: grabbing; background: var(--fg); }
+  .want.is-dragging > .thing__grip i { background: var(--bg); }
   .thing__cat { margin: 0; font: .66rem/1.35 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   .thing__title { margin: 0; font: 600 1.08rem/1.2 var(--mono); letter-spacing: -.03em; }
   .thing__line { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.45; }
