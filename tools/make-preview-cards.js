@@ -97,7 +97,7 @@ const CARDS = [
     <div class="h" style="top:122px">Commissions</div>
     ${[['Discord bots', 'discord-bots'], ['Websites', 'websites'], ['Web apps + tools', 'web-apps'], ['Automation', 'automation']].map(([n, k], i) =>
       `<div class="row" style="top:${300 + i * 118}px;width:430px"><span style="margin:0 0 8px;font-size:21px;letter-spacing:.14em;text-transform:uppercase">${n}</span><b style="font-size:44px;letter-spacing:-.04em">${esc(price(k))}</b></div>`).join('')}
-    <div class="abs" style="left:72px;top:900px;font:600 34px/1.2 M">DM .jaypatty</div>
+    <div class="abs" style="left:72px;top:900px;font:600 34px/1.2 M">DM me</div>
     <div class="abs" style="left:72px;top:950px;font:400 24px/1.3 M;color:#a8a8a8">pay after it works, up front,<br>or half and half, by job size</div>
     <div class="shot" style="left:535px;top:262px;width:470px;transform:rotate(4deg)"><img src="${uri('assets/commissions/sheet.png')}"></div>`],
 
