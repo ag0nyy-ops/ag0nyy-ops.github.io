@@ -7,6 +7,9 @@
    2. Inside an open card the levels are tabs: click one and the box swaps to that level's
       info (Quick fix -> Support plan), sliding in from the side.
 
+   3. Every card has a grip tab on top: drag a card anywhere on the page and the cards it hits get
+      knocked around, then they all spring back home (assets/js/wall.js, same as the big wall).
+
    It only adds motion and tabs. Without this script each card is still a plain <details>
    dropdown that lists its levels. Nothing here can make the page scroll sideways: the page
    clips horizontal overflow and cards leave by transform only. The animation always plays,
@@ -21,6 +24,14 @@
   root.classList.add('js-levels');
 
   let busy = false;
+
+  /* the grip tab on top of every card, and the physics that goes with it */
+  cards.forEach((card) => {
+    const grip = document.createElement('div'); grip.className = 'thing__grip'; grip.setAttribute('aria-hidden', 'true');
+    grip.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    card.prepend(grip);
+  });
+  const wall = window.JayWall ? window.JayWall(section, { items: () => cards.filter((c) => !c.hidden), busy: () => busy }) : null;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const rect = (el) => el.getBoundingClientRect();
   const done = (anims) => Promise.all(anims.map((a) => a.finished.catch(() => {})));
@@ -178,9 +189,10 @@
 
   async function toggle(card) {
     if (busy) return;
+    if (wall) wall.settle();         // cards that are still springing home snap back before the layout changes
     busy = true;
     try { await (card.classList.contains('is-open') ? close(card) : open(card)); }
-    finally { busy = false; }
+    finally { busy = false; if (wall) wall.refresh(); }
   }
 
   cards.filter((c) => c.classList.contains('want--levels')).forEach((card) => {
