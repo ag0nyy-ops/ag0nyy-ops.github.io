@@ -1574,3 +1574,42 @@
     .sight__k { display: none; }   /* "MIN" alone still makes sense next to the eye */
   }
 }
+
+/* --------------------------------------------------------------------------
+   Commissions page (commissions.html): the menu cards, steps and payment table.
+   Reuses the home page's tokens, so a colour or font change there carries over.
+   -------------------------------------------------------------------------- */
+@layer components {
+  .lede { max-width: 62ch; margin-bottom: clamp(1.5rem, 4vw, 2.5rem); color: var(--muted); font-size: clamp(1.05rem, 2vw, 1.3rem); line-height: 1.5; }
+
+  /* what people ask for: a grid of goal cards, each with its price from prices.js */
+  .wants { display: grid; gap: clamp(.8rem, 1.6vw, 1.2rem); grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); margin-bottom: clamp(2rem, 5vw, 3rem); }
+  .want { display: flex; flex-direction: column; gap: .7rem; padding: 1.25rem 1.25rem 1.1rem; background: var(--bg-2); border: 1px solid var(--line-strong); }
+  .want__goal { font: 600 clamp(1.15rem, 2vw, 1.4rem)/1.15 var(--mono); letter-spacing: -.035em; }
+  .want__what { color: var(--muted); flex: 1; }
+  .want__price { padding-top: .8rem; border-top: 1px dashed var(--line-strong); font: .76rem/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+  .want__price b { font-size: 1.05rem; letter-spacing: 0; text-transform: none; }
+
+  /* how it works */
+  .steps { counter-reset: step; display: grid; gap: .9rem; margin-bottom: clamp(2rem, 5vw, 3rem); max-width: 56rem; }
+  .steps li { counter-increment: step; display: grid; grid-template-columns: 2.4rem minmax(0, 1fr); gap: .8rem; padding-bottom: .9rem; border-bottom: 1px dashed var(--line-strong); color: var(--muted); }
+  .steps li::before { content: counter(step, decimal-leading-zero); font: .78rem/1.9 var(--mono); color: var(--muted); }
+  .steps li b { color: var(--fg); font-weight: 600; }
+
+  /* when you pay, by job size */
+  .paytable { width: 100%; max-width: 56rem; border-collapse: collapse; margin-bottom: 1.2rem; font-size: 1.02rem; }
+  .paytable thead th { padding: .6rem .8rem; text-align: left; font: .72rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line-strong); }
+  .paytable tbody th, .paytable td { padding: 1rem .8rem; text-align: left; vertical-align: top; border-bottom: 1px dashed var(--line-strong); }
+  .paytable tbody th { font: 600 1.05rem/1.3 var(--mono); letter-spacing: -.02em; white-space: nowrap; }
+  .paytable tbody th span { font: 400 .75rem/1.4 var(--mono); letter-spacing: .04em; color: var(--muted); }
+  .paymethods { margin-bottom: clamp(2rem, 5vw, 3rem); font: 600 1.05rem/1.4 var(--mono); }
+  .paymethods span { margin-right: .8rem; font: .72rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  @media (max-width: 560px) { .paytable tbody th { white-space: normal; } }
+
+  .goodtoknow__k { margin-bottom: .7rem; font: .75rem/1 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+  .goodtoknow { display: grid; gap: .6rem; max-width: 56rem; padding-left: 1.1rem; list-style: square; color: var(--muted); }
+  .goodtoknow li::marker { color: var(--fg); }
+
+  /* the current page in the top bar stays fully lit */
+  .topbar__nav a[aria-current="page"] { opacity: 1; }
+}
