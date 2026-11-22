@@ -1,0 +1,67 @@
+<!doctype html>
+<!-- Live reference for style/tokens.css: every piece of the style in one page. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Style reference — jay.</title>
+  <link rel="stylesheet" href="tokens.css">
+  <style>
+    .wrap { max-width: var(--max); margin: 0 auto; padding: 6rem var(--gutter) 4rem; display: grid; gap: 3rem; }
+    .row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+    .swatch { width: 9rem; padding: 3.2rem .8rem .7rem; border: 1px solid var(--line-strong); font: .72rem/1.4 var(--mono); }
+    h2 { margin: 0 0 1rem; }
+  </style>
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+  <main class="wrap">
+    <header>
+      <p class="label">Style reference</p>
+      <h1 class="title">Style</h1>
+    </header>
+
+    <section>
+      <p class="label">Colour: black and white only</p>
+      <div class="row" style="margin-top:1rem">
+        <div class="swatch" style="background:var(--bg)">--bg<br>#060606</div>
+        <div class="swatch" style="background:var(--bg-2)">--bg-2</div>
+        <div class="swatch" style="background:var(--line)">--line</div>
+        <div class="swatch" style="background:var(--line-strong)">--line-strong</div>
+        <div class="swatch" style="background:var(--muted);color:var(--bg)">--muted</div>
+        <div class="swatch" style="background:var(--fg);color:var(--bg)">--fg<br>#ececec</div>
+      </div>
+    </section>
+
+    <section>
+      <p class="label">Type</p>
+      <p class="hollow hollow--bold" style="font-size:clamp(4rem,14vw,9rem);line-height:1;margin:.5rem 0 0">Jay</p>
+      <p style="font:600 clamp(1.6rem,3vw,2.3rem)/1.1 var(--mono);letter-spacing:-.045em;margin:1rem 0 0">Mono title, tight tracking</p>
+      <p style="font:400 .75rem/1.3 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--muted)">Mono label, wide tracking</p>
+      <p style="max-width:60ch;color:var(--muted)">Body text is IBM Plex Sans, 17px on a 1.65 line height. Muted text is for secondary lines, never for anything that has to be read quickly.</p>
+    </section>
+
+    <section>
+      <p class="label">Buttons and stamps</p>
+      <div class="row" style="margin-top:1rem">
+        <a class="btn btn--solid" href="#">Primary ↗</a>
+        <a class="btn" href="#">Secondary</a>
+        <span class="stamp">Shipped</span>
+        <span class="stamp">Live</span>
+        <span class="stamp stamp--wip">In progress</span>
+        <span class="stamp stamp--big">Open for commissions</span>
+      </div>
+    </section>
+
+    <section>
+      <p class="label">Card (a "case file")</p>
+      <div class="card" style="margin-top:1rem;max-width:34rem">
+        <p class="label" style="margin:0 0 .6rem">Case 001 · Shipped</p>
+        <h2 style="font:600 1.8rem/1.1 var(--mono);letter-spacing:-.045em">Thing I built</h2>
+        <p style="color:var(--muted);margin:0">One honest sentence about what it does.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

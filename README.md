@@ -93,6 +93,16 @@ python3 -m http.server 8123
 node tools/make-previews-shots.js
 ```
 
+## Style sheet
+
+`style/STYLE.md` is the written style guide for everything I make (with a short paste-this brief for a new Claude at the top). `style/tokens.css` is the drop-in tokens and pieces, and `style/demo.html` shows them all on one page.
+
+## Commissions
+
+`commissions.html` is the full commission sheet: what people ask for, what it costs, how paying works. Prices come from `assets/data/prices.js` like the rest of the site. `assets/commissions/sheet.png` is the same sheet as one image to post and pin in Discord; rebuild it with `node tools/make-commission-sheet.js` after changing a price or the payment rules (the rules live in `commissions.html` and in that script, so change both).
+
+Payment rules: under $40 pay after it works, $40 to $149 everything up front, $150 and up half to start and half on delivery. Accepted: Cash App, Venmo, Zelle.
+
 ## Contact details
 
 - Discord server invite: `https://discord.gg/nGysyw7MgS` (the Discord / book / open-a-case buttons)

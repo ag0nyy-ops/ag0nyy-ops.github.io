@@ -1,0 +1,270 @@
+<!doctype html>
+<!-- jay. — © 2026 Jay — https://ag0nyy-ops.github.io/
+     Source is viewable for learning, not for reuse. See LICENSE. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Commissions — jay.</title>
+  <meta name="description" content="Jay's commission sheet: Discord bots, websites, web apps, AI chatbots and automation. What it costs, what you get and how paying works.">
+  <meta name="theme-color" content="#060606">
+  <meta name="color-scheme" content="dark">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Commissions — Jay">
+  <meta property="og:description" content="What it costs, what you get and how paying works. Open for commissions.">
+  <meta property="og:url" content="https://ag0nyy-ops.github.io/commissions.html">
+  <!-- link preview card: real screenshots of this site, rebuilt with tools/make-previews-shots.js -->
+  <meta property="og:image" content="https://ag0nyy-ops.github.io/assets/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Jay's portfolio: the hollow blackletter name, the tagline Ships real things, and screenshots of the site on desktop and phone.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <!-- fonts are self-hosted (assets/fonts); preload the two the first screen needs -->
+  <link rel="preload" href="assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/style.css?v=16">
+  <script>
+    /* The only blocking JS, kept tiny:
+       1. skip the eyelid intro on repeat visits this session
+       2. pick a provisional effects tier (data-fx) BEFORE first paint, so a
+          weak device never renders the heavy version first. main.js then
+          measures real frame times and makes the final call.
+       Order: ?fx= in the URL > a choice already made this visit > cheap hints.
+       Nothing here leaves the browser; sessionStorage only, no cookies. */
+    (function (d) {
+      var ss; try { ss = sessionStorage; } catch (e) {}
+      try { if (ss.getItem('seen')) d.classList.add('seen'); ss.setItem('seen', '1'); } catch (e) {}
+      var tiers = { full: 1, balanced: 1, low: 1 }, tier, src;
+      var q = new URLSearchParams(location.search).get('fx');
+      var saved = null; try { saved = JSON.parse(ss.getItem('fx')); } catch (e) {}
+      var mm = function (m) { return matchMedia(m).matches; };
+      if (tiers[q]) { tier = q; src = 'url'; }
+      else if (saved && tiers[saved.tier]) { tier = saved.tier; src = saved.src; }
+      else if (mm('(prefers-reduced-motion: reduce)')) { tier = 'low'; src = 'reduced-motion'; }
+      else {
+        var score = 0, c = navigator.connection, dpr = devicePixelRatio || 1;
+        if (c && c.saveData) score += 2;                                     /* asked to save data */
+        if (!mm('(hover: hover) and (pointer: fine)')) score += 1;          /* touch-first device */
+        if (screen.width * screen.height * dpr * dpr > 9e6) score += 1;     /* lots of pixels to fill (4K/5K) */
+        var hc = navigator.hardwareConcurrency; if (hc && hc <= 2) score += 1; /* weak hint: browsers cap/hide it */
+        tier = score >= 3 ? 'low' : score >= 1 ? 'balanced' : 'full'; src = 'hints';
+      }
+      d.setAttribute('data-fx', tier); d.setAttribute('data-fx-src', src);
+    })(document.documentElement);
+  </script>
+  <script src="assets/js/main.js?v=14" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <!-- SVG filters referenced from CSS with filter: url(#…) -->
+  <svg class="fx-defs" data-case="jdx-witness-eb69d0" width="0" height="0" aria-hidden="true" focusable="false">
+    <!-- chromatic aberration: pull R, G and B apart and screen them back together -->
+    <filter id="jdx-rgb-split" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+      <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r"/>
+      <feOffset in="r" dx="-1.2" dy="0" result="r2"/>
+      <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g"/>
+      <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b"/>
+      <feOffset in="b" dx="1.2" dy="0" result="b2"/>
+      <feBlend in="r2" in2="g" mode="screen" result="rg"/>
+      <feBlend in="rg" in2="b2" mode="screen"/>
+    </filter>
+    <!-- liquid warp: turbulence noise used as a displacement map -->
+    <filter id="jdx-warp" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.08" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
+
+  <!-- ===== atmosphere layers (all decorative, all pointer-events: none) ===== -->
+  <div class="ink" aria-hidden="true"></div>
+  <div class="flashlight" aria-hidden="true"><div class="flashlight__track"><div class="flashlight__beam"></div></div></div>
+  <div class="dim" aria-hidden="true"></div>
+  <div class="vhs" aria-hidden="true"></div>
+  <div class="reticle" aria-hidden="true"></div>
+  <p class="whisper" aria-hidden="true" data-edge="right"><span style="--i:0">S</span><span style="--i:1">U</span><span style="--i:2">B</span><span style="--i:3">J</span><span style="--i:4">E</span><span style="--i:5">C</span><span style="--i:6">T</span><span style="--i:7"> </span><span style="--i:8">I</span><span style="--i:9">S</span><span style="--i:10"> </span><span style="--i:11">W</span><span style="--i:12">A</span><span style="--i:13">T</span><span style="--i:14">C</span><span style="--i:15">H</span><span style="--i:16">I</span><span style="--i:17">N</span><span style="--i:18">G</span></p>
+  <!-- custom right-click menu (native popover: Esc + click-away close it for free).
+       Without JS or popover support it never opens and the browser menu is used. -->
+  <div class="ctx" id="ctx" popover role="menu" aria-label="Classified actions">
+    <p class="ctx__head" aria-hidden="true"><span>Classified</span><span>Actions</span></p>
+    <button class="ctx__item" type="button" role="menuitem" data-action="copy"><span class="ctx__no" aria-hidden="true">01</span>Copy Discord handle</button>
+    <a class="ctx__item" role="menuitem" href="index.html"><span class="ctx__no" aria-hidden="true">02</span>Back to the portfolio</a>
+    <a class="ctx__item" role="menuitem" href="#contact"><span class="ctx__no" aria-hidden="true">03</span>Hire me</a>
+    <p class="ctx__hint" aria-hidden="true">Shift + right-click: browser menu</p>
+  </div>
+  <p class="toast" role="status" aria-live="polite"></p>
+
+  <div class="intro" aria-hidden="true"><span class="intro__lid intro__lid--top"></span><span class="intro__lid intro__lid--bottom"></span></div>
+
+  <!-- scroll progress: a 2px line on the right edge, synced with "Declassified %" -->
+  <div class="scrollline" aria-hidden="true"><span class="scrollline__fill"></span></div>
+
+  <header class="topbar">
+    <a class="topbar__logo" href="index.html" aria-label="Jay, back to the home page">
+      <span class="eye eye--logo" style="--jdx-blink:5.3s; --jdx-blink-delay:-1s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span></span>
+      <span class="topbar__name">Jay</span>
+    </a>
+    <nav aria-label="Primary">
+      <ul class="topbar__nav">
+        <li><a href="index.html"><span class="no">←</span>Home</a></li>
+        <li><a href="#wants" aria-current="page"><span class="no">01</span>Menu</a></li>
+        <li><a href="#pay"><span class="no">02</span>Paying</a></li>
+        <li><a href="#contact"><span class="no">03</span>Contact</a></li>
+      </ul>
+    </nav>
+    <p class="topbar__progress" aria-hidden="true">Declassified <span class="pct"></span></p>
+    <!-- effects quality: FULL / LIMITED / MIN (shown once JS is running) -->
+    <button class="sight" type="button" hidden data-sight><span class="sight__k">Sight: </span><b data-fx-label>Full</b></button>
+    <span class="topbar__bar" aria-hidden="true"></span>
+  </header>
+
+  <main id="main">
+    <!-- ================= MENU ================= -->
+    <section class="section" id="wants" tabindex="-1" aria-labelledby="wants-title">
+      <span class="section__ghost" aria-hidden="true">01</span>
+      <header class="sh">
+        <p class="sh__label">File 05 / Commission sheet</p>
+        <h1 class="sh__title distort" id="wants-title" data-text="Commissions">Commissions</h1>
+      </header>
+
+      <p class="lede bleed">What server owners and small businesses actually ask me for, what it costs, and how paying works. Prices start low while I build my portfolio. They'll go up.</p>
+
+      <!-- PRICES: every price comes from assets/data/prices.js, same as the home page -->
+      <ul class="wants">
+        <li class="want bleed">
+          <h3 class="want__goal">Keep spam and raids out</h3>
+          <p class="want__what">A moderation bot: spam, repeated-message and invite-link detection, blocked terms, and every action saved as a case you can look up later.</p>
+          <p class="want__price"><b data-price="discord-bots">quote on request</b></p>
+        </li>
+        <li class="want bleed">
+          <h3 class="want__goal">Let members apply for roles</h3>
+          <p class="want__what">An application form with proof upload, a staff review inbox, and approve or deny with the member told the result.</p>
+          <p class="want__price"><b data-price="discord-bots">quote on request</b></p>
+        </li>
+        <li class="want bleed">
+          <h3 class="want__goal">A bot that feels like part of the server</h3>
+          <p class="want__what">Replies in character, looks up your real rules and server info instead of guessing, and only moderates when a mod confirms it with a button.</p>
+          <p class="want__price"><b data-price="ai">quote on request</b></p>
+        </li>
+        <li class="want bleed">
+          <h3 class="want__goal">Welcome people and show the rules</h3>
+          <p class="want__what">Welcome and goodbye messages, a rules command, role setup, channels and permissions set up properly.</p>
+          <p class="want__price"><b data-price="discord-bots">quote on request</b></p>
+        </li>
+        <li class="want bleed">
+          <h3 class="want__goal">A site for my business</h3>
+          <p class="want__what">A fast single page or small site that looks sharp on a phone and does one job: get people to contact you.</p>
+          <p class="want__price"><b data-price="websites">quote on request</b></p>
+        </li>
+        <li class="want bleed">
+          <h3 class="want__goal">A custom app or dashboard</h3>
+          <p class="want__what">Internal tools, dashboards and small web apps built around how you actually work.</p>
+          <p class="want__price"><b data-price="web-apps">quote on request</b></p>
+        </li>
+        <li class="want bleed">
+          <h3 class="want__goal">Take the boring work off my hands</h3>
+          <p class="want__what">Scripts and automations for the repetitive stuff you do by hand every week.</p>
+          <p class="want__price"><b data-price="automation">quote on request</b></p>
+        </li>
+        <li class="want bleed">
+          <h3 class="want__goal">Someone to fix it when it breaks</h3>
+          <p class="want__what">One-off fixes, or a monthly care plan that keeps things running.</p>
+          <p class="want__price"><b data-price="maintenance">quote on request</b></p>
+        </li>
+      </ul>
+
+      <!-- the "if we can figure it out" door: unusual jobs get a straight yes or no, never a promise -->
+      <div class="callout callout--unusual bleed">
+        <div>
+          <p class="callout__k">Something unusual?</p>
+          <a class="callout__big" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">Send it to me anyway</a>
+          <p class="unusual__text">Embedded systems, hardware, odd integrations, something you can't even name yet. Tell me what you want. If I think I can do it well, I'll quote it. If I can't, I'll say so before you pay anything.</p>
+        </div>
+        <span class="stamp stamp--big">Straight yes or no</span>
+      </div>
+
+      <p class="showpiece bleed">
+        <span class="showpiece__name">Custom showpiece site <span>(like the home page)</span></span>
+        <span class="price__amt"><b data-price="custom-showpiece">quote on request</b></span>
+        <a class="price__cta" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM to book <span aria-hidden="true">↗</span></a>
+      </p>
+      <p class="scope-note bleed">Final price depends on scope. iOS / mobile prototypes and unusual jobs are quoted per project. <a href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">DM me with what you need.</a></p>
+      <script src="assets/data/prices.js?v=8"></script>
+    </section>
+
+    <!-- ================= HOW IT WORKS + PAYING ================= -->
+    <section class="section" id="pay" tabindex="-1" aria-labelledby="pay-title">
+      <span class="section__ghost" aria-hidden="true">02</span>
+      <header class="sh">
+        <p class="sh__label">File 05 / How it works</p>
+        <h2 class="sh__title distort" id="pay-title" data-text="Paying">Paying</h2>
+      </header>
+
+      <ol class="steps">
+        <li class="bleed"><span><b>Tell me what you need.</b> A DM is enough: what it should do and roughly when you need it.</span></li>
+        <li class="bleed"><span><b>I quote it.</b> You get a price and a scope before any money moves. A DM counts as agreeing.</span></li>
+        <li class="bleed"><span><b>You pay.</b> When depends on the size of the job (below).</span></li>
+        <li class="bleed"><span><b>I build it and show you.</b> You test it as it comes together. Small tweaks are included; bigger changes get their own quote.</span></li>
+        <li class="bleed"><span><b>Done.</b> It's handed over working.</span></li>
+      </ol>
+
+      <table class="paytable bleed">
+        <caption class="sr-only">When payment is due, by price</caption>
+        <thead><tr><th scope="col">Job size</th><th scope="col">When you pay</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Under $40<br><span>quick fixes, tiny scripts</span></th><td>After it works. You check it, then pay.</td></tr>
+          <tr><th scope="row">$40 to $149</th><td>Everything up front, then I build it.</td></tr>
+          <tr><th scope="row">$150 and up</th><td>Half to start, half when it's delivered.</td></tr>
+        </tbody>
+      </table>
+      <p class="paymethods bleed"><span>Accepted</span> Cash App, Venmo, Zelle</p>
+
+      <h3 class="goodtoknow__k bleed">Good to know</h3>
+      <ul class="goodtoknow bleed">
+        <li>The timeline is agreed before I start. I won't promise a date I can't keep.</li>
+        <li>Prices on this page are starting prices; the quote is what counts.</li>
+        <li>Not on the menu: Minecraft builds. Anything else, ask. If I can't do it well I'll say no, not take your money and wing it.</li>
+      </ul>
+    </section>
+
+    <!-- ================= CONTACT ================= -->
+    <section class="section contact" id="contact" tabindex="-1" aria-labelledby="contact-title">
+      <span class="section__ghost" aria-hidden="true">03</span>
+      <header class="sh">
+        <p class="sh__label">File 05 / Open a channel</p>
+        <h2 class="sh__title distort" id="contact-title" data-text="Contact">Contact</h2>
+      </header>
+
+      <div class="contact__body bleed">
+        <p class="contact__lead">Discord is the fastest way to reach me. Click the handle to copy it, or select it.</p>
+        <p class="handle"><span id="discord-handle" data-copy="#discord-handle" title="Click to copy">.jaypatty</span></p>
+        <button class="btn btn--small" type="button" data-copy="#discord-handle">Copy handle</button>
+        <p class="contact__status" role="status" aria-live="polite"></p>
+        <a class="btn btn--solid contact__join" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">Join the Discord server ↗</a>
+
+        <!-- email: the address is never in the HTML in one piece, so scrapers reading the raw
+             source don't get it. main.js joins data-u + data-d into the text and the mailto. -->
+        <p class="contact__k">Or email</p>
+        <p class="handle handle--email"><span id="email" data-copy="#email" data-u="ag0nyy" data-d="icloud.com" title="Click to copy">ag0nyy<span class="at"></span>icloud.com</span></p>
+        <a class="btn btn--small" id="email-send" href="#contact" hidden>Send an email</a>
+
+        <ul class="contact__links">
+          <li><a href="https://github.com/ag0nyy-ops" target="_blank" rel="noopener">GitHub / ag0nyy-ops ↗</a></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span class="eye eye--footer" style="--jdx-blink:5.8s; --jdx-blink-delay:-4.4s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+    <p class="footer__end">End of file</p>
+    <div class="footer__row">
+      <p>© Jay. All rights reserved. <a href="https://github.com/ag0nyy-ops/ag0nyy-ops.github.io/blob/main/LICENSE" target="_blank" rel="noopener">Source</a> is viewable for learning, not for reuse.</p>
+      <p><a href="index.html">Home</a> · <a href="privacy.html">Privacy</a></p>
+      <p><a href="#wants">Back to top ↑</a></p>
+    </div>
+    <p class="footer__giant" aria-hidden="true">Jay</p>
+  </footer>
+</body>
+</html>
