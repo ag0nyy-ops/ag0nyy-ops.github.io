@@ -16,6 +16,18 @@ window.PRICES = {
     'data':             { amount: 60 },                     // data analysis + dashboards
     'it-support':       { amount: 20, per: '/session' },    // IT support + troubleshooting
     'security':         { amount: 100 },                    // security basics: logins, tokens, protection
+    // --- levels: each card's first level uses the card's own price above; these are levels 2 and 3 ---
+    'data-report':      { amount: 120 },                    // data: report
+    'data-dashboard':   { amount: 250 },                    // data: dashboard
+    'it-setup':         { amount: 60 },                     // it: setup day
+    'it-plan':          { amount: 40, per: '/mo' },         // it: support plan
+    'security-standard':{ amount: 200 },                    // security: standard
+    'security-full':    { amount: 350 },                    // security: full basics
+    'discord-bot':      { amount: 100 },                    // discord: one custom bot
+    'discord-system':   { amount: 250 },                    // discord: the full system
+    'website-small':    { amount: 150 },                    // websites: small site
+    'web-app-standard': { amount: 300 },                    // web apps: app with accounts
+    'web-app-full':     { amount: 500 },                    // web apps: full app
     'backends':         { amount: 100 },                    // APIs, backends + hosting
     'websites':         { amount: 75 },                     // websites + landing pages
     'web-apps':         { amount: 150 },                    // 02 custom web apps + tools
