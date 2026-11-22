@@ -1,5 +1,5 @@
-// node tools/make-preview-cards.js — seven square (1:1, 1080x1080) cards to post in Discord
-//   assets/previews/cards/01-intro.jpg ... 07-site.jpg
+// node tools/make-preview-cards.js — five square (1:1, 1080x1080) cards to post in Discord
+//   assets/previews/cards/01-intro.jpg ... 05-commissions.jpg
 // Same look as the link preview card: hollow blackletter Jay, mono labels, tilted real screenshots,
 // grain + vignette. Screenshots come from assets/previews (tools/make-previews-shots.js), the bot
 // banners from assets/img, the price list from assets/data/prices.js. Every feature line on the
@@ -22,7 +22,7 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const ctx = { window: {}, document: { addEventListener() {}, querySelectorAll: () => [] } };
 vm.runInNewContext(fs.readFileSync(R + 'assets/data/prices.js', 'utf8'), ctx);
 const P = ctx.window.PRICES;
-const price = (k) => { const i = P.items[k]; return i.amount == null ? P.onRequest : `${P.label} ${P.currency}${i.amount}`; };
+const price = (k) => { const i = P.items[k]; return i.amount == null ? P.onRequest : `${P.label} ${P.currency}${i.amount}${i.per && !i.or ? i.per : ''}`; };
 
 const CSS = `
 @font-face{font-family:G;src:url(${uri('assets/fonts/unifrakturmaguntia-400-latin.woff2')})}
@@ -46,74 +46,73 @@ html,body{margin:0;background:#000}
 .tags{position:absolute;left:72px;display:flex;gap:12px}
 .tags span{padding:9px 14px;border:1px solid #3a3a3a;font:400 17px/1 M;letter-spacing:.08em;text-transform:uppercase;color:#d6d6d6}
 .banner{position:absolute;left:0;top:0;width:1080px;height:330px;object-fit:cover;display:block}
+.c b{display:block;font:600 27px/1.2 M;color:#ececec}.c span{display:block;margin-top:6px;font:400 20px/1.3 M;color:#a8a8a8}
 .fade{position:absolute;left:0;top:170px;width:1080px;height:162px;background:linear-gradient(transparent,#060606)}
 .row{position:absolute;left:72px;width:936px}
 .row b{display:block;font:600 29px/1.2 M;letter-spacing:-.02em;color:#ececec}
 .row span{display:block;margin-top:8px;font:400 23px/1.25 M;color:#a8a8a8}
 `;
 
-const bots = (banner, tint, name, role, rows) => `
-  <img class="banner" src="${uri(banner)}"><div class="fade"></div>
-  <div class="lab" style="top:362px">${esc(role)}</div>
-  <div class="h" style="top:396px;color:${tint}">${esc(name)}</div>
-  ${rows.map(([c, d], i) => `<div class="row" style="top:${548 + i * 80}px"><b>${esc(c)}</b><span>${esc(d)}</span></div>`).join('')}`;
+const svc = (top, name, desc, key) => `
+  <div class="abs" style="left:72px;top:${top}px;width:936px;height:150px;border-top:1px solid #3a3a3a"></div>
+  <div class="abs" style="left:72px;top:${top + 28}px;width:640px;font:600 40px/1.15 M;letter-spacing:-.03em">${esc(name)}</div>
+  <div class="abs" style="left:72px;top:${top + 82}px;width:640px;font:400 23px/1.35 M;color:#a8a8a8">${esc(desc)}</div>
+  <div class="abs" style="right:72px;top:${top + 36}px;font:600 34px/1.1 M;text-align:right;color:#ececec">${esc(price(key))}</div>`;
+
+const col = (x, banner, name, role, rows) => `
+  <img class="abs" src="${uri(banner)}" style="left:${x}px;top:112px;width:448px;height:150px;object-fit:cover;border:1px solid #3a3a3a">
+  <div class="abs" style="left:${x}px;top:284px;font:600 62px/1 M;letter-spacing:-.045em">${esc(name)}</div>
+  <div class="abs" style="left:${x}px;top:362px;font:600 16px/1 M;letter-spacing:.24em;text-transform:uppercase;color:#a8a8a8">${esc(role)}</div>
+  ${rows.map(([c, d], i) => `<div class="c abs" style="left:${x}px;top:${440 + i * 112}px;width:448px"><b>${esc(c)}</b><span>${esc(d)}</span></div>`).join('')}`;
 
 const CARDS = [
   ['01-intro', `
     <div class="lab" style="top:84px">File no. J-018 · Status: active</div>
     <div class="jay" style="top:112px">Jay</div>
     <div class="tag" style="top:392px">SHIPS REAL THINGS</div>
-    <div class="url" style="top:450px">ag0nyy-ops.github.io</div>
-    <div class="shot" style="left:140px;top:560px;width:880px;transform:rotate(-3deg)"><img src="${uri('assets/previews/desktop-hero.jpg')}"></div>
-    <div class="shot phone" style="left:790px;top:610px;width:250px;transform:rotate(4deg)"><img src="${uri('assets/previews/phone-hero.jpg')}"></div>`],
+    <div class="abs" style="left:72px;top:446px;font:400 25px/1.3 M;color:#b4b4b4">data · it support · security · bots · sites</div>
+    <div class="url" style="top:496px">ag0nyy-ops.github.io</div>
+    <div class="shot" style="left:140px;top:600px;width:880px;transform:rotate(-3deg)"><img src="${uri('assets/previews/desktop-hero.jpg')}"></div>
+    <div class="shot phone" style="left:790px;top:640px;width:250px;transform:rotate(4deg)"><img src="${uri('assets/previews/phone-hero.jpg')}"></div>`],
 
-  ['02-skyscrob', `
-    <div class="lab" style="top:84px">Case 001 · Shipped</div>
-    <div class="h" style="top:124px">Skyscrob</div>
-    <div class="sub" style="top:262px">Scrobbles your Apple Music listening to Last.fm, from any device.</div>
-    <div class="shot" style="left:72px;top:408px;width:936px;transform:rotate(-1.5deg)"><img src="${uri('assets/img/skyscrob-diagram.png')}"></div>
-    <div class="tags" style="top:1010px"><span>TypeScript</span><span>Cloudflare Workers</span><span>Apple Music</span><span>Last.fm API</span></div>`],
+  ['02-services', `
+    <div class="lab" style="top:84px">Commissions · open</div>
+    <div class="h" style="top:122px">What I do</div>
+    ${svc(272, 'Data analysis', 'messy spreadsheets into clean data, charts and reports you can reuse', 'data')}
+    ${svc(432, 'IT support', 'accounts, email, backups, 2FA, and the stuff that won\'t work', 'it-support')}
+    ${svc(592, 'Security basics', 'OAuth2 logins, safe tokens and basic protection for apps and sites', 'security')}
+    <div class="abs" style="left:72px;top:772px;width:936px;border-top:1px solid #3a3a3a"></div>
+    <div class="abs" style="left:72px;top:800px;font:400 21px/1 M;letter-spacing:.16em;text-transform:uppercase;color:#a8a8a8">Also</div>
+    <div class="tags" style="top:844px"><span>Discord bots</span><span>Websites</span><span>Web apps</span><span>APIs + hosting</span></div>
+    <div class="tags" style="top:900px"><span>AI chatbots</span><span>Automation</span><span>Fixes + care plan</span></div>
+    <div class="abs" style="left:72px;top:990px;font:600 28px/1 M">DM me to commission</div>`],
 
-  ['03-jinzo', bots('assets/img/jinzo-banner.png', '#ececec', 'Jinzo', 'Case 002 · Live · moderation + chat', [
-    ['/warn /timeout /kick /ban', 'every action saved as a case you can look up'],
-    ['automod', 'spam, repeated messages, invite links, blocked terms'],
-    ['/modlog /case /history', 'look up past moderation'],
-    ['/art', "browse anyone's posts in the art channel"],
-    ['@jinzo', 'replies in character when you ping it'],
-    ['/tod /roll /coinflip', 'and the fun side'],
-  ])],
+  ['03-security', `
+    <div class="lab" style="top:84px">Security basics · shown, not claimed</div>
+    <div class="h" style="top:122px">Real security</div>
+    <div class="sub" style="top:252px;font-size:26px">Basic protection I've actually built, in my own project skyscrob, which stores other people's tokens.</div>
+    ${[['Tokens encrypted at rest', 'AES-256-GCM, tied to where they\'re stored'], ['Login cookies locked down', 'HttpOnly, Secure, SameSite'], ['CSRF protection', 'a token plus a same-origin check on every change'], ['Strict security headers', 'CSP, no framing, no sniffing'], ['Secret scanner', 'fails the build if a key ever lands in git history']].map(([c, d], i) =>
+      `<div class="c abs" style="left:72px;top:${396 + i * 84}px;width:936px"><b>■ ${esc(c)}</b><span style="margin-left:36px">${esc(d)}</span></div>`).join('')}
+    <div class="shot" style="left:500px;top:880px;width:520px;transform:rotate(-2deg)"><img src="${uri('assets/img/skyscrob-diagram.png')}"></div>
+    <div class="abs" style="left:72px;top:1010px;width:380px;font:400 22px/1.35 M;color:#a8a8a8">basic protection, not an audit or a pen test.</div>`],
 
-  ['04-cosmou', bots('assets/img/cosmou-banner.jpg', '#e8d2bd', 'Cosmou', 'Case 002 · Live · helping + server management', [
-    ['/role-form', 'role applications, reviewed by staff'],
-    ['welcome', 'greets new members'],
-    ['/rules', 'posts the server rules'],
-    ['counting', 'a counting game that even accepts 2x+5=45'],
-    ['/quiz', 'a short quiz'],
-    ['@cosmou', 'replies in character when you ping it'],
-  ])],
+  ['04-bots', `
+    <div class="lab" style="top:60px">Case 002 · Live · my own Discord bots</div>
+    ${col(72, 'assets/img/jinzo-banner.png', 'Jinzo', 'moderation + chat', [
+      ['/warn /timeout /kick /ban', 'every action saved as a case'], ['automod', 'spam, invites, blocked terms'], ['/modlog /case /history', 'look up past moderation'],
+      ['/art', "browse posts in the art channel"], ['@jinzo', 'replies in character when pinged']])}
+    ${col(560, 'assets/img/cosmou-banner.jpg', 'Cosmou', 'helping + management', [
+      ['/role-form', 'role applications, staff review'], ['welcome + /rules', 'greets members, posts the rules'], ['counting', 'a game that even accepts 2x+5=45'],
+      ['/quiz', 'a short quiz'], ['@cosmou', 'replies in character when pinged']])}`],
 
   ['05-commissions', `
     <div class="lab" style="top:84px">Commission sheet · open</div>
     <div class="h" style="top:122px">Commissions</div>
     ${[['Data analysis', 'data'], ['IT support', 'it-support'], ['Security basics', 'security'], ['Discord bots', 'discord-bots']].map(([n, k], i) =>
-      `<div class="row" style="top:${300 + i * 118}px;width:430px"><span style="margin:0 0 8px;font-size:21px;letter-spacing:.14em;text-transform:uppercase">${n}</span><b style="font-size:44px;letter-spacing:-.04em">${esc(price(k))}</b></div>`).join('')}
+      `<div class="row" style="top:${300 + i * 118}px;width:430px"><span style="margin:0 0 8px;font-size:21px;letter-spacing:.14em;text-transform:uppercase">${n}</span><b style="font-size:40px;letter-spacing:-.04em">${esc(price(k))}</b></div>`).join('')}
     <div class="abs" style="left:72px;top:900px;font:600 34px/1.2 M">DM me</div>
     <div class="abs" style="left:72px;top:950px;font:400 24px/1.3 M;color:#a8a8a8">pay after it works, up front,<br>or half and half, by job size</div>
     <div class="shot" style="left:535px;top:262px;width:470px;transform:rotate(4deg)"><img src="${uri('assets/commissions/sheet.png')}"></div>`],
-
-  ['06-mobile', `
-    <div class="lab" style="top:84px">Mobile · tested down to 320 px</div>
-    <div class="h" style="top:122px">On your phone</div>
-    <div class="sub" style="top:252px">Same eyes, same effects, no sideways scrolling.</div>
-    <div class="shot phone" style="left:64px;top:372px;width:300px;transform:rotate(-7deg)"><img src="${uri('assets/previews/phone-hero.jpg')}"></div>
-    <div class="shot phone" style="left:390px;top:330px;width:300px;z-index:3"><img src="${uri('assets/previews/phone-projects.jpg')}"></div>
-    <div class="shot phone" style="left:716px;top:372px;width:300px;transform:rotate(7deg)"><img src="${uri('assets/previews/phone-services.jpg')}"></div>`],
-
-  ['07-site', `
-    <div class="lab" style="top:84px">How it's built</div>
-    <div class="h" style="top:122px">No framework.</div>
-    <div class="sub" style="top:252px">Plain HTML, CSS and a little JavaScript.<br>Fonts hosted on the site, no trackers.<br>The eyes follow your cursor, all in CSS.</div>
-    <div class="shot" style="left:70px;top:500px;width:940px;transform:rotate(-2deg)"><img src="${uri('assets/previews/desktop-projects.jpg')}"></div>`],
 ];
 
 (async () => {

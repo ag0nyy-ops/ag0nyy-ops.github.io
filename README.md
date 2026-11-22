@@ -101,6 +101,8 @@ node tools/make-previews-shots.js
 
 `commissions.html` is the full commission sheet: what people ask for, what it costs, how paying works. Prices come from `assets/data/prices.js` like the rest of the site. `assets/commissions/sheet.png` is the same sheet as one image to post and pin in Discord; rebuild it with `node tools/make-commission-sheet.js` after changing a price or the payment rules (the rules live in `commissions.html` and in that script, so change both).
 
+Seven of the service cards open like a dropdown with three levels each (native `<details>`, no JavaScript); level 1 uses the card's own price and levels 2 and 3 have their own keys in `prices.js`. `assets/commissions/big-jobs.png` is a separate image for the biggest jobs (hardware, full apps, iOS), quoted per project after a feasibility check; rebuild it with `node tools/make-big-jobs.js`. The five Discord cards are `tools/make-preview-cards.js`.
+
 Payment rules: under $40 pay after it works, $40 to $149 everything up front, $150 and up half to start and half on delivery. Accepted: Cash App, Venmo, Zelle.
 
 ## Contact details
