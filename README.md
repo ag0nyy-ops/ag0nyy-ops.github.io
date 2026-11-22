@@ -103,15 +103,6 @@ node tools/make-previews-shots.js
 
 Seven of the service cards open like a dropdown with three levels each (native `<details>`, no JavaScript); level 1 uses the card's own price and levels 2 and 3 have their own keys in `prices.js`. `assets/commissions/big-jobs.png` is a separate image for the biggest jobs (hardware, full apps, iOS), quoted per project after a feasibility check; rebuild it with `node tools/make-big-jobs.js`. The five Discord cards are `tools/make-preview-cards.js`.
 
-`assets/js/levels.js` adds the motion: opening a card knocks the others off the screen sideways (transform only; the page clips horizontal overflow, so it can never scroll sideways), then the card widens and its levels unfold. Closing runs it backwards. Without the script, or with reduced motion, it is a plain dropdown. The big jobs and `mobile` have estimated "from" prices in `prices.js` like everything else.
+`assets/js/levels.js` adds the motion: opening a card knocks the other cards on its row off the screen sideways (transform only; the page clips horizontal overflow, so it can never scroll sideways), then the card widens and its levels become tabs (click one and the box swaps to that level). Closing runs it backwards. Without the script it is a plain dropdown. The animation plays even with reduced motion, since it only runs after a click. The big jobs and `mobile` have estimated "from" prices in `prices.js` like everything else.
 
-Payment rules: under $40 pay after it works, $40 to $149 everything up front, $150 and up half to start and half on delivery. Accepted: Cash App, Venmo, Zelle.
-
-## Contact details
-
-- Discord server invite: `https://discord.gg/nGysyw7MgS` (the Discord / book / open-a-case buttons)
-- Email: stored split as `data-u` + `data-d` on `#email` in `index.html`, so it never appears whole in the HTML; `main.js` joins it into the text and the mailto.
-
-## Licence
-
-Source-available, view only: you can read and learn from this code, but not copy, redistribute or reuse it (modified or not) as your own site or in commercial work without written permission. See [LICENSE](LICENSE). The self-hosted fonts in `assets/fonts/` are SIL Open Font License 1.1 (licence texts included).
+The button at the bottom of the page ("I want to see EVERYTHING you can do") fades in 100 priced boxes from `assets/data/everything.js` (prices there are my estimates; edit them in that file). `assets/js/wall.js` lets you drag a box by its top tab: boxes it hits get knocked away and spring back, and nothing passes through anything.
