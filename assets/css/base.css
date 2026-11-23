@@ -1,0 +1,90 @@
+/* jay. — © 2026 Jay — https://ag0nyy-ops.github.io/ — source viewable, not reusable by others (LICENSE)
+
+   Shared base: a small reset, the type scale, and the core pieces (label, titles, stamp, buttons,
+   cards, inputs). Built only on tokens.css, which this file imports. For new sites and apps; the
+   portfolio itself keeps its own assets/css/style.css.
+   Use:  <link rel="stylesheet" href="https://ag0nyy-ops.github.io/assets/css/base.css">          */
+@import url("../tokens/tokens.css");
+
+/* ---------------- reset ---------------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--bg); color: var(--fg); color-scheme: dark; -webkit-text-size-adjust: 100%; }
+body { margin: 0; font: 400 var(--text-body)/var(--leading-body) var(--sans); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4, p, figure, blockquote, dl, dd { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+img, svg, video, canvas { display: block; max-width: 100%; }
+button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+a { color: inherit; }
+::selection { background: var(--fg); color: var(--bg); }
+:focus-visible { outline: var(--focus-ring) solid var(--fg); outline-offset: 4px; }   /* never remove focus rings */
+.sr-only { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------------- type scale ---------------- */
+h1, h2, h3, h4 { font-family: var(--mono); font-weight: 600; line-height: var(--leading-tight); letter-spacing: var(--track-title); }
+h1 { font-size: var(--text-title); }
+h2 { font-size: var(--text-heading); }
+h3 { font-size: 1.08rem; letter-spacing: -.03em; }
+h4 { font-size: var(--text-small); }
+small { font-size: var(--text-small); }
+code, kbd, pre { font-family: var(--mono); font-size: .92em; }
+.lede { max-width: 62ch; color: var(--muted); font-size: var(--text-lede); line-height: 1.5; }
+.muted { color: var(--muted); }
+
+/* small uppercase mono label with the ■ marker: "■ FILE 01 / CASE FILES" */
+.label { font: 400 var(--text-label)/1.3 var(--mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.label::before { content: "■ "; }
+
+/* big blackletter title with the faint red/cyan fringe */
+.title { font: 400 var(--text-display)/var(--leading-display) var(--goth); text-shadow: -1px 0 var(--fringe-r), 1px 0 var(--fringe-c); }
+
+/* hollow blackletter: transparent fill, thin outline. --bold survives shrinking (avatars, banners). */
+.hollow { font-family: var(--goth); color: transparent; -webkit-text-stroke: 1px var(--line-strong); }
+.hollow--bold { -webkit-text-stroke: 3px var(--fg); }
+
+/* icon: any SVG from assets/icons, recoloured by the text colour. <i class="icon" style="--i:url(/assets/icons/eye.svg)"></i>
+   Use an absolute or root-relative URL: a url() inside a custom property is resolved against this file, not the page. */
+.icon { display: inline-block; width: 1.5rem; height: 1.5rem; flex: none; vertical-align: -.3em; background: currentColor;
+  -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+
+/* ---------------- stamp ---------------- */
+.stamp { display: inline-block; padding: .4rem .65rem; border: 1.5px solid currentColor; rotate: -4deg; white-space: nowrap;
+  font: 600 .7rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+.stamp--wip { border-style: dashed; }
+.stamp--big { font-size: .9rem; padding: .7rem 1rem; border-width: 2px; rotate: -7deg; }
+
+/* ---------------- buttons: outlined, the fill wipes up on hover. .btn--solid is the primary one ---------------- */
+.btn { position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: .5em;
+  min-height: 44px; padding: 1em 1.4em; border: var(--border) solid var(--fg); border-radius: var(--radius); background: none; color: var(--fg);
+  font: 600 var(--text-button)/1 var(--mono); letter-spacing: var(--track-button); text-transform: uppercase; text-decoration: none; cursor: pointer;
+  transition: color var(--dur-base) var(--ease-liquid), translate var(--dur-slow) var(--ease-spring); }
+.btn::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--fg); clip-path: inset(100% 0 0 0);
+  transition: clip-path var(--dur-slow) var(--ease-liquid); }
+.btn:hover, .btn:focus-visible { color: var(--bg); translate: 0 -2px; }
+.btn:hover::before, .btn:focus-visible::before { clip-path: inset(0); }
+.btn--solid { background: var(--fg); color: var(--bg); }
+.btn--solid::before { background: var(--bg); }
+.btn--solid:hover, .btn--solid:focus-visible { color: var(--fg); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+
+/* ---------------- card: flat panel, no radius, no shadow ---------------- */
+.card { padding: var(--space-5); background: var(--bg-2); border: var(--border) solid var(--line-strong); border-radius: var(--radius); }
+
+/* ---------------- inputs ---------------- */
+.field { display: grid; gap: var(--space-2); }
+.field > label { font: 400 var(--text-label)/1.3 var(--mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.field > small { color: var(--muted); }
+input:where(:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"])), select, textarea {
+  width: 100%; min-height: 44px; padding: .75rem 1rem; background: var(--bg); color: var(--fg);
+  border: var(--border) solid var(--line-strong); border-radius: var(--radius); font-family: var(--mono); font-size: var(--text-small); }
+textarea { min-height: 7rem; resize: vertical; }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: .7; }
+input:hover, select:hover, textarea:hover { border-color: var(--muted); }
+input:focus-visible, select:focus-visible, textarea:focus-visible { border-color: var(--fg); outline-offset: 2px; }
+input:disabled, select:disabled, textarea:disabled { opacity: .45; }
+input[aria-invalid="true"], textarea[aria-invalid="true"] { border-style: dashed; border-color: var(--fg); }
+input[type="checkbox"], input[type="radio"] { width: 1.1rem; height: 1.1rem; accent-color: var(--fg); }
+
+/* people who ask for less motion get none */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
