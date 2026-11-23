@@ -63,6 +63,23 @@
       </div>
     </section>
     <section>
+      <p class="label">Inputs</p>
+      <form class="card" style="margin-top:1rem;max-width:34rem;display:grid;gap:1rem" onsubmit="return false">
+        <div class="field"><label for="d-name">Name</label><input id="d-name" placeholder="Your name"></div>
+        <div class="field"><label for="d-kind">What do you need?</label><select id="d-kind"><option>Data</option><option>IT help</option><option>Security basics</option></select></div>
+        <div class="field"><label for="d-msg">Message</label><textarea id="d-msg" placeholder="A few lines is plenty"></textarea><small>Short and honest works best.</small></div>
+        <button class="btn btn--solid" type="submit">Send</button>
+      </form>
+    </section>
+
+    <section>
+      <p class="label">Icons (assets/icons, 24px grid; class .icon takes the text colour)</p>
+      <div class="row" style="margin-top:1rem;gap:1.2rem">
+        <i class="icon" style="--i:url(/assets/icons/eye.svg);width:2rem;height:2rem"></i><i class="icon" style="--i:url(/assets/icons/shield.svg);width:2rem;height:2rem"></i><i class="icon" style="--i:url(/assets/icons/code.svg);width:2rem;height:2rem"></i><i class="icon" style="--i:url(/assets/icons/terminal.svg);width:2rem;height:2rem"></i><i class="icon" style="--i:url(/assets/icons/bot.svg);width:2rem;height:2rem"></i><i class="icon" style="--i:url(/assets/icons/key.svg);width:2rem;height:2rem"></i>
+      </div>
+    </section>
+
+    <section>
       <p class="label">Level tabs (click one: the box swaps)</p>
       <div style="margin-top:1rem;max-width:44rem">
         <div class="level-tabs" role="tablist" id="lt">
