@@ -1,3 +1,5 @@
+> **License:** source-available, view and learn only. Not open source. See [LICENSE](LICENSE) before cloning, forking or using this code.
+
 # ag0nyy-ops.github.io
 
 My portfolio and commissions page: data analysis, IT support, basic app security, Discord bots and websites.
