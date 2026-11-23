@@ -2,13 +2,13 @@
 
 How everything Jay makes should look and sound: websites, apps, bots, banners, images. It is the design of https://ag0nyy-ops.github.io/, written down so a new project can match it without copying the whole site.
 
-**Files:** `style/tokens.css` (drop-in tokens and pieces), `style/demo.html` (every piece on one page), and the live site's `assets/css/style.css` (the full thing, with every effect commented).
+**Files:** the shared kit in `assets/` (`tokens/`, `css/base.css`, `fonts/`, `icons/`, `brand/`; see `assets/README.md`), `style/tokens.css` (the kit plus the extra pieces), `style/demo.html` (every piece on one page), and the live site's `assets/css/style.css` (the full thing, with every effect commented).
 
 ---
 
 ## 1. Paste this to a future Claude
 
-> Build it in Jay's style. It's a **classified-file / surveillance-dossier** look: pure black and white, a watching eye as the mascot, blackletter for names and big titles, small wide-spaced uppercase mono labels like a case file ("FILE 01 / CASE FILES"), hairline borders, rubber stamps (SHIPPED, LIVE, OPEN), film grain and a vignette. Fonts: UnifrakturMaguntia (titles and the name "Jay"), IBM Plex Mono (labels, UI, prices), IBM Plex Sans (reading text), all self-hosted. Colours: `#060606` background, `#ececec` text, and greys made with `color-mix` from those two. No other colours. Motion is CSS only, springy and quiet, and does nothing on its own for `prefers-reduced-motion` (animations that only run after a click, like cards pushing aside, still play). Plain HTML/CSS/JS, no framework, no trackers, no third-party requests. Copy is short, dry and honest: no invented testimonials, stats, clients or claims, and unfinished things are hidden, not shown as placeholders. Import `style/tokens.css` and follow `style/STYLE.md`.
+> Build it in Jay's style. It's a **classified-file / surveillance-dossier** look: pure black and white, a watching eye as the mascot, blackletter for names and big titles, small wide-spaced uppercase mono labels like a case file ("FILE 01 / CASE FILES"), hairline borders, rubber stamps (SHIPPED, LIVE, OPEN), film grain and a vignette. Fonts: UnifrakturMaguntia (titles and the name "Jay"), IBM Plex Mono (labels, UI, prices), IBM Plex Sans (reading text), all self-hosted. Colours: `#060606` background, `#ececec` text, and greys made with `color-mix` from those two. No other colours. Motion is CSS only, springy and quiet, and does nothing on its own for `prefers-reduced-motion` (animations that only run after a click, like cards pushing aside, still play). Plain HTML/CSS/JS, no framework, no trackers, no third-party requests. Copy is short, dry and honest: no invented testimonials, stats, clients or claims, and unfinished things are hidden, not shown as placeholders. Pull the shared kit (`https://ag0nyy-ops.github.io/assets/css/base.css`, see `assets/README.md`) and follow `style/STYLE.md`.
 
 ---
 
@@ -53,7 +53,7 @@ All three are SIL Open Font License 1.1: free for web and commercial use. Self-h
 
 ## 6. Pieces
 
-All are in `tokens.css` and shown in `demo.html`.
+The core pieces are in `assets/css/base.css` (tokens in `assets/tokens/`), the extras in `style/tokens.css`, and all of them are shown in `demo.html`. Icons are in `assets/icons/`.
 
 - **Label** `.label`: small uppercase mono, "■" marker.
 - **Button** `.btn` (outlined) and `.btn--solid` (filled): the fill wipes up from the bottom on hover and the button lifts 2px on a spring.

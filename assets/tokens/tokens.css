@@ -1,0 +1,73 @@
+/* jay. — © 2026 Jay — https://ag0nyy-ops.github.io/ — source viewable, not reusable by others (LICENSE)
+
+   Design tokens: the whole look as CSS custom properties, plus the self-hosted fonts.
+   Same values as the live site's :root in assets/css/style.css (that file is the source of
+   truth for the site; if you re-theme there, update this file and tokens.json to match).
+   Use:  <link rel="stylesheet" href="https://ag0nyy-ops.github.io/assets/tokens/tokens.css">
+   Fonts load from ../fonts/ next to this folder, so they follow the file wherever it is hosted. */
+
+/* -------- fonts (SIL OFL 1.1, self-hosted; licence texts are in ../fonts/) -------- */
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-display: swap;
+  src: url("../fonts/ibm-plex-mono-400-latin.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 600; font-display: swap;
+  src: url("../fonts/ibm-plex-mono-600-latin.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 400 500; font-display: swap;
+  src: url("../fonts/ibm-plex-sans-latin.woff2") format("woff2"); }
+@font-face { font-family: "UnifrakturMaguntia"; font-weight: 400; font-display: swap;
+  src: url("../fonts/unifrakturmaguntia-400-latin.woff2") format("woff2"); }
+
+:root {
+  /* colour: black and white only. Every grey is derived from --bg and --fg. */
+  --bg: #060606;
+  --fg: #ececec;
+  --bg-2:        color-mix(in oklab, var(--fg) 4%,  var(--bg));   /* #0c0c0c  cards, panels */
+  --muted:       color-mix(in oklab, var(--fg) 74%, var(--bg));   /* #a7a7a7  secondary text, ~9:1 on --bg */
+  --line:        color-mix(in oklab, var(--fg) 13%, var(--bg));   /* #1d1d1d  hairlines */
+  --line-strong: color-mix(in oklab, var(--fg) 32%, var(--bg));   /* #444444  borders, dividers */
+  /* the only colour anywhere: a faint red/cyan fringe on big blackletter titles */
+  --fringe-r: color-mix(in oklab, #ff2a55 70%, var(--fg));        /* #ff7882 */
+  --fringe-c: color-mix(in oklab, #19d3ff 70%, var(--fg));        /* #7bdcfa */
+
+  /* fonts: blackletter for the name and big titles, mono for labels/UI/prices, sans for reading */
+  --goth: "UnifrakturMaguntia", "Old English Text MT", serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* type scale (sizes the site really uses) */
+  --text-label:   .75rem;                        /* uppercase mono labels */
+  --text-button:  .76rem;
+  --text-small:   .875rem;
+  --text-body:    1.0625rem;                     /* 17px */
+  --text-lede:    clamp(1.05rem, 2vw, 1.3rem);
+  --text-heading: clamp(1.3rem, 2.6vw, 1.8rem);
+  --text-title:   clamp(1.6rem, 3vw, 2.3rem);    /* card titles, mono 600 */
+  --text-display: clamp(3.6rem, 12vw, 9.5rem);   /* the blackletter name */
+  --leading-body: 1.65;
+  --leading-tight: 1.1;
+  --leading-display: .85;
+  --track-label: .22em;
+  --track-button: .14em;
+  --track-title: -.045em;
+
+  /* spacing: a 4px-based scale for apps (the site itself uses ad-hoc rem values) */
+  --space-1: .25rem;  --space-2: .5rem;  --space-3: .75rem; --space-4: 1rem;
+  --space-5: 1.5rem;  --space-6: 2rem;   --space-7: 3rem;   --space-8: 4rem;  --space-9: 6rem;
+  --gutter: clamp(16px, 4vw, 56px);              /* page side padding */
+  --max: 1320px;                                 /* content width */
+
+  /* shape: sharp corners everywhere. The one exception is the rounded tile of the favicon. */
+  --radius: 0;
+  --radius-tile: 18.75%;                         /* favicon tile: rx 12 on a 64 box */
+  --border: 1px;
+  --border-strong: 2px;
+  --focus-ring: 2px;
+
+  /* motion: liquid glides, ink is a slow-fast-slow pour, spring overshoots then settles */
+  --dur-fast: .25s;  --dur-base: .4s;  --dur-slow: .5s;
+  --ease-liquid: cubic-bezier(.22, 1, .36, 1);
+  --ease-ink: cubic-bezier(.65, 0, .35, 1);
+  --ease-spring: linear(0, .009, .035 2.1%, .141, .281 6.7%, .723 12.9%, .938 16.7%,
+                        1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%,
+                        1.129 32.8%, 1.051 39.6%, 1.017 43.1%, .991, .977 51%, .974 53.8%,
+                        .975 57.1%, .997 69.8%, 1.003 76.9%, 1);
+}
