@@ -203,7 +203,7 @@ function menuInput() {
 }
 
 /* ---------------- turning the controller into an intent ---------------- */
-let flickArmed = true, mouseAim = [0, 0], latch = false; // TEMP latch
+let flickArmed = true, mouseAim = [0, 0];
 addEventListener('mousemove', (e) => { if (mode === 'play' && match && match.shot && match.shot.human) { mouseAim[0] += e.movementX; mouseAim[1] += e.movementY; } });
 
 function humanIntent(m) {
@@ -211,7 +211,6 @@ function humanIntent(m) {
   it.human = true;
   it.mx = s.lx; it.my = s.ly;
   it.shoot = input.down('X') || s.lt > 0.5 || s.rt > 0.5;
-  if (location.hash === '#latch') { if (input.pressed('X')) latch = !latch; it.shoot = latch; } // TEMP
   it.pass = input.pressed('RB') || input.pressed('A');
   it.passDir = Math.hypot(s.lx, s.ly) > 0.3 ? [s.lx, s.ly] : null;
   it.call = input.pressed('LB') || input.pressed('Y');
@@ -261,7 +260,7 @@ function resize() {
   fitBroadcast();
 }
 addEventListener('resize', resize);
-const BPOS = [0, 50, 20], BTGT = [0, 13, 1.5];
+const BPOS = [0, 47, 17], BTGT = [0, 12, 3];
 function fitBroadcast() {
   aim(cam, BPOS, BTGT); cam.fl = 1; cam.cx = 0; cam.cy = 0;
   const pts = [[-25, 0, 0], [25, 0, 0], [-25, 34, 0], [25, 34, 0], [0, 4, 13], [-3, 4, 12.5], [3, 4, 12.5]];
@@ -294,8 +293,16 @@ function seg(a, b) {
 }
 function poly(pts, close = false) { for (let i = 0; i < pts.length - 1; i++) seg(pts[i], pts[i + 1]); if (close) seg(pts[pts.length - 1], pts[0]); }
 function fillPoly(pts) {
-  const s = pts.map((q) => proj(q[0], q[1], q[2])); if (s.some((q) => !q)) return false;
-  ctx.beginPath(); s.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); ctx.fill(); return true;
+  // clip against the near plane first, so the floor still fills when it runs behind the camera
+  const n = 0.4, c = pts.map(toCam), out = [];
+  for (let i = 0; i < c.length; i++) {
+    const A = c[i], B = c[(i + 1) % c.length];
+    if (A[2] >= n) out.push(A);
+    if ((A[2] >= n) !== (B[2] >= n)) { const t = (n - A[2]) / (B[2] - A[2]); out.push([mix(A[0], B[0], t), mix(A[1], B[1], t), n]); }
+  }
+  if (out.length < 3) return false;
+  ctx.beginPath(); out.forEach((q, i) => { const x = cam.cx + q[0] * cam.fl / q[2], y = cam.cy - q[1] * cam.fl / q[2]; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.closePath(); ctx.fill(); return true;
 }
 const arc = (cx, cy, z, r, a0, a1, n = 32) => Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r, z]; });
 const scale = (d) => cam.fl / d;
@@ -341,7 +348,7 @@ function setCamera(m, t) {
 
 function drawWorld(m, pal, fp) {
   // floor
-  ctx.fillStyle = FLOOR; fillPoly([[-25, 0, 0], [25, 0, 0], [25, 47, 0], [-25, 47, 0]]) || clippedFloor();
+  ctx.fillStyle = FLOOR; fillPoly([[-25, 0, 0], [25, 0, 0], [25, 47, 0], [-25, 47, 0]]);
   ctx.fillStyle = PAINT; fillPoly([[-8, 0, 0], [8, 0, 0], [8, 19, 0], [-8, 19, 0]]);
   courtLines();
   // shadows
@@ -359,7 +366,6 @@ function drawWorld(m, pal, fp) {
   items.sort((a, b) => b.d - a.d).forEach((i) => i.f());
 }
 function fpShooter(m) { return m.shot ? m.shot.id : lastShot; }
-function clippedFloor() { /* in the shooter's eyes the floor runs behind the camera: the background is close enough */ }
 function shadow(x, y, r) {
   const pts = arc(x, y, 0.01, r, 0, Math.PI * 2, 14).map((q) => proj(q[0], q[1], q[2]));
   if (pts.some((q) => !q)) return;
