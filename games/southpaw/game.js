@@ -508,8 +508,8 @@ function drawFighter(p, o, color, isMe, f) {
   // name tag
   ctx.font = mono(Math.max(10, Math.min(13, ppm * 0.1)), 600); ctx.textAlign = 'center'; ctx.fillStyle = isMe ? FG : color;
   const tag = isMe ? 'YOU' : f.style.name.toUpperCase();
-  ctx.fillText(tag, X(p.x), Y(1.95));
-  if (p.is('stun') && p.act.dur > 0.22) { ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText('ROCKED', X(p.x), Y(2.08)); }
+  ctx.fillText(tag, X(p.x), Y(2.1));
+  if (p.is('stun') && p.act.dur > 0.22) { ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText('ROCKED', X(p.x), Y(2.23)); }
 }
 function drawDown(p, color, isMe, w) {
   const d = -p.face, x = p.x;
@@ -534,7 +534,7 @@ function drawFx(b, pal, rm) {
       ctx.beginPath(); ctx.arc(X(f.x), Y(f.y), r, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.fillStyle = col; ctx.font = mono(Math.max(11, Math.min(15, ppm * 0.11)), 600); ctx.textAlign = 'center';
-    ctx.fillText(f.text, X(f.x), Y(f.y + 0.32) - (rm ? 0 : 18 * ease(k)));
+    ctx.fillText(f.text, X(f.x), Y(f.y + 0.26) - (rm ? 0 : 18 * ease(k)));
     ctx.globalAlpha = 1;
   }
 }
