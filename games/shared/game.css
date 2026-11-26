@@ -41,3 +41,4 @@ table.keys th { color: var(--muted); font-weight: 400; letter-spacing: .12em; te
 table.board tr.me td { color: var(--bg); background: var(--fg); font-weight: 600; }
 
 .back { position: fixed; top: .8rem; right: var(--gutter); z-index: 11; }
+.back[hidden] { display: none; }

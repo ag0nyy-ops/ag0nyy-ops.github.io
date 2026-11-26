@@ -322,8 +322,8 @@ function draw() {
   // runners
   for (const { p, lane } of r.pacers) figure(sx(p.x), top + (lane - 0.15) * laneH, laneH, p.x, 0.25 + Math.max(0, 0.5 - p.x / 60), MUTED, false);
   figure(sx(me.x), top + (r.myLane - 0.15) * laneH, laneH, me.x, r.lean, pal.mark, true, me.dipAt != null && r.t - me.dipAt < 0.45, me.stumble > 0);
-  ctx.fillStyle = pal.mark; ctx.font = mono(11, 600); ctx.textAlign = 'center';
-  ctx.fillText('YOU', sx(me.x), top + (r.myLane - 1) * laneH + 12);
+  ctx.fillStyle = pal.mark; ctx.font = mono(11, 600); ctx.textAlign = 'right';
+  ctx.fillText('YOU', sx(me.x) - 22, top + (r.myLane - 0.5) * laneH);
 
   hud(r, me, pal);
 }
@@ -339,8 +339,9 @@ function figure(x, footY, laneH, dist, lean, color, isMe, dipping = false, stumb
   limb(still ? 0.2 : swing, leg, 0, hipY); limb(still ? -0.2 : -swing, leg, 0, hipY);
   const torsoLen = h * 0.36, nx = Math.sin(tilt) * torsoLen, ny = hipY - Math.cos(tilt) * torsoLen;
   ctx.beginPath(); ctx.moveTo(0, hipY); ctx.lineTo(nx, ny); ctx.stroke();
-  limb(Math.PI + (still ? 0.3 : -swing * 1.1), h * 0.3, nx * 0.85, ny + h * 0.04);
-  limb(Math.PI + (still ? -0.3 : swing * 1.1), h * 0.3, nx * 0.85, ny + h * 0.04);
+  // arms hang from the shoulders and swing opposite the legs
+  limb(still ? 0.3 : -swing * 1.1, h * 0.3, nx * 0.85, ny + h * 0.04);
+  limb(still ? -0.3 : swing * 1.1, h * 0.3, nx * 0.85, ny + h * 0.04);
   ctx.beginPath(); ctx.arc(nx + Math.sin(tilt) * h * 0.08, ny - Math.cos(tilt) * h * 0.08, h * 0.08, 0, Math.PI * 2);
   isMe ? ctx.fill() : ctx.stroke();
   ctx.restore();
