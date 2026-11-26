@@ -1,5 +1,6 @@
 /* jay. — © 2026 Jay — source viewable, not reusable by others (LICENSE)
    Shared look for a game screen: full-window canvas, menus as a dossier overlay on top.
+   Put the overlay's content in one <div class="panel">.
    Use with games.css:  <link rel="stylesheet" href="../games.css"><link rel="stylesheet" href="../shared/game.css"> */
 
 html, body { height: 100%; overflow: hidden; }
@@ -9,7 +10,7 @@ body { overscroll-behavior: none; touch-action: none; }
 .overlay { position: fixed; inset: 0; z-index: 10; overflow: auto; display: grid; align-content: start; gap: var(--space-5);
   padding: clamp(1.5rem, 6vh, 4rem) var(--gutter); background: color-mix(in oklab, var(--bg) 88%, transparent); }
 .overlay[hidden] { display: none; }
-.overlay > * { width: 100%; max-width: 46rem; margin-inline: auto; }
+.overlay > .panel { display: grid; gap: var(--space-5); width: 100%; max-width: 46rem; margin-inline: auto; }
 .overlay .title { font-size: clamp(3rem, 10vw, 6.5rem); }
 .overlay .title small { font: 600 .35em/1 var(--mono); letter-spacing: -.02em; vertical-align: .6em; color: var(--muted); }
 .overlay .hint { color: var(--muted); max-width: 60ch; }
@@ -40,3 +41,4 @@ table.keys th { color: var(--muted); font-weight: 400; letter-spacing: .12em; te
 table.board tr.me td { color: var(--bg); background: var(--fg); font-weight: 600; }
 
 .back { position: fixed; top: .8rem; right: var(--gutter); z-index: 11; }
+.back[hidden] { display: none; }
