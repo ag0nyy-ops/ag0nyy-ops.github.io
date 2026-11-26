@@ -226,7 +226,7 @@ function humanCommand(dt) {
     const [wx, wy] = toWorld(mouse.x, mouse.y), dx = wx - h.x, dy = wy - h.y, d = Math.hypot(dx, dy) || 1;
     const k = Math.min(1, d / (SK.reach * 2.2)); c.sx = dx / d * k; c.sy = dy / d * k;
     if (mouse.down) { const held = (performance.now() - mouse.downT) / 1000; c.windup = Math.min(SLAP_FULL, held); c.wdx = -dx / d; c.wdy = -dy / d; }
-    if (mouse.click && !hasPuck) c.poke = { dx, dy };
+    if (mouse.click && !hasPuck && dPuck < 60) c.poke = { dx, dy };
     if (mouse.release != null) {
       const sh = { dx, dy, power: Math.min(SLAP_FULL, mouse.release) };
       if (hasPuck) c.shoot = sh; else pending = { sh, t: 0.18 };
@@ -239,7 +239,7 @@ function humanCommand(dt) {
     c.windup = g.windup; c.wdx = g.wdx; c.wdy = g.wdy;
     if (g.shoot) { if (hasPuck) c.shoot = g.shoot; else pending = { sh: g.shoot, t: 0.18 }; }
     // a quick push at a nearby puck you don't have is a poke check
-    if (g.quick && !hasPuck && dPuck < 48) {
+    if (g.quick && !g.shoot && !hasPuck && dPuck < 48) {
       const m = Math.hypot(sx, sy) || 1;
       if ((sx * toPuck[0] + sy * toPuck[1]) / (m * (dPuck || 1)) > 0.35) c.poke = { dx: sx, dy: sy };
     }

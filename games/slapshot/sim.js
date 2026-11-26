@@ -207,7 +207,9 @@ export class Game {
     if (s.stun) { mx = my = 0; }
     const ctrl = s.stun ? 0 : s.recover ? 0.35 : 1;
     let max = (hasPuck ? SK.maxPuck : SK.max) * aiSpeed;
-    if (s.windup > WRIST_MAX) max *= 0.55;       // a slapshot wind-up slows you down: easy to read
+    // a slapshot wind-up (stick drawn back behind you) slows you down: easy to read.
+    // Holding the puck out to the side to shield it does not.
+    if (s.windup > WRIST_MAX && c.wdx * s.fx + c.wdy * s.fy < -0.3) max *= 0.55;
     // accelerate along the input; the part of the velocity sideways to the input bleeds off (edges)
     if (mm > 0.05) {
       s.vx += mx * SK.acc * ctrl * dt; s.vy += my * SK.acc * ctrl * dt;
