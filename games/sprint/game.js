@@ -59,7 +59,7 @@ const overlay = $('#overlay');
 let menuItems = [], menuIndex = 0;
 const backLink = document.querySelector('.back');
 function show(html, focusFirst = true) {
-  overlay.innerHTML = html; overlay.hidden = false; if (backLink) backLink.hidden = false;
+  overlay.innerHTML = `<div class="panel">${html}</div>`; overlay.hidden = false; if (backLink) backLink.hidden = false;
   menuItems = [...overlay.querySelectorAll('button')];
   menuIndex = 0;
   if (focusFirst && menuItems[0]) menuItems[0].focus();
