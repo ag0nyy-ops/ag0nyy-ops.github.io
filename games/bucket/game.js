@@ -589,7 +589,6 @@ function frame(now) {
 }
 document.documentElement.classList.toggle('calm', reducedMotion());
 addEventListener('gamepadconnected', () => { input.lastDevice = 'controller'; });
-addEventListener('blur', () => { if (mode === 'play') pause(); });
 resize();
 mainMenu();
 requestAnimationFrame(frame);
