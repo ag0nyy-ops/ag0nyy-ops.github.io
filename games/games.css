@@ -1,0 +1,46 @@
+/* jay. — © 2026 Jay — https://ag0nyy-ops.github.io/ — source viewable, not reusable by others (LICENSE)
+   Game pages: the /games hub and each game's own file page. Built on the shared base. */
+@import url("/assets/css/base.css");
+
+body { min-height: 100vh; }
+.atmosphere { position: fixed; inset: 0; z-index: 50; pointer-events: none;
+  background: url("/assets/img/grain.png") 0 0 / 128px 128px,
+              radial-gradient(ellipse at 50% 50%, transparent 45%, rgb(0 0 0 / .7)); }
+.sr-only:focus { position: fixed !important; top: 1rem; left: 1rem; width: auto; height: auto; clip: auto; padding: .6rem .9rem; background: var(--fg); color: var(--bg); z-index: 60; }
+
+.g-top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; max-width: var(--max); margin: 0 auto;
+  padding: 1.2rem var(--gutter); border-bottom: 1px solid var(--line); }
+.g-top__home { font: 400 1.9rem/1 var(--goth); text-decoration: none; }
+.g-top__link { min-height: 44px; display: inline-flex; align-items: center; font: 400 var(--text-label)/1 var(--mono);
+  letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); text-decoration: none; }
+.g-top__link:hover, .g-top__link:focus-visible { color: var(--fg); }
+
+.g-wrap { display: grid; gap: var(--space-6); max-width: var(--max); margin: 0 auto; padding: clamp(2.5rem, 7vw, 6rem) var(--gutter) var(--space-9); }
+.g-title { overflow-wrap: anywhere; }
+.g-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-5); }
+.g-order { font: 400 var(--text-label)/1.3 var(--mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.g-lead { max-width: 58ch; }
+
+.g-plan { display: grid; gap: var(--space-4); max-width: 46rem; padding: var(--space-5); background: var(--bg-2); border: 1px solid var(--line-strong); }
+.g-plan ul { display: grid; gap: var(--space-3); }
+.g-plan li { position: relative; padding-left: 1.6rem; }
+.g-plan li::before { content: "■"; position: absolute; left: 0; top: .1em; font: .7rem/1.6 var(--mono); color: var(--muted); }
+.g-note, .g-foot { color: var(--muted); font-size: var(--text-small); }
+.g-note { padding-top: var(--space-3); border-top: 1px dashed var(--line-strong); }
+.g-links { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+/* hub list: one row per game, the whole row is the link */
+.g-games { display: grid; border-top: 1px solid var(--line-strong); }
+.g-game a { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto; grid-template-areas: "no name stamp" ". sport stamp" ". line line";
+  gap: .3rem 1rem; align-items: baseline; padding: 1.2rem .4rem; border-bottom: 1px solid var(--line-strong); text-decoration: none;
+  transition: background var(--dur-base) var(--ease-liquid); }
+.g-game a:hover, .g-game a:focus-visible { background: color-mix(in oklab, var(--fg) 6%, transparent); }
+.g-game__no { grid-area: no; font: .78rem/1 var(--mono); color: var(--muted); }
+.g-game__name { grid-area: name; font: 600 clamp(1.3rem, 3vw, 2.1rem)/1.1 var(--mono); letter-spacing: -.04em; }
+.g-game__sport { grid-area: sport; font: 400 var(--text-label)/1.3 var(--mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.g-game__line { grid-area: line; color: var(--muted); max-width: 60ch; }
+.g-game .stamp { grid-area: stamp; align-self: center; justify-self: end; }
+@media (max-width: 30rem) {
+  .g-game a { grid-template-columns: 2rem minmax(0, 1fr); grid-template-areas: "no name" ". sport" ". line" ". stamp"; }
+  .g-game .stamp { justify-self: start; margin-top: .5rem; }
+}
