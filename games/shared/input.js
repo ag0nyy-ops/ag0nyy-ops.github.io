@@ -25,6 +25,7 @@ export class Input {
   constructor(keymap = {}) {
     this.keymap = keymap;
     this.keys = new Set();
+    this.tapped = new Set();   // keys pressed since the last poll, so a tap shorter than a frame still counts
     this.settings = loadSettings();
     this.state = blank();
     this.prev = blank();
@@ -32,14 +33,14 @@ export class Input {
     this.lastDevice = 'keyboard';
     addEventListener('keydown', (e) => {
       if (this.owns(e.code)) e.preventDefault();
-      this.keys.add(e.code); this.lastDevice = 'keyboard';
+      this.keys.add(e.code); if (!e.repeat) this.tapped.add(e.code); this.lastDevice = 'keyboard';
     });
     addEventListener('keyup', (e) => this.keys.delete(e.code));
     addEventListener('blur', () => this.keys.clear());
     addEventListener('focus', () => { this.settings = loadSettings(); });
   }
   owns(code) { return Object.values(this.keymap).some((list) => list.includes(code)); }
-  key(action) { return (this.keymap[action] || []).some((c) => this.keys.has(c)); }
+  key(action) { return (this.keymap[action] || []).some((c) => this.keys.has(c) || this.tapped.has(c)); }
 
   poll() {
     this.prev = this.state;
@@ -68,6 +69,7 @@ export class Input {
     if (this.key('RT')) s.rt = 1;
     for (const action of Object.keys(this.keymap)) if (!(action in s.btn) && this.key(action)) s.act[action] = true;
     this.state = s;
+    this.tapped.clear();
     return s;
   }
   down(name) { return !!(this.state.btn[name] || this.state.act[name]); }
