@@ -102,8 +102,9 @@ function setup() {
     <div class="menu">${row('size')}${row('cpu')}${row('to')}<button class="btn btn--solid" data-go="start">Check ball</button><button class="btn" data-go="menu">Back</button></div>
     <ul class="blurbs"><li><b>Make it, lose it:</b> after a bucket the other side checks it at the top.</li>
     <li><b>Take it back:</b> after a steal or a defensive rebound, get the ball outside the arc before you shoot.</li>
-    <li><b>Ones and twos:</b> 2 inside the arc, 3 outside. ${data.opts.size > 1 ? 'You run the ball handler, and on defense whoever you switch to.' : ''}</li></ul>`);
-  const i = menuItems.findIndex((b) => b.dataset.arg === setup.focus); if (i >= 0) { menuIndex = i; menuItems[i].focus(); }
+    <li><b>Twos and threes:</b> 2 inside the arc, 3 outside. ${data.opts.size > 1 ? 'You run the ball handler, and on defense whoever you switch to.' : ''}</li></ul>`);
+  const i = setup.focus ? menuItems.findIndex((b) => b.dataset.arg === setup.focus) : -1; if (i >= 0) { menuIndex = i; menuItems[i].focus(); }
+  setup.focus = null;
 }
 function cycle(k, dir = 1) {
   const o = OPTS[k], i = o.vals.indexOf(data.opts[k]);
@@ -202,7 +203,7 @@ function menuInput() {
 }
 
 /* ---------------- turning the controller into an intent ---------------- */
-let flickArmed = true, mouseAim = [0, 0];
+let flickArmed = true, mouseAim = [0, 0], latch = false; // TEMP latch
 addEventListener('mousemove', (e) => { if (mode === 'play' && match && match.shot && match.shot.human) { mouseAim[0] += e.movementX; mouseAim[1] += e.movementY; } });
 
 function humanIntent(m) {
@@ -210,6 +211,7 @@ function humanIntent(m) {
   it.human = true;
   it.mx = s.lx; it.my = s.ly;
   it.shoot = input.down('X') || s.lt > 0.5 || s.rt > 0.5;
+  if (location.hash === '#latch') { if (input.pressed('X')) latch = !latch; it.shoot = latch; } // TEMP
   it.pass = input.pressed('RB') || input.pressed('A');
   it.passDir = Math.hypot(s.lx, s.ly) > 0.3 ? [s.lx, s.ly] : null;
   it.call = input.pressed('LB') || input.pressed('Y');
@@ -259,10 +261,10 @@ function resize() {
   fitBroadcast();
 }
 addEventListener('resize', resize);
-const BPOS = [0, 64, 25], BTGT = [0, 15, 0];
+const BPOS = [0, 50, 20], BTGT = [0, 13, 1.5];
 function fitBroadcast() {
   aim(cam, BPOS, BTGT); cam.fl = 1; cam.cx = 0; cam.cy = 0;
-  const pts = [[-25, 0, 0], [25, 0, 0], [-25, 47, 0], [25, 47, 0], [0, 4, 13], [-3, 4, 12.5], [3, 4, 12.5]];
+  const pts = [[-25, 0, 0], [25, 0, 0], [-25, 34, 0], [25, 34, 0], [0, 4, 13], [-3, 4, 12.5], [3, 4, 12.5]];
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
   for (const q of pts) { const s = proj(q[0], q[1], q[2]); x0 = Math.min(x0, s[0]); x1 = Math.max(x1, s[0]); y0 = Math.min(y0, s[1]); y1 = Math.max(y1, s[1]); }
   const top = 70, bottom = 54;
@@ -386,7 +388,7 @@ function hoop(m) {
   ctx.strokeStyle = 'rgba(236,236,236,.35)'; ctx.lineWidth = lw(0.25);
   ctx.beginPath(); poly([[0, -3, 0], [0, -3, 11.5], [0, 4, 11.5]]); ctx.stroke();
   // backboard
-  ctx.fillStyle = 'rgba(236,236,236,.06)'; fillPoly([[-3, 4, 9], [3, 4, 9], [3, 4, 12.5], [-3, 4, 12.5]]);
+  ctx.fillStyle = '#141414'; fillPoly([[-3, 4, 9], [3, 4, 9], [3, 4, 12.5], [-3, 4, 12.5]]);
   ctx.strokeStyle = FG; ctx.lineWidth = lw(0.08);
   ctx.beginPath(); poly([[-3, 4, 9], [3, 4, 9], [3, 4, 12.5], [-3, 4, 12.5]], true); poly([[-1, 4, 10.1], [1, 4, 10.1], [1, 4, 11.6], [-1, 4, 11.6]], true); ctx.stroke();
   // net, then the rim on top
