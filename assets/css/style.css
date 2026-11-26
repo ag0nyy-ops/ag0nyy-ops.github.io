@@ -597,7 +597,7 @@
   .tape__strip--b { border-block: 1px solid var(--line-strong); color: var(--muted); background: var(--bg); translate: 0 -50%; rotate: 3deg; }
   .tape__track { display: inline-flex; }
 
-  /* ---------------- new: hand fight ----------------
+  /* ---------------- new: folkstyle ----------------
      The loud one: an oversized title, the highlight video, then real
      screenshots pinned slightly crooked like exhibits in a file. */
   .fresh__title { font-size: clamp(6rem, 25vw, 19rem); }
