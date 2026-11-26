@@ -9,8 +9,8 @@
   <meta name="description" content="Jay's sports games for the browser. Folkstyle is live, six more are on the way.">
   <meta name="theme-color" content="#060606">
   <meta name="color-scheme" content="dark">
-  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/games/games.css?v=1">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="games.css?v=2">
 </head>
 <body>
   <a class="sr-only" href="#main">Skip to content</a>
@@ -73,6 +73,44 @@
         <span class="stamp stamp--wip">Coming soon</span>
       </a></li>
     </ol>
+
+    <section class="g-settings" id="settings" aria-labelledby="settings-title">
+      <h2 class="label" id="settings-title">Settings for every game</h2>
+      <p class="g-note">Saved in this browser only. Every game picks them up.</p>
+
+      <div class="g-set">
+        <div class="field">
+          <label for="deadzone">Stick deadzone <output id="deadzone-out" for="deadzone"></output></label>
+          <input type="range" id="deadzone" min="0" max="0.5" step="0.01">
+          <small>Raise it if a stick drifts. Movement inside the circle is ignored.</small>
+        </div>
+        <div class="g-pads" aria-live="polite">
+          <canvas id="stick-l" width="140" height="140" aria-label="Left stick position"></canvas>
+          <canvas id="stick-r" width="140" height="140" aria-label="Right stick position"></canvas>
+          <p class="g-note" id="pad-status">No controller found. Plug one in and press any button.</p>
+          <button class="btn" type="button" id="measure" disabled>Measure drift</button>
+        </div>
+      </div>
+
+      <div class="g-set g-set--row">
+        <div class="field">
+          <label for="palette">Colour vision</label>
+          <select id="palette"></select>
+          <small>Changes team and highlight colours. Teams are also marked with shapes and text.</small>
+        </div>
+        <div class="field">
+          <label for="volume">Volume <output id="volume-out" for="volume"></output></label>
+          <input type="range" id="volume" min="0" max="1" step="0.05">
+        </div>
+        <div class="field">
+          <label for="motion">Reduce motion</label>
+          <select id="motion"><option value="auto">Follow my system</option><option value="on">On</option><option value="off">Off</option></select>
+          <small>No game here ever flashes or strobes, whatever this is set to.</small>
+        </div>
+      </div>
+      <p class="g-swatches" id="swatches" aria-hidden="true"></p>
+    </section>
   </main>
+  <script type="module" src="hub.js"></script>
 </body>
 </html>

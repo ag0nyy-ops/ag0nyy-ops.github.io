@@ -1,10 +1,10 @@
 /* jay. — © 2026 Jay — https://ag0nyy-ops.github.io/ — source viewable, not reusable by others (LICENSE)
    Game pages: the /games hub and each game's own file page. Built on the shared base. */
-@import url("/assets/css/base.css");
+@import url("../assets/css/base.css");
 
 body { min-height: 100vh; }
 .atmosphere { position: fixed; inset: 0; z-index: 50; pointer-events: none;
-  background: url("/assets/img/grain.png") 0 0 / 128px 128px,
+  background: url("../assets/img/grain.png") 0 0 / 128px 128px,
               radial-gradient(ellipse at 50% 50%, transparent 45%, rgb(0 0 0 / .7)); }
 .sr-only:focus { position: fixed !important; top: 1rem; left: 1rem; width: auto; height: auto; clip: auto; padding: .6rem .9rem; background: var(--fg); color: var(--bg); z-index: 60; }
 
@@ -44,3 +44,14 @@ body { min-height: 100vh; }
   .g-game a { grid-template-columns: 2rem minmax(0, 1fr); grid-template-areas: "no name" ". sport" ". line" ". stamp"; }
   .g-game .stamp { justify-self: start; margin-top: .5rem; }
 }
+
+/* settings panel on the hub */
+.g-settings { display: grid; gap: var(--space-5); padding: var(--space-5); background: var(--bg-2); border: 1px solid var(--line-strong); }
+.g-set { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); align-items: start; }
+.g-set .field output { color: var(--fg); margin-left: .4em; }
+.g-set input[type="range"] { width: 100%; accent-color: var(--fg); min-height: 44px; }
+.g-pads { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.g-pads canvas { width: 140px; height: 140px; border: 1px solid var(--line); }
+.g-pads .g-note { flex: 1 1 100%; }
+.g-swatches { display: flex; gap: var(--space-3); font: 400 var(--text-label)/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.g-swatches span::before { content: ""; display: inline-block; width: .9rem; height: .9rem; margin-right: .45rem; vertical-align: -.15em; background: var(--c); border: 1px solid var(--line-strong); }
