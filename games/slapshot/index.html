@@ -4,39 +4,20 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Slapshot · coming soon · jay.</title>
-  <meta name="description" content="Slapshot: a hockey game for the browser. Coming soon.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Slapshot · jay.</title>
+  <meta name="description" content="Slapshot: 3-on-3 arcade hockey in the browser. The right stick is your hockey stick.">
   <meta name="theme-color" content="#060606">
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../games.css?v=2">
+  <link rel="stylesheet" href="../shared/game.css?v=3">
 </head>
 <body>
-  <a class="sr-only" href="#main">Skip to content</a>
-  <div class="atmosphere" aria-hidden="true"></div>
-  <header class="g-top">
-    <a class="g-top__home" href="/">jay.</a>
-    <a class="g-top__link" href="/games/">All games</a>
-  </header>
-  <main id="main" class="g-wrap">
-    <p class="label">Game file / Hockey / pending</p>
-    <h1 class="title g-title">Slapshot</h1>
-    <div class="g-status">
-      <span class="stamp stamp--big stamp--wip">Coming soon</span>
-      <p class="g-order">Number 4 in the build order.</p>
-    </div>
-    <p class="lede g-lead">Arcade hockey where the right stick is your hockey stick.</p>
-    <section class="g-plan" aria-labelledby="plan">
-      <h2 class="label" id="plan">The plan</h2>
-      <ul><li>Left stick skates, a trigger digs in for a hard stop.</li><li>Right stick is the blade: sweep it to stickhandle, pull back and flick to shoot.</li><li>The longer the wind-up, the harder the slapshot, and the easier to read.</li><li>A bumper throws a check. No stat training.</li></ul>
-      <p class="g-note">These controls are a first proposal and may change once it is playable.</p>
-    </section>
-    <p class="g-foot">Controller first, keyboard works too. Runs in the browser, nothing to install.</p>
-    <ul class="g-links">
-      <li><a class="btn btn--solid" href="/wrestle/">Play Folkstyle meanwhile</a></li>
-      <li><a class="btn" href="/games/">All games</a></li>
-    </ul>
-  </main>
+  <canvas id="c" aria-label="The rink from above. You attack the net on the right. Your team are circles, the other team are diamonds, and your skater has a ring and a YOU marker."></canvas>
+  <div class="overlay" id="overlay" role="dialog" aria-label="Slapshot menu"></div>
+  <a class="btn back" href="../">All games</a>
+  <noscript><p class="overlay">Slapshot needs JavaScript to run.</p></noscript>
+  <script type="module" src="game.js?v=1"></script>
 </body>
 </html>
