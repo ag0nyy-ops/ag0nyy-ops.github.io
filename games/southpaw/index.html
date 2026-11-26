@@ -4,39 +4,20 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Southpaw · coming soon · jay.</title>
-  <meta name="description" content="Southpaw: a boxing game for the browser. Coming soon.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Southpaw · jay.</title>
+  <meta name="description" content="Southpaw: arcade boxing in the browser. Your triggers throw the punches, the pull sets the power.">
   <meta name="theme-color" content="#060606">
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../games.css?v=2">
+  <link rel="stylesheet" href="../shared/game.css?v=3">
 </head>
 <body>
-  <a class="sr-only" href="#main">Skip to content</a>
-  <div class="atmosphere" aria-hidden="true"></div>
-  <header class="g-top">
-    <a class="g-top__home" href="/">jay.</a>
-    <a class="g-top__link" href="/games/">All games</a>
-  </header>
-  <main id="main" class="g-wrap">
-    <p class="label">Game file / Boxing / pending</p>
-    <h1 class="title g-title">Southpaw</h1>
-    <div class="g-status">
-      <span class="stamp stamp--big stamp--wip">Coming soon</span>
-      <p class="g-order">Number 5 in the build order.</p>
-    </div>
-    <p class="lede g-lead">Boxing that is all arms. Your triggers throw the punches.</p>
-    <section class="g-plan" aria-labelledby="plan">
-      <h2 class="label" id="plan">The plan</h2>
-      <ul><li>Left trigger throws the left hand, right trigger the right.</li><li>How far you pull the trigger sets how hard it lands, and how open you are after.</li><li>Right stick picks the punch: straight, hook or uppercut. Left stick moves your feet.</li><li>Bumpers raise the guard on each side.</li></ul>
-      <p class="g-note">Planned controls. They may change once it is playable.</p>
-    </section>
-    <p class="g-foot">Controller first, keyboard works too. Runs in the browser, nothing to install.</p>
-    <ul class="g-links">
-      <li><a class="btn btn--solid" href="/wrestle/">Play Folkstyle meanwhile</a></li>
-      <li><a class="btn" href="/games/">All games</a></li>
-    </ul>
-  </main>
+  <canvas id="c" aria-label="The ring, seen from the side. You are on the left, solid and marked YOU. Your opponent is on the right, drawn in outline."></canvas>
+  <div class="overlay" id="overlay" role="dialog" aria-label="Southpaw menu"></div>
+  <a class="btn back" href="../">All games</a>
+  <noscript><p class="overlay">Southpaw needs JavaScript to run.</p></noscript>
+  <script type="module" src="game.js?v=1"></script>
 </body>
 </html>
