@@ -410,12 +410,12 @@ const THIGH = 0.45, SHIN = 0.45, TORSO = 0.55, UPPER = 0.3, FORE = 0.28, HEAD = 
 
 function pose() {
   const G_ = game, g = G_.g, p = { x: g.x, z: 0, ang: 0, face: g.face, sx: 1, tuck: 0, pike: 0, knee: 0.08,
-    arm: 0.15, elbow: 0.1, legA: 0, legB: 0, grounded: true };
+    arm: 0.15, armB: null, elbow: 0.1, legA: 0, legB: 0, grounded: true };
   if (G_.phase === 'ready' || (G_.phase === 'settle' && !G_.bal) ) return p;
   if (G_.phase === 'run' || G_.phase === 'walk') {
     const amp = Math.min(1, g.v / 4) * (G_.phase === 'walk' ? 0.4 : 0.85) + 0.05;
     const sw = Math.sin(g.runPhase) * amp;
-    Object.assign(p, { legA: sw, legB: -sw, knee: 0.35 + 0.4 * Math.max(0, Math.cos(g.runPhase)) * amp, arm: -sw * 1.1, elbow: 1.2, ang: -0.18 * g.v / VMAX });
+    Object.assign(p, { legA: sw, legB: -sw, knee: 0.35 + 0.4 * Math.max(0, Math.cos(g.runPhase)) * amp, arm: -sw * 1.1, armB: sw * 1.1, elbow: 1.2, ang: -0.18 * g.v / VMAX });
     return p;
   }
   if (G_.phase === 'hurdle') {
@@ -461,7 +461,8 @@ function skeleton(p) {
   const leg = (off) => { const a = hip + off; const K = pt(a, THIGH, O); const F = pt(a - knee, SHIN, K); return [K, F]; };
   const [KA, FA] = leg(p.legA), [KB, FB] = leg(p.legB);
   const E = pt(p.arm, UPPER, S), Hn = pt(p.arm + p.elbow, FORE, E);
-  return { O, S, Hd, KA, FA, KB, FB, E, Hn };
+  const b = p.armB ?? p.arm - 0.12, E2 = pt(b, UPPER, S), Hn2 = pt(b + p.elbow, FORE, E2);
+  return { O, S, Hd, KA, FA, KB, FB, E, Hn, E2, Hn2 };
 }
 
 function drawGymnast(v, p, color) {
@@ -479,7 +480,7 @@ function drawGymnast(v, p, color) {
   ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.lineWidth = Math.max(2.5, v.ppm * 0.055);
   const line = (...ks) => { ctx.beginPath(); ks.forEach((k, i) => { const [x, y] = P(pts[k]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); };
-  line('FB', 'KB', 'O'); line('FA', 'KA', 'O'); line('O', 'S'); line('S', 'E', 'Hn');
+  line('FB', 'KB', 'O'); line('FA', 'KA', 'O'); line('O', 'S'); line('S', 'E2', 'Hn2'); line('S', 'E', 'Hn');
   const [hx, hy] = P(pts.Hd); ctx.beginPath(); ctx.arc(hx, hy, HEAD * v.ppm, 0, TAU); ctx.fill();
   ctx.restore();
 }
