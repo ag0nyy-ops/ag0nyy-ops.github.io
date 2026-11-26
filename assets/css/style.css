@@ -162,7 +162,7 @@
     overflow-x: clip;
     -webkit-font-smoothing: antialiased;
     /* lets the nav links (outside the sections) read the sections' timelines */
-    timeline-scope: --s-projects, --s-services, --s-about, --s-contact;
+    timeline-scope: --s-wrestle, --s-projects, --s-services, --s-about, --s-contact;
   }
   a { color: inherit; }
   ::selection { background: var(--fg); color: var(--bg); }
@@ -213,6 +213,7 @@
     padding: clamp(6rem, 14vw, 11rem) var(--gutter) 0;
     scroll-margin-top: 3rem;
   }
+  #wrestle  { view-timeline: --s-wrestle block; }
   #projects { view-timeline: --s-projects block; }
   #services { view-timeline: --s-services block; }
   #about    { view-timeline: --s-about block; }
@@ -595,6 +596,32 @@
   .tape__strip--a { background: var(--fg); color: var(--bg); translate: 0 -50%; rotate: -3.5deg; z-index: 2; }
   .tape__strip--b { border-block: 1px solid var(--line-strong); color: var(--muted); background: var(--bg); translate: 0 -50%; rotate: 3deg; }
   .tape__track { display: inline-flex; }
+
+  /* ---------------- new: hand fight ----------------
+     The loud one: an oversized title, the highlight video, then real
+     screenshots pinned slightly crooked like exhibits in a file. */
+  .fresh__title { font-size: clamp(6rem, 25vw, 19rem); }
+  .fresh__intro { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem 3rem; margin-bottom: clamp(2rem, 5vw, 3.5rem); }
+  .fresh__intro > div { min-width: 0; }
+  .fresh__name { font: 600 clamp(2.2rem, 6vw, 4.4rem)/1.05 var(--mono); letter-spacing: -.045em; margin-bottom: .8rem; }
+  .fresh__lead { color: var(--muted); max-width: 48ch; margin-bottom: 1.5rem; }
+  .fresh__links { display: flex; flex-wrap: wrap; gap: .8rem; }
+  .exhibit { margin: 0; }
+  .exhibit img, .exhibit video { display: block; width: 100%; height: auto; border: 1px solid var(--line-strong); box-shadow: 0 24px 60px #000; }
+  .exhibit video { aspect-ratio: 16 / 9; background: #000; border-color: var(--fg); }
+  .exhibit figcaption { margin-top: 1rem; font: 400 .75rem/1.6 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .exhibit figcaption::before { content: "■ "; }
+  .exhibit a { display: block; rotate: var(--tilt, -1deg); transition: rotate .6s var(--ease-spring), scale .6s var(--ease-spring); }
+  .exhibit a:hover, .exhibit a:focus-visible { rotate: 0deg; scale: 1.02; }
+  .exhibits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(2rem, 4vw, 3rem) clamp(1.2rem, 2.5vw, 2rem); margin-top: clamp(3rem, 7vw, 5rem); }
+  .exhibits .exhibit:nth-child(3) a { --tilt: 1.2deg; }
+  .exhibit--wide { grid-column: 1 / -1; }
+  .exhibit--wide a { --tilt: .6deg; }
+  .fresh__facts { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: clamp(2.5rem, 6vw, 4rem); font: 400 .8rem/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .fresh__facts li { padding: .7rem .9rem; border: 1px solid var(--line-strong); background: var(--bg-2); }
+  .fresh__facts b { color: var(--fg); }
+  .fresh__note { margin-top: 1.2rem; font: 400 .9rem/1.6 var(--mono); color: var(--muted); }
+  @media (max-width: 760px) { .exhibits { grid-template-columns: minmax(0, 1fr); } }
 
   /* ---------------- case files (projects) ----------------
      Each card is a size container, so its layout responds to how wide
@@ -1130,6 +1157,7 @@
        timeline (shared via timeline-scope on <body>) and lights up while
        that section is on screen */
     .topbar__nav a { animation: spy linear both; }
+    .topbar__nav a[data-spy="wrestle"]  { animation-timeline: --s-wrestle; }
     .topbar__nav a[data-spy="projects"] { animation-timeline: --s-projects; }
     .topbar__nav a[data-spy="services"] { animation-timeline: --s-services; }
     .topbar__nav a[data-spy="about"]    { animation-timeline: --s-about; }

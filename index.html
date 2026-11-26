@@ -23,7 +23,7 @@
   <!-- fonts are self-hosted (assets/fonts); preload the two the first screen needs -->
   <link rel="preload" href="assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/css/style.css?v=22">
+  <link rel="stylesheet" href="assets/css/style.css?v=23">
   <script>
     /* The only blocking JS, kept tiny:
        1. skip the eyelid intro on repeat visits this session
@@ -107,6 +107,7 @@
     </a>
     <nav aria-label="Primary">
       <ul class="topbar__nav">
+        <li><a href="#wrestle" data-spy="wrestle"><span class="no">00</span>New!!!</a></li>
         <li><a href="#projects" data-spy="projects"><span class="no">01</span>Projects</a></li>
         <li><a href="#services" data-spy="services"><span class="no">02</span>Services</a></li>
         <li><a href="#about" data-spy="about"><span class="no">03</span>About</a></li>
@@ -173,13 +174,59 @@
         </div>
       </div>
 
-      <a class="hero__scroll" href="#projects" aria-label="Scroll to projects"><span>Scroll to declassify</span></a>
+      <a class="hero__scroll" href="#wrestle" aria-label="Scroll to what's new"><span>Scroll to declassify</span></a>
     </section>
 
     <div class="tape" aria-hidden="true">
       <div class="tape__strip tape__strip--b"><div class="tape__track"><span>Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶&nbsp;</span><span>Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶&nbsp;</span></div></div>
       <div class="tape__strip tape__strip--a"><div class="tape__track"><span>Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶ Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶&nbsp;</span><span>Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶ Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶&nbsp;</span></div></div>
     </div>
+
+    <!-- ================= NEW: HAND FIGHT ================= -->
+    <section class="section fresh" id="wrestle" tabindex="-1" aria-labelledby="wrestle-title wrestle-name">
+      <span class="section__ghost" aria-hidden="true">00</span>
+      <header class="sh">
+        <p class="sh__label">File 00 / Hand Fight / just filed</p>
+        <h2 class="sh__title fresh__title distort" id="wrestle-title" data-text="New!!!">New!!!</h2>
+      </header>
+
+      <div class="fresh__intro bleed">
+        <div>
+          <h3 class="fresh__name" id="wrestle-name">Hand Fight</h3>
+          <p class="fresh__lead">A wrestling game that runs in your browser. Your sticks are your hands, your triggers are your hips, your bumpers grab wrists.</p>
+          <ul class="fresh__links">
+            <li><a class="btn btn--solid" href="/wrestle/">Play it</a></li>
+            <li><a class="btn" href="/wrestle/moves.html">Move index</a></li>
+            <li><a class="btn" href="https://github.com/ag0nyy-ops/wrestle" target="_blank" rel="noopener">Source ↗</a></li>
+          </ul>
+        </div>
+        <span class="stamp stamp--big">Live</span>
+      </div>
+
+      <figure class="exhibit exhibit--video bleed">
+        <video controls playsinline preload="none" width="1280" height="720" poster="assets/img/wrestle/poster.webp" aria-label="Hand Fight highlight video with sound: dummy versus dummy slams, a ring-out and a pin">
+          <source src="assets/img/wrestle/showcase.mp4" type="video/mp4">
+          <a href="assets/img/wrestle/showcase.mp4">Watch the video</a>
+        </video>
+        <figcaption>Real game footage, sound on. Two dummies with the aggression cranked and no fatigue, slightly sped up.</figcaption>
+      </figure>
+
+      <div class="exhibits">
+        <figure class="exhibit exhibit--wide bleed"><a href="/wrestle/"><img src="assets/img/wrestle/slam.webp" width="1600" height="956" loading="lazy" alt="One wrestler arches back and throws the other, under a scoreboard and two conditioning meters"></a><figcaption>A slam off the back arch</figcaption></figure>
+        <figure class="exhibit bleed"><a href="/wrestle/"><img src="assets/img/wrestle/ref-flop.webp" width="1200" height="617" loading="lazy" alt="The referee dives flat toward the mat beside a pin"></a><figcaption>The referee takes pins personally</figcaption></figure>
+        <figure class="exhibit bleed"><a href="/wrestle/"><img src="assets/img/wrestle/hand-fight.webp" width="1200" height="617" loading="lazy" alt="Two wrestlers in a low stance fighting for each other's hands"></a><figcaption>Hand fighting on your feet</figcaption></figure>
+        <figure class="exhibit bleed"><a href="/wrestle/moves.html"><img src="assets/img/wrestle/move-index.webp" width="1200" height="750" loading="lazy" alt="The move index filtered to body lock slams, each card showing its button, when it lands and what it scores"></a><figcaption>Every move, looked up</figcaption></figure>
+      </div>
+
+      <ul class="fresh__facts bleed">
+        <li><b>139</b> entries in the move index</li>
+        <li>Body locks that turn into <b>slams</b></li>
+        <li>A <b>conditioning</b> meter, so nobody goes 100% all match</li>
+        <li>Step out of the <b>circle</b> and you lose</li>
+        <li><b>Dummy vs dummy</b>, seeded so you can't call it</li>
+      </ul>
+      <p class="fresh__note bleed">Needs a controller or keyboard to play. On a phone it opens on dummy vs dummy.</p>
+    </section>
 
     <!-- ================= PROJECTS ================= -->
     <section class="section" id="projects" tabindex="-1" aria-labelledby="projects-title">
