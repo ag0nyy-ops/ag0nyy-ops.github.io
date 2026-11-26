@@ -143,7 +143,7 @@ function shooting() {
       <li><b>The ring on the rim is the drop zone.</b> Both hands have to sit inside it for the ball to go down. The closer to the middle, the better. The ring turns solid when both hands are in.</li>
       <li><b>Let go to shoot.</b> There is no timing. Release whenever both hands are where you want them.</li>
       <li><b>The hands drift.</b> The longer you hang, the harder they pull, and you can't hang forever: you come down and the ball goes wherever your hands are.</li>
-      <li><b>Defense shrinks the ring.</b> A hand in your face or a defender in the air makes it smaller. Wait for him to come down, or get your shot off first.</li>
+      <li><b>Defense shrinks the ring.</b> A hand in your face or a defender in the air makes it smaller. Wait for them to come down, or get your shot off first.</li>
       <li><b>Moving and deep shots</b> start your hands further off. Layups and dunks have a bigger ring and less time.</li>
       <li><b>Misses go where you missed:</b> shooting hand low means short, off to the side means it rims out that way.</li>
     </ul>

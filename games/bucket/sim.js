@@ -233,7 +233,7 @@ function act(m, p, it, dt, realDt) {
   if (p.wantT > 0) p.wantT -= dt;
 }
 
-/* right-stick moves: a quick burst to one side. A defender leaning the other way loses his feet. */
+/* right-stick moves: a quick burst to one side. A defender leaning the other way loses their feet. */
 function dribbleMove(m, p, dir) {
   if (p.moveCd > 0 || p.stun > 0) return;
   const [rx, ry] = norm(RIM.x - p.x, RIM.y - p.y);
@@ -392,7 +392,8 @@ export function handOdds(s) {
   const R = s.targetR, dg = len(s.g[0], s.g[1]) / R, ds = len(s.s[0], s.s[1]) / R;
   const deep = s.kind === 'jumper' ? clamp((s.dist - 24) * 0.035, 0, 0.35) : 0;
   const top = s.kind === 'dunk' ? 0.97 : s.kind === 'layup' ? 0.95 : 0.93 - 0.005 * Math.max(0, s.dist - 8);
-  if (dg <= 1 && ds <= 1) return { inside: true, p: clamp(top - 0.33 * (0.4 * dg * dg + 0.6 * ds * ds) - deep, 0.05, 0.99), dg, ds };
+  // even a perfect release is harder with a hand in your face
+  if (dg <= 1 && ds <= 1) return { inside: true, p: clamp(top - 0.33 * (0.4 * dg * dg + 0.6 * ds * ds) - deep - 0.25 * s.contest, 0.05, 0.99), dg, ds };
   return { inside: false, p: 0.06 * clamp(2.2 - Math.max(dg, ds), 0, 1), dg, ds };
 }
 
@@ -654,7 +655,7 @@ function handlerBrain(m, p, it, dt, goTo, dumb) {
   else if (p.plan === 'pass') { it.pass = true; it.passDir = null; p.plan = null; p.holdT = 0; }
   else { goTo(p.planTarget[0], p.planTarget[1], 0.8); }
   if (def && ddist < 4.2 && p.moveCd <= 0 && m.rand() < dt * 1.5 * dumb) {
-    // shake him: crossover against the way he's leaning
+    // shake them: crossover against the way they're leaning
     it.flick = def.vx > 0.5 ? 'left' : def.vx < -0.5 ? 'right' : m.rand() < 0.5 ? 'left' : 'right';
     if (m.rand() < 0.25) it.flick = 'down';
   }
