@@ -106,7 +106,7 @@ function controls(back = 'menu') {
     <tr><td>Go to the body</td><td>Hold the left stick down while you throw</td><td>Hold S while you throw</td></tr>
     <tr><td>Feet</td><td>Left stick, in and out</td><td>A back, D in</td></tr>
     <tr><td>High guard / low guard</td><td>L1 / R1. Both is the shell</td><td>E / U. Both is the shell</td></tr>
-    <tr><td>Slip</td><td>Flick the right stick and let go, or circle</td><td>Space</td></tr>
+    <tr><td>Slip</td><td>Flick the right stick and let go, or press Circle</td><td>Space</td></tr>
     <tr><td>Switch stance</td><td>Click the left stick</td><td>Q</td></tr>
     <tr><td>Pause</td><td>Options</td><td>P or Esc</td></tr></tbody></table>
     <ul class="blurbs">
@@ -444,7 +444,7 @@ function pose(p, o) {
   if (a && a.type === 'punch') {
     const R = a.role, r0 = rest[R], Sx = S[R];
     const oHead = 1.62 - (o.is('slip') ? 0.18 : 0);
-    const tgt = { x: o.x - o.face * 0.16, y: a.body ? 1.2 : a.kind === 'upper' ? oHead - 0.08 : oHead };
+    const tgt = { x: o.x + o.face * 0.14, y: a.body ? 1.2 : a.kind === 'upper' ? oHead - 0.08 : oHead };
     const dx = tgt.x - Sx.x, dy = tgt.y - Sx.y, dd = Math.hypot(dx, dy), far = 0.72 + (a.kind === 'straight' ? 0.04 : 0);
     const end = a.missed && dd > far ? { x: Sx.x + dir * far * 0.98, y: tgt.y } : dd > far ? { x: Sx.x + dx / dd * far, y: Sx.y + dy / dd * far } : tgt;
     const wind = a.kind === 'straight' ? { x: r0.x - dir * 0.1, y: Math.max(r0.y, 1.4 - dip) }

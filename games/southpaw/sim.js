@@ -155,7 +155,7 @@ export class Bout {
     const d = def.x - att.x;
     const reach = P.reach + (a.kind === 'straight' ? 0.1 * a.p : 0.03);
     const head = !a.body;
-    const at = { x: def.x - def.face * 0.18, y: head ? 1.6 : 1.2 };
+    const at = { x: def.x + def.face * 0.12, y: head ? 1.6 : 1.2 };
     const fx = (text, tone, x = at.x, y = at.y) => this.fx.push({ text, tone, x, y, t: 0, life: 0.75, who: att === this.me ? 'me' : 'foe' });
     if (Math.abs(d) > reach) {
       a.missed = true; a.extra = 0.16; att.stam = Math.max(0, att.stam - 2);
