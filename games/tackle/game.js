@@ -2,12 +2,14 @@
    Tackle: arcade football. You play offense, the other team's drives are simulated in between.
    The ball is in one hand, picked at random every play, and only that hand's stick and trigger
    do anything. Hold the trigger to drop back, aim with the stick, let go to throw. With the ball
-   in your hands: the stick runs, a quick flick sideways jukes, the trigger is a burst and stiff-arm. */
+   in your hands: the stick runs, a quick flick sideways jukes, the trigger is a burst and stiff-arm.
+   The other team is a seeded dummy. CPU vs CPU plays a whole game between two of them (newMatch in sim.js). */
 
 import { Input } from '../shared/input.js';
 import { loadSettings, reducedMotion } from '../shared/settings.js';
 import * as look from '../shared/look.js';
-import { FW, MID, DIFFS, PLAYS, newPlay, step, simDrive, simOT } from './sim.js';
+import { newSeed, dummyLabel } from '../shared/seed.js';
+import { FW, MID, DIFFS, PLAYS, newPlay, step, simDrive, simOT, makeTeam, kickSpec, newMatch, matchTick, offTeam, defTeam } from './sim.js';
 
 const SAVE = 'jay.tackle.v1';
 const LENGTHS = { standard: { name: 'Standard', secs: 300, blurb: '5 minute quarters' }, quick: { name: 'Quick', secs: 180, blurb: '3 minute quarters' } };
@@ -23,7 +25,7 @@ function load() {
   let d = {}; try { d = JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) {}
   const rec = {};
   for (const id of Object.keys(DIFFS)) rec[id] = { w: 0, l: 0, t: 0, ...((d.rec || {})[id] || {}) };
-  return { rec, len: LENGTHS[d.len] ? d.len : 'standard' };
+  return { rec, len: LENGTHS[d.len] ? d.len : 'standard', watchDiff: DIFFS[d.watchDiff] ? d.watchDiff : 'pro' };
 }
 const data = load();
 const persist = () => { try { localStorage.setItem(SAVE, JSON.stringify(data)); } catch (e) {} };
@@ -111,19 +113,23 @@ function show(html) {
 function hide() { overlay.hidden = true; overlay.innerHTML = ''; menuItems = []; if (backLink) backLink.hidden = true; }
 overlay.addEventListener('click', (e) => { const b = e.target.closest('button[data-go]'); if (b) go(b.dataset.go, b.dataset.arg); });
 
-let mode = 'menu';   // menu | call | pre | live | dead | kick | card | paused | final
+let mode = 'menu';   // menu | call | pre | live | dead | kick | card | paused | final | watch
 let g = null;
+let watch = false;   // CPU vs CPU: g is then a match from newMatch(), and g.phase says what is on the field
+const phase = () => (watch && g ? g.phase : mode);
 let pausedFrom = null;
 
 function mainMenu() {
-  mode = 'menu'; g = null;
+  mode = 'menu'; g = null; watch = false;
   const rows = Object.values(DIFFS).map((d) => {
     const r = data.rec[d.id], played = r.w + r.l + r.t;
     return `<button class="btn" data-go="play" data-arg="${d.id}">${d.name} <small>vs ${d.team}${played ? ` · ${r.w}-${r.l}${r.t ? '-' + r.t : ''}` : ''}</small></button>`;
   }).join('');
-  const L = LENGTHS[data.len];
+  const L = LENGTHS[data.len], WD = DIFFS[data.watchDiff];
   show(`<p class="label">Game file / Football / 7 on 7</p><h1 class="title">Tackle</h1>
     <div class="menu">${rows}
+      <button class="btn" data-go="watch">CPU vs CPU <small>Dummy A vs Dummy B · watch</small></button>
+      <button class="btn" data-go="wskill">CPU vs CPU skill <small>${WD.name}</small></button>
       <button class="btn" data-go="length">Game length <small>${L.name} · ${L.blurb}</small></button>
       <button class="btn" data-go="controls">Controls</button></div>
     <p class="hint">The ball is in one hand, picked at random every play. That hand's stick and trigger run the play, and the other side does nothing. Every player is the same on every team. You get better, they don't.</p>`);
@@ -144,7 +150,8 @@ function controls() {
     <tr><td>Juke</td><td>Flick the stick up or down fast, or double tap up or down on the keys</td></tr>
     <tr><td>Burst / stiff-arm</td><td>Hold the trigger. Uses the meter, which refills when you let go.</td></tr>
     <tr><td>Field goal</td><td>Pull the trigger when the needle is inside the box</td></tr>
-    <tr><td>Pause</td><td>Options / Start, P or Esc</td></tr></tbody></table>
+    <tr><td>Pause</td><td>Options / Start, P or Esc</td></tr>
+    <tr><td>CPU vs CPU</td><td>Pick it on the menu and watch two seeded dummies play a whole game. Pause to quit.</td></tr></tbody></table>
     <ul class="blurbs">
       <li><b>Juke</b> right as a tackler reaches you and he misses. Too early and he just tackles you.</li>
       <li><b>Stiff-arm</b> needs meter. With an empty meter, contact is a tackle.</li>
@@ -156,7 +163,15 @@ function controls() {
 function pause() {
   if (mode !== 'paused') pausedFrom = mode;
   mode = 'paused';
+  if (watch) {
+    const [a, b] = g.teams;
+    return show(`<p class="label">Paused · CPU vs CPU · ${g.diff.name} · ${clockText()}</p><h1 class="title">${a.score} <small>to</small> ${b.score}</h1>
+    <ul class="blurbs"><li>${dummyLabel('dummy a', a.d)}</li><li>${dummyLabel('dummy b', b.d)}</li></ul>
+    <div class="menu"><button class="btn btn--solid" data-go="resume">Resume</button><button class="btn" data-go="restart">New match</button>
+    <button class="btn" data-go="menu">Quit to menu</button></div>`);
+  }
   show(`<p class="label">Paused · ${clockText()}</p><h1 class="title">${g.you} <small>to</small> ${g.them}</h1>
+    <p class="hint">${g.diff.team}: ${dummyLabel('dummy', g.cpu)}</p>
     <div class="menu"><button class="btn btn--solid" data-go="resume">Resume</button><button class="btn" data-go="controls">Controls</button>
     <button class="btn" data-go="restart">Restart game</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
 }
@@ -164,9 +179,11 @@ function go(what, arg) {
   audio();
   if (what === 'menu') mainMenu();
   else if (what === 'controls') controls();
-  else if (what === 'length') { data.len = data.len === 'standard' ? 'quick' : 'standard'; persist(); mainMenu(); menuItems[3] && menuItems[3].focus(); }
+  else if (what === 'length') { data.len = data.len === 'standard' ? 'quick' : 'standard'; persist(); mainMenu(); menuItems[5] && menuItems[5].focus(); }
+  else if (what === 'wskill') { const ids = Object.keys(DIFFS); data.watchDiff = ids[(ids.indexOf(data.watchDiff) + 1) % ids.length]; persist(); mainMenu(); menuItems[4] && menuItems[4].focus(); }
   else if (what === 'play') startGame(arg);
-  else if (what === 'restart') startGame(g.diff.id);
+  else if (what === 'watch') startWatch();
+  else if (what === 'restart') { if (watch) startWatch(); else startGame(g.diff.id); }
   else if (what === 'pause') pause();
   else if (what === 'resume') { mode = pausedFrom || 'call'; hide(); }
   else if (what === 'next') { hide(); toCall(); }
@@ -177,7 +194,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ord = (n) => ['', '1st', '2nd', '3rd', '4th'][n];
 function spot(x) { const r = Math.round(x); return r === 50 ? 'midfield' : r < 50 ? `your ${r}` : `their ${100 - r}`; }
-function spotShort(x) { const r = Math.round(x); return r === 50 ? 'MID' : r < 50 ? `OWN ${r}` : `${g.diff.abbr} ${100 - r}`; }
+function spotShort(x) { const r = Math.round(x); return r === 50 ? 'MID' : r < 50 ? `OWN ${r}` : `${watch ? defTeam(g).abbr : g.diff.abbr} ${100 - r}`; }
 function mmss(s) { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 function clockText() { return g.q >= 5 ? `OT ${g.ot.round}` : `Q${g.q} ${mmss(g.clock)}`; }
 function downText() {
@@ -187,12 +204,40 @@ function downText() {
 
 function startGame(id) {
   const diff = DIFFS[id];
-  g = { diff, qLen: LENGTHS[data.len].secs, q: 1, clock: LENGTHS[data.len].secs, you: 0, them: 0,
+  watch = false;
+  // a fresh dummy every game: the difficulty is how good it is, the seed is how it plays
+  g = { diff, cpu: makeTeam(newSeed()), qLen: LENGTHS[data.len].secs, q: 1, clock: LENGTHS[data.len].secs, you: 0, them: 0,
     x: 25, y: MID, down: 1, firstX: 35, callIdx: 0, hand: 'R', play: null, preview: null, ot: null,
     stats: { pass: 0, comp: 0, yds: 0, td: 0 } };
   cam.x = null;
   hide(); toCall();
 }
+
+/* CPU vs CPU: two fresh dummies every match, nothing recorded */
+function startWatch() {
+  watch = true;
+  g = newMatch({ secs: LENGTHS[data.len].secs, diff: DIFFS[data.watchDiff], seeds: [newSeed(), newSeed()] });
+  cam.x = null; mode = 'watch';
+  hide();
+}
+function watchUpdate(dt) {
+  matchTick(g, dt);
+  for (const c of g.cues) {
+    if (c === 'snap' || c === 'kick') thump();
+    if (c === 'tackle') { thump(); whistle(); }
+    if (c === 'whistle') whistle();
+    if (c === 'td') { thump(); fanfare(); }
+  }
+  if (g.phase === 'live' && g.play) for (const e of g.play.events) {
+    if (e.type === 'throw') beep(520 + 300 * e.zip, 0.05, 'triangle', 0.14);
+    if (e.type === 'catch') beep(330, 0.07, 'triangle', 0.2);
+    if (e.type === 'juke') beep(760, 0.03, 'square', 0.07);
+    if (e.type === 'missed') beep(e.how === 'stiff' ? 200 : 880, 0.06, e.how === 'stiff' ? 'sawtooth' : 'triangle', 0.12);
+  }
+  // the result stays up for a moment, then two new dummies take the field
+  if (g.phase === 'final' && g.finalT > WATCH_FINAL) startWatch();
+}
+const WATCH_FINAL = 6;
 
 function callList() {
   const list = PLAYS.map((p) => ({ id: p.id, name: p.name, blurb: p.blurb, kind: p.kind }));
@@ -211,7 +256,8 @@ function toCall() {
 }
 function previewPlay() {
   const c = g.calls[g.callIdx];
-  g.preview = PLAYS.some((p) => p.id === c.id) ? newPlay(g.x, g.y, c.id, g.diff) : newPlay(g.x, g.y, 'slants', g.diff);
+  const still = () => 0.5;
+  g.preview = newPlay(g.x, g.y, PLAYS.some((p) => p.id === c.id) ? c.id : 'slants', g.diff, still);
   g.play = null;
 }
 function confirmCall() {
@@ -219,7 +265,7 @@ function confirmCall() {
   if (c.id === 'punt') return punt();
   if (c.id === 'fg') return startKick();
   g.hand = Math.random() < 0.5 ? 'L' : 'R';
-  g.play = newPlay(g.x, g.y, c.id, g.diff);
+  g.play = newPlay(g.x, g.y, c.id, g.diff, Math.random, g.cpu.p, g.cpu.R);
   g.preT = 0; g.wrong = 0; g.note = '';
   mode = 'pre';
 }
@@ -231,6 +277,7 @@ function update(dt) {
   if (mode === 'menu' || mode === 'paused' || mode === 'card' || mode === 'final') return menuInput();
   if (!g) return;
   if (input.pressed('START') || input.pressed('B')) return pause();
+  if (mode === 'watch') return watchUpdate(dt);
   if (g.wrong > 0) g.wrong -= dt;
 
   if (mode === 'call') {
@@ -349,7 +396,7 @@ function punt() {
 function startKick() {
   g.hand = Math.random() < 0.5 ? 'L' : 'R'; g.wrong = 0;
   const kd = Math.round(100 - g.x + 17);
-  g.kick = { kd, t: 0, w: 2.1 + (kd - 20) * 0.06, win: Math.max(0.07, 0.3 - (kd - 20) * 0.006), done: false };
+  g.kick = { kd, t: 0, ...kickSpec(kd), done: false };
   mode = 'kick';
 }
 function kickOver() {
@@ -366,7 +413,7 @@ function kickOver() {
 function change(lines, oppDist, title) {
   if (g.q >= 5) return otTheirTurn(lines, title);
   for (let guard = 0; guard < 4; guard++) {
-    const d = simDrive(clamp(oppDist, 1, 99), g.diff);
+    const d = simDrive(clamp(oppDist, 1, 99), g.diff, g.cpu.R, g.cpu.p);
     const res = oppClock(d.time);
     let kind = d.kind, pts = d.pts;
     if (res && !((kind === 'td' || kind === 'fg') && Math.random() < 0.5)) { kind = 'clock'; pts = 0; }
@@ -412,7 +459,7 @@ function finish(lines) {
   return final(lines);
 }
 function otTheirTurn(lines, title) {
-  const pts = simOT(g.diff);
+  const pts = simOT(g.diff, g.cpu.R);
   g.them += pts;
   lines.push(`${g.diff.team} from your 25: ${pts === 7 ? 'touchdown' : pts === 3 ? 'field goal' : 'no points'}.`);
   if (g.you !== g.them || g.ot.round >= 3) return final(lines);
@@ -432,6 +479,7 @@ function final(lines) {
     ${scoreTable()}
     <ul class="blurbs">${lines.map((l) => `<li>${l}</li>`).join('')}</ul>
     <p class="hint">${s.comp} of ${s.pass} passing · ${Math.round(s.yds)} yards · ${s.td} touchdown${s.td === 1 ? '' : 's'} · record ${r.w}-${r.l}${r.t ? '-' + r.t : ''} on ${g.diff.name}</p>
+    <p class="hint">${g.diff.team}: ${dummyLabel('dummy', g.cpu)}</p>
     <div class="menu"><button class="btn btn--solid" data-go="restart">Play again</button><button class="btn" data-go="menu">Menu</button></div>`);
 }
 
@@ -476,7 +524,7 @@ function focusY() {
   if (!p) return g.y;
   if (p.carrier) return p.carrier.y;
   if (p.ball.air) { const a = p.ball.air, u = Math.min(1, a.t / a.T); return a.from.y + (a.to.y - a.from.y) * u; }
-  if (mode === 'live' && p.play.kind === 'pass') return (p.off.QB.y + p.aim.y) / 2;
+  if (phase() === 'live' && p.play.kind === 'pass') return (p.off.QB.y + p.aim.y) / 2;
   return g.y;
 }
 function focusX() {
@@ -484,7 +532,7 @@ function focusX() {
   if (!p) return g.x;
   if (p.carrier) return p.carrier.x + 6;
   if (p.ball.air) { const a = p.ball.air, u = Math.min(1, a.t / a.T); return a.from.x + (a.to.x - a.from.x) * u + 4; }
-  if (mode === 'live' && p.play.kind === 'pass') return (p.off.QB.x + p.aim.x) / 2 + 2;
+  if (phase() === 'live' && p.play.kind === 'pass') return (p.off.QB.x + p.aim.x) / 2 + 2;
   return g.x + 8;
 }
 function updateCam(dt) {
@@ -511,23 +559,34 @@ function draw(dt) {
   }
   updateCam(dt);
   look.arena(ctx, W, H, { horizon: horizonY(), dt });
-  const p = g.play || g.preview;
+  // in CPU vs CPU the match says what is on the field (g.phase); otherwise the mode does
+  const p = g.play || g.preview, ph = phase();
   board(); status(); stamps();
   clipWorld();
   drawField(p);
-  if (mode === 'call' || mode === 'pre') drawRoutes(p);
-  if (mode !== 'kick') {
+  if (p && (ph === 'call' || ph === 'pre')) drawRoutes(p);
+  if (p && ph !== 'kick') {
     drawPlayers(p);
     if (p.ball.air) drawBall(p);
-    if (mode === 'live' && p.play.kind === 'pass' && !p.carrier && !p.ball.air) drawAim(p);
+    if (ph === 'live' && p.play.kind === 'pass' && !p.carrier && !p.ball.air) drawAim(p);
   }
   ctx.restore();
-  if (mode === 'kick') drawKick();
+  if (watch) drawSeeds();
+  if (ph === 'kick' && g.kick) drawKick();
   if (mode === 'call') drawCalls();
-  if (mode === 'menu' || mode === 'paused' || mode === 'card' || mode === 'final') menuBar(); else bar(p);
-  lastMode = mode;
+  if (mode === 'menu' || mode === 'paused' || mode === 'card' || mode === 'final') menuBar(); else if (watch) watchBar(); else bar(p);
+  lastMode = mode === 'paused' ? 'paused' : ph;
 }
 
+/* CPU vs CPU: one tag per dummy under the field, who it is, how it plays, its seed */
+function drawSeeds() {
+  if (W < 560) return;
+  const y = H - Math.max(16, BOTTOM / 2 + 4);
+  g.teams.forEach((t, i) => {
+    const on = g.pos === i && g.phase !== 'final';
+    look.tag(ctx, i === 0 ? 16 : W - 16, y, `${dummyLabel(`dummy ${t.abbr.toLowerCase()}`, t.d)}${on ? ' · ball' : ''}`, { size: 10, pad: 4, align: i === 0 ? 'left' : 'right' });
+  });
+}
 function drawField(p) {
   const x0 = sx(-10), x1 = sx(110), y0 = sy(0), y1 = sy(FW);
   // a dark run-off around the field, then the field, then a pool of light where the ball is
@@ -543,12 +602,13 @@ function drawField(p) {
   for (let i = -20; i < 140; i += 2) { ctx.beginPath(); ctx.moveTo(sx(i), y1); ctx.lineTo(sx(i + FW), y0); ctx.stroke(); }
   ctx.restore();
   ctx.save(); ctx.fillStyle = look.FLOOR.inner; ctx.font = mono(Math.max(12, ppy * 3.2), 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  for (const [x, txt, rot] of [[-5, 'HOME', -Math.PI / 2], [105, g ? g.diff.abbr : 'AWAY', Math.PI / 2]]) {
+  const ends = watch && g ? [`DUMMY ${offTeam(g).abbr}`, `DUMMY ${defTeam(g).abbr}`] : ['HOME', g ? g.diff.abbr : 'AWAY'];
+  for (const [x, txt, rot] of [[-5, ends[0], -Math.PI / 2], [105, ends[1], Math.PI / 2]]) {
     ctx.save(); ctx.translate(sx(x), sy(MID)); ctx.rotate(rot); ctx.fillText(txt, 0, 0); ctx.restore();
   }
   ctx.restore();
   // who is about to cross a line: the line brightens, slowly
-  const c = p && mode === 'live' ? p.carrier : null;
+  const c = p && phase() === 'live' ? p.carrier : null;
   const near = (lx) => c && lx - c.x < 4 && lx - c.x > -1;
   // yard lines
   for (let x = 0; x <= 100; x += 5) {
@@ -609,8 +669,9 @@ function drawPlayers(p) {
   const holder = p.carrier || (!p.ball.air ? p.off.QB : null), mine = holder && mode !== 'call';
   // your player: a faint ring on the grass under them
   if (mine) { const X = sx(holder.x), Y = sy(holder.y); look.ring(ctx, X, Y, r * 1.55, r * 1.55); }
-  const T0 = look.team(0), T1 = look.team(1);
-  // defenders: dark, diamond shoulders. yours: light, round shoulders
+  // defenders: dark, diamond shoulders. yours: light, round shoulders.
+  // CPU vs CPU: each dummy keeps its tones all game, the shoulders still say who has the ball
+  const swap = watch && g.pos === 1, T0 = look.team(swap ? 1 : 0), T1 = look.team(swap ? 0 : 1);
   for (const d of Object.values(p.def)) figure(d, T1, r, false, d.role[0], false);
   for (const o of Object.values(p.off)) figure(o, T0, r, true, o.role === 'OL' ? '' : o.role === 'RB' ? 'B' : o.role[0], mine && o === holder);
   // the ball and the hand it is in
@@ -619,6 +680,7 @@ function drawPlayers(p) {
   // facing down the field, the left hand is on the top side of the screen
   const side = g.hand === 'L' ? -1 : 1, s = Math.max(5, r * 0.6), bx = X + r * 0.3, by = Y + side * (r + 9);
   footballAt(bx, by, s);
+  if (watch) return;
   look.tag(ctx, bx + s + 4, by, g.hand, { size: 10, pad: 3, align: 'left' });
   // the meter for what the trigger does right now, on the other side of the player
   if (mode !== 'live') return;
@@ -706,13 +768,22 @@ function drawKick() {
   const v = k.done ? k.at : Math.sin(k.t * k.w), a = ang(v);
   ctx.strokeStyle = FG; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * (R + 8), cy + Math.sin(a) * (R + 8)); ctx.stroke();
   ctx.fillStyle = FG; ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2); ctx.fill();
-  look.tag(ctx, cx, cy - R - 24, `${g.hand === 'L' ? 'left' : 'right'} hand · ${trigText(g.hand)} in the box`);
+  look.tag(ctx, cx, cy - R - 24, watch ? `${offTeam(g).name} lines it up` : `${g.hand === 'L' ? 'left' : 'right'} hand · ${trigText(g.hand)} in the box`);
   if (k.done) look.tag(ctx, cx, cy + 30, k.good ? "it's good" : 'no good', { size: 14 });
 }
 
 /* ---------------- HUD: the scoreboard, calls and button bar live on the page, around the stage ---------------- */
 function board() {
   if (!g) { HUD.board({ a: { name: 'you', sub: `${look.bandWord(0)} · offense`, score: 0 }, b: { name: 'cpu', sub: `${look.bandWord(1)} · defense`, score: 0 }, clock: '--' }); return; }
+  if (watch) {
+    const [a, b] = g.teams, on = g.phase !== 'final';
+    HUD.board({
+      a: { name: 'dummy a', sub: `${look.bandWord(0)} · ${a.d.style}`, score: a.score, has: on && g.pos === 0 },
+      b: { name: 'dummy b', sub: `${look.bandWord(1)} · ${b.d.style}`, score: b.score, has: on && g.pos === 1 },
+      clock: g.phase === 'final' ? 'final' : clockText(), low: (g.q === 2 || g.q === 4) && g.clock < 60
+    });
+    return;
+  }
   const onField = mode === 'call' || mode === 'pre' || mode === 'live' || mode === 'kick' || mode === 'dead';
   HUD.board({
     a: { name: 'you', sub: `${look.bandWord(0)} · offense`, score: g.you, has: onField },
@@ -723,6 +794,14 @@ function board() {
 /* the stamp over the field: down and distance, or what went wrong */
 function status() {
   let t = '';
+  if (watch) {
+    const ph = g.phase;
+    if (ph === 'kick' && g.kick) t = `${g.kick.kd} yard field goal · ${offTeam(g).name.toLowerCase()}`;
+    else if (ph === 'final') t = `new match in ${Math.max(1, Math.ceil(WATCH_FINAL - g.finalT))} · pause to quit`;
+    else if (ph === 'pre' && g.play) t = `${offTeam(g).name.toLowerCase()} calls ${g.play.play.name.toLowerCase()} · ${downText()} · ${spotShort(g.x)}`;
+    else t = `${downText()} · ${spotShort(g.x)}`;
+    return HUD.msg(t);
+  }
   if ((mode === 'pre' || mode === 'kick') && g.wrong > 0) t = `wrong hand. the ball is in your ${g.hand === 'L' ? 'left' : 'right'} hand`;
   else if (mode === 'live' && g.noteT > 0) t = g.note;
   else if (mode === 'kick') t = `${g.kick.kd} yard field goal`;
@@ -731,6 +810,20 @@ function status() {
 }
 /* the big calls, stamped once when they happen */
 function stamps() {
+  if (watch) {
+    const ph = g.phase, was = lastMode;
+    if ((ph === 'dead' || ph === 'final') && was !== ph && was !== 'paused' && g.banner) {
+      const big = g.banner === 'Touchdown' || ph === 'final';
+      HUD.call(g.banner.replace(/\.$/, ''), g.sub, big);
+      if (big) look.cheer(0.9); else if (/Intercepted|Safety|downs/.test(g.banner)) look.cheer(0.6);
+    }
+    if (ph === 'kick' && g.kick && g.kick.done && shownKick !== g.kick) {
+      shownKick = g.kick;
+      HUD.call(g.kick.good ? "It's good" : 'No good', `${g.kick.kd} yards · ${offTeam(g).name}`, g.kick.good);
+      if (g.kick.good) look.cheer(0.8);
+    }
+    return;
+  }
   if (mode === 'pre' && lastMode !== 'pre' && lastMode !== 'paused') HUD.call(`${g.hand === 'L' ? 'Left' : 'Right'} hand`, `pull ${trigText(g.hand)} to snap`);
   if (mode === 'dead' && lastMode !== 'dead' && lastMode !== 'paused') {
     const td = g.banner === 'Touchdown';
@@ -762,6 +855,10 @@ function bar(p) {
   if (p.play.kind === 'pass') return HUD.bar(`${side} · quarterback`, [chip(trig(h), p.qb.holding ? 'let go to throw' : 'hold to drop back', true), chip(stick(h), 'aim', p.qb.holding), off], 'hold longer and pull deeper for more zip');
   HUD.bar(`${side} · handoff`, [off]);
 }
+function watchBar() {
+  const pad = input.lastDevice === 'controller';
+  HUD.bar('watching', [chip(pad ? 'options' : 'P / esc', 'pause', true)], `cpu vs cpu · ${g.diff.name.toLowerCase()}. a new match starts by itself`);
+}
 function menuBar() {
   const pad = input.lastDevice === 'controller';
   const label = mode === 'paused' ? 'paused' : mode === 'card' ? 'their drive' : mode === 'final' ? 'final' : 'menu';
@@ -787,9 +884,9 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 addEventListener('gamepadconnected', () => { input.lastDevice = 'controller'; });
-addEventListener('blur', () => { if (g && ['call', 'pre', 'live', 'kick', 'dead'].includes(mode)) pause(); });
+addEventListener('blur', () => { if (g && ['call', 'pre', 'live', 'kick', 'dead', 'watch'].includes(mode)) pause(); });
 mainMenu();
 requestAnimationFrame(frame);
 
 // test hook: lets an automated check drive the game without a controller
-if (new URLSearchParams(location.search).has('debug')) window.__tackle = { get g() { return g; }, get mode() { return mode; }, go, confirmCall, hands };
+if (new URLSearchParams(location.search).has('debug')) window.__tackle = { get g() { return g; }, get mode() { return mode; }, get watch() { return watch; }, go, confirmCall, hands };
