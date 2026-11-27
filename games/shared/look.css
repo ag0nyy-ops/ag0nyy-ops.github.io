@@ -53,7 +53,12 @@ button:hover { border-color: var(--fg); }
 #board small { display: block; font-size: .6rem; color: var(--muted); }
 #board strong { min-width: 2.4em; text-align: center; font-size: 2.2rem; line-height: 1.5; background: var(--fg); color: var(--bg); }
 #board #sc1 { background: var(--strong); color: var(--fg); }
-#board .has::after { content: " ●"; font-size: .7em; }
+/* the score box keeps a gutter each side, and the "has it" dot sits in the gutter by the name,
+   so it never widens the box or pushes the number, however wide the score gets */
+#board strong { position: relative; padding: 0 .38em; }
+#board .has::after { content: ""; position: absolute; top: 50%; width: .2em; height: .2em; margin-top: -.1em; border-radius: 50%; background: currentColor; }
+#board #sc0.has::after { left: .1em; }
+#board #sc1.has::after { right: .1em; }
 #clock { align-self: center; min-width: 4.4em; text-align: center; font-size: 1.7rem; }
 #clock.low { text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; }
 .tanks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }

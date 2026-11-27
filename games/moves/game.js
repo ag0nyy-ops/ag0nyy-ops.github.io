@@ -476,7 +476,7 @@ const FAR = [
 function board() {
   if (game && game.kind === 'watch' && mode !== 'menu') {
     const sc = game.perfs.map((p) => scoreRoutine(p.passes)), final = mode === 'results';
-    const side = (i) => ({ name: NAMES[i], sub: `${look.bandWord(i)} · ${game.dummies[i].style}`, score: sc[i].total.toFixed(2) });
+    const side = (i) => ({ name: NAMES[i], sub: `${look.bandWord(i)} · ${game.dummies[i].style}`, score: sc[i].total.toFixed(2), has: !final && i === game.turn });
     HUD.board({ a: side(0), b: side(1), clock: final ? 'final' : `${Math.min(PASSES, active().passNo)}/${PASSES}` });
     return;
   }
