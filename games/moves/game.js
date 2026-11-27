@@ -4,10 +4,11 @@
    what your body actually did. Nothing to unlock: every skill is there from the first pass. */
 
 import { Input } from '../shared/input.js';
-import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
+import { loadSettings, reducedMotion } from '../shared/settings.js';
+import * as look from '../shared/look.js';
 import { makeDummy, newSeed, dummyLabel } from '../shared/seed.js';
 import {
-  FLOOR, VMAX, HURDLE, TAU, STEP_AT, clamp, scoreRoutine, REQUIREMENTS, fmt, NO_INPUT,
+  FLOOR, VMAX, HURDLE, WINDOW, REBOUND, TAU, STEP_AT, clamp, scoreRoutine, REQUIREMENTS, fmt, NO_INPUT,
   Performer, CpuGymnast, DUMMY_RANGES, DUMMY_STYLES, DUMMY_FALLBACK
 } from './sim.js';
 
@@ -274,50 +275,93 @@ function menuInput() {
 /* ---------------- drawing ---------------- */
 const canvas = $('#c'), ctx = canvas.getContext('2d');
 let W = 0, H = 0, dpr = 1;
-function resize() {
-  dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight;
-  canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
-addEventListener('resize', resize); resize();
+function resize() { ({ W, H, dpr } = look.fit(canvas)); }
+look.watch(canvas, resize); resize();
 
-const FG = '#ececec', BG = '#060606', MUTED = 'rgba(236,236,236,.62)', LINE = 'rgba(236,236,236,.16)', LINE2 = 'rgba(236,236,236,.32)';
+const FG = '#ececec', MUTED = 'rgba(236,236,236,.62)', STRONG = look.INK.strong;
 const mono = (px, w = 400) => `${w} ${px}px "IBM Plex Mono", ui-monospace, monospace`;
+const HUD = look.hud();
+let shownSkill = null, clock = 0;
 
 function view() {
   const ppm = Math.max(18, Math.min((W - 40) / (FLOOR + 2), (H * 0.5) / 4.6));
-  const ox = (W - FLOOR * ppm) / 2, floorY = Math.min(H - 150, H * 0.5 + 3.2 * ppm * 0.5 + 40);
-  return { ppm, ox, floorY, sx: (x) => ox + x * ppm, sy: (y) => floorY - y * ppm };
+  const ox = (W - FLOOR * ppm) / 2, floorY = Math.min(H - 96, H * 0.5 + 3.2 * ppm * 0.5 + 40);
+  // the floor is a strip seen a little from above: far edge, the line you run on, near edge
+  return { ppm, ox, floorY, far: floorY - 0.55 * ppm, near: floorY + 0.45 * ppm, sx: (x) => ox + x * ppm, sy: (y) => floorY - y * ppm };
 }
 
-function draw() {
-  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+function draw(dt) {
+  clock += dt;
+  HUD.tick(dt, input);
   const v = view();
+  look.arena(ctx, W, H, { horizon: v.far, dt });
   drawFloor(v);
-  if (!game || mode === 'menu') return;
-  const pal = palette();
+  judges(v);
+  if (!game || mode === 'menu') { board(null); HUD.meters([{ label: 'tuck', v: 0 }, { label: 'pike', v: 0 }]); HUD.msg(''); menuBar(); return; }
   if (game.kind === 'watch') {
-    // the one waiting stands just off the floor by its corner; letters above the heads, so colour is never the only cue
-    const cols = [pal.home, pal.away];
+    // the one waiting stands just off the floor by its corner, faded; name tags over the heads, so colour is never the only cue
     game.perfs.forEach((perf, i) => {
       if (i === game.turn) return;
       const p = pose(perf, NO_INPUT); p.x = perf.g.x < FLOOR / 2 ? -0.7 : FLOOR + 0.7; p.face = perf.g.x < FLOOR / 2 ? 1 : -1;
-      drawGymnast(v, p, cols[i], NAMES[i].slice(-1).toUpperCase(), true);
+      drawGymnast(v, p, i, NAMES[i], true);
     });
     const perf = active();
-    drawGymnast(v, pose(perf, perf.ctl), cols[game.turn], NAMES[game.turn].slice(-1).toUpperCase());
-  } else { const perf = active(); drawGymnast(v, pose(perf, perf.ctl), pal.mark); }
-  hud(v, pal);
+    drawGymnast(v, pose(perf, perf.ctl), game.turn, NAMES[game.turn]);
+  } else { const perf = active(); drawGymnast(v, pose(perf, perf.ctl), 0); }
+  hud(v);
+  if (mode !== 'play') menuBar();
+}
+function menuBar() {
+  const pad = input.lastDevice === 'controller', paused = mode === 'paused';
+  const chips = pad ? [{ k: '↕', t: 'pick' }, { k: '✕', t: 'choose', open: true }] : [{ k: '↕', t: 'pick' }, { k: 'enter', t: 'choose', open: true }];
+  if (paused) chips.push(pad ? { k: '○', t: 'resume' } : { k: 'esc', t: 'resume' });
+  HUD.bar(paused ? 'paused' : mode === 'results' ? 'results' : 'menu', chips, pad ? 'left stick or d-pad to pick' : 'arrows or W S to pick');
 }
 
+/* the end of the floor you are heading for lights up when you get close to it */
+function hotEnd() {
+  if (!game || mode !== 'play') return null;
+  const G_ = active(), g = G_.g;
+  if (!['run', 'hurdle', 'air', 'land'].includes(G_.phase)) return null;
+  const dir = G_.phase === 'land' ? Math.sign(g.x - FLOOR / 2) : g.travel;
+  const left = dir > 0 ? FLOOR - g.x : g.x;
+  return left < 1.5 ? (dir > 0 ? FLOOR : 0) : null;
+}
 function drawFloor(v) {
-  const { ppm, ox, floorY } = v, w = FLOOR * ppm;
-  ctx.fillStyle = 'rgba(236,236,236,.04)'; ctx.fillRect(ox - ppm, floorY, w + 2 * ppm, 18);
-  ctx.strokeStyle = LINE2; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ox - ppm, floorY + 0.5); ctx.lineTo(ox + w + ppm, floorY + 0.5); ctx.stroke();
-  ctx.strokeStyle = FG; ctx.lineWidth = 3;
-  for (const x of [ox, ox + w]) { ctx.beginPath(); ctx.moveTo(x, floorY); ctx.lineTo(x, floorY + 18); ctx.stroke(); }
-  ctx.font = mono(10); ctx.fillStyle = MUTED; ctx.textAlign = 'center';
-  for (let m = 2; m < FLOOR; m += 2) { const x = ox + m * ppm; ctx.fillRect(x, floorY + 6, 1, 6); }
-  ctx.fillText('FLOOR 14 M', ox + w / 2, floorY + 36);
+  const { ppm, ox, floorY, far, near } = v, w = FLOOR * ppm;
+  // run-off, the floor, and a pool of light in the middle of it
+  ctx.fillStyle = '#080808'; ctx.fillRect(ox - ppm, far - 0.15 * ppm, w + 2 * ppm, near - far + 0.35 * ppm);
+  ctx.strokeStyle = look.FLOOR.edge; ctx.lineWidth = 1; ctx.strokeRect(ox - ppm + 0.5, far - 0.15 * ppm + 0.5, w + 2 * ppm - 1, near - far + 0.35 * ppm - 1);
+  ctx.fillStyle = look.FLOOR.base; ctx.fillRect(ox, far, w, near - far);
+  look.spot(ctx, ox + w / 2, floorY, w * 0.55, (near - far) * 0.9);
+  // the line you run on, and a mark every two metres
+  ctx.strokeStyle = look.FLOOR.inner; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(ox, floorY + 0.5); ctx.lineTo(ox + w, floorY + 0.5); ctx.stroke();
+  ctx.fillStyle = look.FLOOR.mark;
+  for (let m = 2; m < FLOOR; m += 2) ctx.fillRect(Math.round(ox + m * ppm), near - 7, 1, 6);
+  // the boundary
+  ctx.strokeStyle = look.FLOOR.line; ctx.lineWidth = 2; ctx.strokeRect(ox, far, w, near - far);
+  const hot = hotEnd();
+  if (hot != null) {
+    const x = ox + hot * ppm;
+    ctx.save(); ctx.globalAlpha = look.pulse(clock); ctx.strokeStyle = look.FLOOR.hot; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, far); ctx.lineTo(x, near); ctx.stroke(); ctx.restore();
+  }
+  look.tag(ctx, ox + w, near + 0.2 * ppm + 14, 'floor 14 m', { size: 10, align: 'right', pad: 4 });
+}
+
+/* the judges' table behind the far edge: the other side of the scoreboard */
+function judges(v) {
+  const T = look.team(1), k = v.ppm, cx = v.ox + FLOOR * k / 2, ty = v.far - 0.5 * k;
+  const r = Math.max(3, 0.1 * k);
+  for (let i = -1; i <= 1; i++) {
+    const x = cx + i * 1.3 * k, tw = 0.11 * k, top = ty - 0.34 * k;
+    look.fillBody(ctx, () => ctx.rect(x - tw, top, tw * 2, 0.36 * k), T, T.suit, [x - tw, top, x + tw, ty]);
+    look.ball(ctx, x, top - r * 1.2, r, T, T.skin);
+  }
+  ctx.fillStyle = '#121212'; ctx.fillRect(cx - 2.1 * k, ty, 4.2 * k, 0.3 * k);
+  ctx.strokeStyle = look.FLOOR.edge; ctx.lineWidth = 1; ctx.strokeRect(cx - 2.1 * k + 0.5, ty + 0.5, 4.2 * k - 1, 0.3 * k - 1);
+  for (let i = -1; i <= 1; i++) look.band(ctx, cx + i * 1.3 * k + 0.12 * k, ty + 0.06 * k, Math.max(1.5, 0.035 * k), T);
 }
 
 /* ---------------- the gymnast ---------------- */
@@ -381,7 +425,7 @@ function skeleton(p) {
   return { O, S, Hd, KA, FA, KB, FB, E, Hn, E2, Hn2 };
 }
 
-function drawGymnast(v, p, color, letter = '', waiting = false) {
+function drawGymnast(v, p, side = 0, label = '', waiting = false) {
   const sk = skeleton(p);
   const c = Math.cos(p.ang), s = Math.sin(p.ang), fx = p.face * p.sx;
   const tf = ([x, y]) => [(x * c - y * s) * fx, x * s + y * c];
@@ -393,148 +437,187 @@ function drawGymnast(v, p, color, letter = '', waiting = false) {
     const fxm = (pts.FA[0] + pts.FB[0]) / 2; ox = p.x - fxm;
   } else oy = THIGH + SHIN - 0.04 + p.z;
   const P = ([x, y]) => [v.sx(ox + x), v.sy(oy + y)];
-  ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.lineWidth = Math.max(2.5, v.ppm * 0.055);
-  const line = (...ks) => { ctx.beginPath(); ks.forEach((k, i) => { const [x, y] = P(pts[k]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); };
-  line('FB', 'KB', 'O'); line('FA', 'KA', 'O'); line('O', 'S'); line('S', 'E2', 'Hn2'); line('S', 'E', 'Hn');
-  const [hx, hy] = P(pts.Hd); ctx.beginPath(); ctx.arc(hx, hy, HEAD * v.ppm, 0, TAU);
-  if (waiting) ctx.stroke(); else ctx.fill();          // the one waiting has a hollow head
-  if (letter) { ctx.font = mono(13, 600); ctx.textAlign = 'center'; ctx.fillText(letter, hx, hy - HEAD * v.ppm - 10); }
+  const T = look.team(side), BACK = FAR[side], k = v.ppm;
+  // the one on the floor: a faint ring under them
+  if (!waiting) look.ring(ctx, v.sx(p.x), v.floorY, Math.max(10, 0.5 * k));
+  ctx.save();
+  if (waiting) ctx.globalAlpha = 0.55;
+  const path = (...ks) => () => ks.forEach((key, i) => { const [x, y] = P(pts[key]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  const legW = Math.max(3, k * 0.11), armW = Math.max(2.5, k * 0.085), band = Math.max(2, k * 0.04);
+  const ankle = (key) => { const [x, y] = P(pts[key]); look.band(ctx, x, y, band, T); };
+  // the far leg and arm first, a shade darker so the body reads in depth
+  look.strokeLimb(ctx, path('O', 'KB'), legW, T, BACK.suit);
+  look.strokeLimb(ctx, path('KB', 'FB'), legW * 0.9, T, BACK.skin);
+  ankle('FB');
+  look.strokeLimb(ctx, path('S', 'E2', 'Hn2'), armW, T, BACK.skin);
+  // torso: a shaded leotard from hip to shoulder
+  const [hx, hy] = P(pts.O), [sx, sy] = P(pts.S);
+  const L = Math.hypot(sx - hx, sy - hy) || 1, nx = -(sy - hy) / L, ny = (sx - hx) / L, hw = 0.075 * k, sw = 0.095 * k;
+  const quad = [[hx + nx * hw, hy + ny * hw], [sx + nx * sw, sy + ny * sw], [sx - nx * sw, sy - ny * sw], [hx - nx * hw, hy - ny * hw]];
+  look.ball(ctx, hx, hy, hw, T, T.suit); look.ball(ctx, sx, sy, sw, T, T.suit);
+  look.fillBody(ctx, () => { quad.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); }, T, T.suit,
+    [Math.min(...quad.map((q) => q[0])), Math.min(...quad.map((q) => q[1])), Math.max(...quad.map((q) => q[0])), Math.max(...quad.map((q) => q[1]))]);
+  const [qx, qy] = P(pts.Hd); look.ball(ctx, qx, qy, Math.max(3.5, HEAD * k * 1.15), T, T.skin);
+  // the near leg and arm on top
+  look.strokeLimb(ctx, path('O', 'KA'), legW, T, T.suit);
+  look.strokeLimb(ctx, path('KA', 'FA'), legW * 0.9, T, T.skin);
+  ankle('FA');
+  look.strokeLimb(ctx, path('S', 'E', 'Hn'), armW, T, T.skin);
+  if (label) look.tag(ctx, qx, qy - HEAD * k * 1.15 - 16, label, { size: 10, pad: 4 });
   ctx.restore();
 }
+/* the far leg and arm, a shade darker than the near ones, per side */
+const FAR = [
+  { suit: ['#d0d0d0', '#a8a8a8', '#6a6a6a'], skin: ['#a8a8a8', '#7c7c7c', '#3e3e3e'] },
+  { suit: ['#3a3a3a', '#1e1e1e', '#090909'], skin: ['#7e7e7e', '#5a5a5a', '#242424'] }
+];
 
-/* ---------------- heads-up display ---------------- */
-function hud(v, pal) {
+/* ---------------- heads-up display: scoreboard, calls and the button bar live on the page ---------------- */
+function board() {
+  if (game && game.kind === 'watch' && mode !== 'menu') {
+    const sc = game.perfs.map((p) => scoreRoutine(p.passes)), final = mode === 'results';
+    const side = (i) => ({ name: NAMES[i], sub: `${look.bandWord(i)} · ${game.dummies[i].style}`, score: sc[i].total.toFixed(2) });
+    HUD.board({ a: side(0), b: side(1), clock: final ? 'final' : `${Math.min(PASSES, active().passNo)}/${PASSES}` });
+    return;
+  }
+  const a = { name: 'you', sub: `${look.bandWord(0)} · difficulty` }, b = { name: 'judges', sub: `${look.bandWord(1)} · execution` };
+  if (!game || mode === 'menu') { HUD.board({ a: { ...a, score: '0.0' }, b: { ...b, score: '10.00' }, clock: '--' }); return; }
+  const G_ = active(), final = mode === 'results', routine = game.kind === 'routine';
+  const sc = scoreRoutine(G_.passes, { requirements: final && routine });
+  HUD.board({
+    a: { ...a, score: sc.D.toFixed(1) }, b: { ...b, score: sc.E.toFixed(2) },
+    clock: final ? sc.total.toFixed(2) : routine ? `${Math.min(PASSES, G_.passNo)}/${PASSES}` : `#${G_.passNo}`,
+    low: !final && routine && G_.passNo >= PASSES
+  });
+}
+/* a skill just landed: stamp its name, value and deductions on the stage once */
+function stamp(c) {
+  const sk = c.skills[c.skills.length - 1];
+  const name = `${c.skills.length > 1 ? '+ ' : ''}${sk.name}${sk.recognized ? '' : ' (not counted)'}`;
+  const ded = sk.ded.length ? sk.ded.map(([w, x]) => `−${fmt(x)} ${w.toLowerCase()}`).join(' · ') : 'clean';
+  const big = sk.recognized && sk.d >= 0.4;
+  HUD.call(name, `D ${fmt(sk.d)} · ${ded}${c.connections ? ` · connected +${fmt(c.connections * 0.1)}` : ''}`, big);
+  if (big) look.cheer(0.9); else if (!sk.ded.length) look.cheer(0.6);
+}
+function lastSkill(c) {
+  if (!c) return '';
+  const sk = c.skills[c.skills.length - 1];
+  return `last: ${sk.name}, D ${fmt(sk.d)}, ${sk.ded.length ? sk.ded.map(([w, x]) => `−${fmt(x)} ${w.toLowerCase()}`).join(', ') : 'clean'}`;
+}
+
+function hud(v) {
   const G_ = active(), g = G_.g, watch = game.kind === 'watch', s = watch ? G_.ctl : input.state;
   const pad = input.lastDevice === 'controller';
   const fwd = g.travel > 0 ? '→' : '←', bwd = g.travel > 0 ? '←' : '→';
-  // top left: where you are in the routine and the running score
-  ctx.textAlign = 'left'; ctx.font = mono(12); ctx.fillStyle = MUTED;
-  if (watch) {
-    ctx.fillText(`CPU VS CPU · PASS ${Math.min(PASSES, G_.passNo)} OF ${PASSES} · ${NAMES[game.turn].toUpperCase()} UP`, 20, 28);
-    // one chip per side: who it is, its style and seed, its running score
-    game.perfs.forEach((p, i) => {
-      const sc = scoreRoutine(p.passes), y = 42 + i * 40, on = i === game.turn;
-      ctx.strokeStyle = on ? [pal.home, pal.away][i] : LINE; ctx.lineWidth = on ? 2 : 1; ctx.strokeRect(20, y, 320, 32);
-      ctx.fillStyle = on ? FG : MUTED; ctx.font = mono(12, 600); ctx.textAlign = 'left';
-      ctx.fillText(dummyLabel(NAMES[i], game.dummies[i]), 30, y + 20);
-      ctx.textAlign = 'right'; ctx.fillText(sc.total.toFixed(2), 330, y + 20); ctx.textAlign = 'left';
-    });
-  } else {
-    const title = game.kind === 'routine' ? `ROUTINE · PASS ${Math.min(PASSES, G_.passNo)} OF ${PASSES}` : `FREE FLOOR${game.slow ? ' · HALF SPEED' : ''} · PASS ${G_.passNo}`;
-    ctx.fillText(title, 20, 28);
-    const sc = scoreRoutine(G_.passes, { requirements: false });
-    ctx.font = mono(30, 600); ctx.fillStyle = FG;
-    ctx.fillText(`D ${sc.D.toFixed(1)}  E ${sc.E.toFixed(2)}`, 20, 64);
-  }
+  board();
+  const c = G_.callout, sk = c ? c.skills[c.skills.length - 1] : null;
+  if (sk && sk !== shownSkill) stamp(c);
+  shownSkill = sk;
+  HUD.msg(watch ? '' : G_.msg);
+  const air = G_.phase === 'air' ? G_.flight : null;
+  const tuck = clamp(air ? air.tuck : s.lt, 0, 1), pike = clamp(air ? air.pike : s.rt, 0, 1);
+  HUD.meters([{ label: watch ? 'tuck' : pad ? 'L2 tuck' : 'F tuck', v: tuck }, { label: watch ? 'pike' : pad ? 'R2 pike' : 'J pike', v: pike }]);
 
-  // top right: speed, then the spin dial
-  dial(G_, W - 90, 84, pal);
-
-  // centre: what you just did, or a message
-  if (G_.callout && !G_.callout.old) calloutBox(G_.callout, watch ? 150 : 112);
-  else if (G_.msg && !watch) { ctx.textAlign = 'center'; ctx.font = mono(15); ctx.fillStyle = FG; ctx.fillText(G_.msg, W / 2, 120); }
+  // top right: the spin dial
+  dial(G_, W - 90, 84);
 
   // hurdle rings around the feet: the moving ring closes on the fixed one at the sweet spot
   if (G_.phase === 'hurdle' && !watch) {
     const k = HURDLE - G_.hurdleT, fx = v.sx(g.x), fy = v.floorY;
-    ctx.strokeStyle = LINE2; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fx, fy, 16, 0, TAU); ctx.stroke();
-    ctx.strokeStyle = pal.mark; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fx, fy, 16 + Math.max(0, k) * 260, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = look.FLOOR.mark; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fx, fy, 16, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fx, fy, 16 + Math.max(0, k) * 260, 0, TAU); ctx.stroke();
   }
 
-  // bottom: shape gauges, balance, the hint for right now
-  const y0 = H - 112;
-  const air = G_.phase === 'air' ? G_.flight : null;
-  gauge(20, y0, watch ? 'TUCK' : pad ? 'L2 TUCK' : 'F TUCK', air ? air.tuck : s.lt, pal);
-  gauge(130, y0, watch ? 'PIKE' : pad ? 'R2 PIKE' : 'J PIKE', air ? air.pike : s.rt, pal);
-  if (W > 520) speedBox(240, y0, g.v);
-  if (G_.phase === 'land' && G_.bal && W > 700) balanceBar(380, y0, G_.bal, pal);
-  ctx.textAlign = 'left'; ctx.font = mono(13); ctx.fillStyle = FG;
-  ctx.fillText(watch ? watchHint(G_) : hint(G_, pad, fwd, bwd), 20, H - 2 - 8);
+  // bottom left: run speed, then balance once you land
+  const y0 = H - 62;
+  speedBox(20, y0, g.v);
+  if (G_.phase === 'land' && G_.bal && W > 420) balanceBar(164, y0, G_.bal);
+
+  if (watch) seedTags();
+  if (mode === 'play') { if (watch) watchBar(G_, pad); else bar(G_, pad, fwd, bwd, tuck, pike); }
 }
 
-function watchHint(G_) {
-  const who = `Dummy ${NAMES[game.turn].slice(-1).toUpperCase()}`;
+/* CPU vs CPU: both dummies' style and seed, bottom right */
+function seedTags() {
+  if (W < 520) return;
+  game.dummies.map((d, i) => dummyLabel(NAMES[i], d)).reverse().forEach((l, i) => look.tag(ctx, W - 14, H - 22 - i * 22, l, { size: 10, align: 'right', pad: 4 }));
+}
+function watchBar(G_, pad) {
   const what = { ready: 'chalking up', run: 'running', hurdle: 'hurdle', air: 'in the air', land: 'landing', settle: 'landing', walk: 'walking back' }[G_.phase] || '';
-  return `${who} ${what} · ${input.lastDevice === 'controller' ? 'Options' : 'P or Esc'} to pause`;
+  HUD.bar('watching', [{ k: pad ? 'options' : 'P / esc', t: 'pause', open: true }], `${NAMES[game.turn]} ${what} · pass ${Math.min(PASSES, G_.passNo)} of ${PASSES}. the next match starts by itself`);
 }
 
-function hint(G_, pad, fwd, bwd) {
-  const ph = G_.phase;
-  if (ph === 'ready') return pad ? `Push the right stick ${fwd} to run` : `Hold ${fwd} to run`;
-  if (ph === 'run') return pad ? 'Left stick up to hurdle' : 'W to hurdle';
-  if (ph === 'hurdle') return pad ? `Let go, then flick the right stick as the rings meet: ${bwd} back, ${fwd} front, ↑ jump, diagonal to twist`
-    : `Let go, then tap as the rings meet: ${bwd} back, ${fwd} front, ↑ jump, two arrows to twist`;
-  if (ph === 'air') return pad ? 'L2 tuck, R2 pike, let go to open before your feet come round. Left stick down twists faster'
-    : 'F tuck, J pike, let go to open before your feet come round. S twists faster';
-  if (ph === 'land') return pad ? 'Left stick left or right to steady, then up to finish' : 'A or D to steady, then W to finish';
-  if (ph === 'walk' || ph === 'settle') return 'Walking back to the corner';
-  return '';
+/* what the buttons do right now */
+function bar(G_, pad, fwd, bwd, tuck, pike) {
+  const ph = G_.phase, ch = (k, t, open) => ({ k, t, open });
+  const where = game.kind === 'routine' ? `routine · pass ${Math.min(PASSES, G_.passNo)} of ${PASSES}` : `free floor${game.slow ? ' · half speed' : ''} · pass ${G_.passNo}`;
+  const pause = pad ? ch('options', 'pause') : ch('P', 'pause');
+  if (ph === 'ready') HUD.bar('ready', [pad ? ch('R' + fwd, 'run', true) : ch(fwd, 'hold to run', true), pause], [where, lastSkill(G_.callout)].filter(Boolean).join(' · '));
+  else if (ph === 'run') HUD.bar('run', [pad ? ch('R' + fwd, 'run') : ch(fwd, 'run'), pad ? ch('L↑', 'hurdle', true) : ch('W', 'hurdle', true)], `${where} · hurdle before the far corner`);
+  else if (ph === 'hurdle') {
+    const now = Math.abs(G_.hurdleT - HURDLE) < WINDOW;
+    HUD.bar('hurdle', [ch(pad ? 'R' + bwd : bwd, 'back salto', now), ch(pad ? 'R' + fwd : fwd, 'front salto', now), ch(pad ? 'R↑' : '↑', 'jump', now), ch(pad ? 'R diagonal' : 'two arrows', 'twist', now)],
+      `${where} · let go, then flick as the rings meet`);
+  } else if (ph === 'air') HUD.bar('in the air', [ch(pad ? 'L2' : 'F', 'tuck', tuck > 0.05), ch(pad ? 'R2' : 'J', 'pike', pike > 0.05), ch(pad ? 'L↓' : 'S', 'twist faster')],
+    `${where} · let go to open before your feet come round`);
+  else if (ph === 'land') {
+    const b = G_.bal, chips = [ch(pad ? 'L◀▶' : 'A D', 'steady', b && !b.stable), ch(pad ? 'L↑' : 'W', 'finish', !!(b && b.stable))];
+    if (G_.rebound && G_.landT < REBOUND.open) chips.unshift(ch(pad ? 'R' : 'arrow', 'flick again: connect', true));
+    HUD.bar('landing', chips, `${where} · steady, then arms up to finish`);
+  } else HUD.bar('walking back', [pause], `${where} · ${lastSkill(G_.callout) || 'walking back to the corner'}`);
 }
 
-function calloutBox(c, top = 112) {
-  ctx.textAlign = 'center';
-  let y = top;
-  c.skills.forEach((sk, i) => {
-    ctx.font = mono(Math.min(26, W / 30), 600); ctx.fillStyle = FG;
-    ctx.fillText(`${i ? '+ ' : ''}${sk.name}${sk.recognized ? '' : ' (not counted)'}   D ${fmt(sk.d)}`, W / 2, y);
-    y += 22; ctx.font = mono(13); ctx.fillStyle = MUTED;
-    ctx.fillText(sk.ded.length ? sk.ded.map(([w, v]) => `−${fmt(v)} ${w.toLowerCase()}`).join(' · ') : 'Clean', W / 2, y);
-    y += 30;
-  });
-  if (c.connections) { ctx.font = mono(13); ctx.fillStyle = FG; ctx.fillText(`Connected +${fmt(c.connections * 0.1)}`, W / 2, y); }
-}
-
-function gauge(x, y, name, v, pal) {
-  ctx.strokeStyle = v > 0.05 ? pal.mark : LINE; ctx.lineWidth = v > 0.05 ? 2 : 1; ctx.strokeRect(x, y, 96, 76);
-  ctx.fillStyle = 'rgba(236,236,236,.16)'; ctx.fillRect(x + 1, y + 75 - 74 * v, 94, 74 * v);
-  ctx.fillStyle = v > 0.05 ? FG : MUTED; ctx.font = mono(12, 600); ctx.textAlign = 'center'; ctx.fillText(name, x + 48, y + 44);
+/* a canvas panel: dark box, hairline, its name in a tag on the top edge */
+function panel(x, y, w, h, label) {
+  ctx.fillStyle = 'rgba(6,6,6,.85)'; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = STRONG; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  look.tag(ctx, x + 6, y, label, { size: 10, align: 'left', pad: 4 });
 }
 function speedBox(x, y, vel) {
-  ctx.strokeStyle = LINE; ctx.lineWidth = 1; ctx.strokeRect(x, y, 124, 76);
-  ctx.font = mono(10); ctx.fillStyle = MUTED; ctx.textAlign = 'left'; ctx.fillText('RUN', x + 8, y + 16);
-  ctx.font = mono(22, 600); ctx.fillStyle = FG; ctx.fillText(`${vel.toFixed(1)}`, x + 8, y + 50);
-  ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText('m/s', x + 72, y + 50);
-  ctx.fillStyle = 'rgba(236,236,236,.16)'; ctx.fillRect(x + 8, y + 62, 108 * Math.min(1, vel / VMAX), 5);
+  panel(x, y, 128, 52, 'run');
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.font = mono(20, 600); ctx.fillStyle = FG; ctx.fillText(`${vel.toFixed(1)}`, x + 10, y + 34);
+  ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText('m/s', x + 62, y + 34);
+  ctx.fillStyle = look.FLOOR.inner; ctx.fillRect(x + 10, y + 41, 108, 4);
+  ctx.fillStyle = FG; ctx.fillRect(x + 10, y + 41, 108 * Math.min(1, vel / VMAX), 4);
 }
-function balanceBar(x, y, b, pal) {
-  ctx.strokeStyle = LINE; ctx.lineWidth = 1; ctx.strokeRect(x, y, 220, 76);
-  ctx.font = mono(10); ctx.fillStyle = MUTED; ctx.textAlign = 'left'; ctx.fillText('BALANCE', x + 8, y + 16);
-  const bx = x + 14, bw = 192, by = y + 44, k = bw / 2 / STEP_AT;
-  ctx.strokeStyle = LINE; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + bw, by); ctx.stroke();
+function balanceBar(x, y, b) {
+  panel(x, y, 220, 52, 'balance');
+  look.tag(ctx, x + 214, y, b.stable ? 'still · arms up' : 'steady', { size: 10, align: 'right', pad: 4 });
+  const bx = x + 14, bw = 192, by = y + 30, k = bw / 2 / STEP_AT;
+  ctx.strokeStyle = look.FLOOR.inner; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + bw, by); ctx.stroke();
   // the still zone is a hollow box, you are a filled block, step lines at the ends
-  ctx.strokeStyle = FG; ctx.strokeRect(bx + bw / 2 - 0.1 * k, by - 11, 0.2 * k, 22);
-  ctx.fillStyle = MUTED; ctx.fillRect(bx, by - 14, 2, 28); ctx.fillRect(bx + bw - 2, by - 14, 2, 28);
-  ctx.fillStyle = pal.mark; ctx.fillRect(bx + bw / 2 + clamp(b.lam, -STEP_AT, STEP_AT) * k - 3, by - 15, 6, 30);
-  ctx.fillStyle = MUTED; ctx.font = mono(10); ctx.fillText(b.stable ? 'STILL · ARMS UP' : 'STEADY', x + 8, y + 70);
+  ctx.strokeStyle = FG; ctx.strokeRect(bx + bw / 2 - 0.1 * k, by - 9, 0.2 * k, 18);
+  ctx.fillStyle = look.FLOOR.mark; ctx.fillRect(bx, by - 12, 2, 24); ctx.fillRect(bx + bw - 2, by - 12, 2, 24);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(bx + bw / 2 + clamp(b.lam, -STEP_AT, STEP_AT) * k - 3, by - 13, 6, 26);
 }
 
 /* The spin dial: the line is where your head points, the notch at the top is feet down.
    Under it: turns and twists so far. */
-function dial(G_, cx, cy, pal) {
+function dial(G_, cx, cy) {
   const f = G_.phase === 'air' || G_.phase === 'land' ? G_.flight : null, r = 46;
-  ctx.strokeStyle = LINE2; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+  ctx.fillStyle = 'rgba(6,6,6,.7)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+  ctx.strokeStyle = look.FLOOR.inner; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
   ctx.fillStyle = FG; ctx.fillRect(cx - 1.5, cy - r - 8, 3, 14);
   const theta = f && f.kind === 'salto' ? f.theta : 0, sign = f && f.dir === 'back' ? 1 : -1;
   const a = sign * theta * G_.g.face;
-  ctx.strokeStyle = pal.mark; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx, cy);
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx, cy);
   ctx.lineTo(cx - Math.sin(a) * r * 0.9, cy - Math.cos(a) * r * 0.9); ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx - Math.sin(a) * r * 0.9, cy - Math.cos(a) * r * 0.9, 5, 0, TAU); ctx.fillStyle = pal.mark; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - Math.sin(a) * r * 0.9, cy - Math.cos(a) * r * 0.9, 5, 0, TAU); ctx.fillStyle = '#ffffff'; ctx.fill();
   // hollow ring: where your head ends up if you open now. Open when it reaches the top notch.
   if (f && f.kind === 'salto' && G_.phase === 'air') {
     const b = sign * f.predicted * G_.g.face;
-    ctx.strokeStyle = FG; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx - Math.sin(b) * r, cy - Math.cos(b) * r, 8, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = look.FLOOR.line; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx - Math.sin(b) * r, cy - Math.cos(b) * r, 8, 0, TAU); ctx.stroke();
   }
-  ctx.textAlign = 'center'; ctx.font = mono(12, 600); ctx.fillStyle = FG;
-  ctx.fillText(`${(theta / TAU).toFixed(1)} TURNS`, cx, cy + r + 22);
-  if (f && f.twist) { ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText(`${f.tw.toFixed(1)} TWISTS`, cx, cy + r + 38); }
+  look.tag(ctx, cx, cy + r + 18, `${(theta / TAU).toFixed(1)} turns`);
+  if (f && f.twist) look.tag(ctx, cx, cy + r + 40, `${f.tw.toFixed(1)} twists`, { size: 10 });
 }
 
 /* ---------------- loop ---------------- */
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(1 / 30, (now - last) / 1000); last = now;
-  update(dt); draw();
+  update(dt); draw(dt);
   requestAnimationFrame(frame);
 }
 document.documentElement.classList.toggle('calm', reducedMotion());
