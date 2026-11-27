@@ -4,6 +4,7 @@
 
 import { Input } from '../shared/input.js';
 import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
+import * as look from '../shared/look.js';
 import { dummyLabel } from '../shared/seed.js';
 import { COURT, CPU, SHOTS, createMatch, step, cpuIntent, blankIntent, handler, handOdds } from './sim.js';
 
@@ -291,18 +292,17 @@ let W = 0, H = 0, DPR = 1;
 const cam = { p: [0, 0, 0], f: [0, 1, 0], r: [1, 0, 0], u: [0, 0, 1], fl: 800, cx: 0, cy: 0 };
 let broad = { fl: 800, cx: 0, cy: 0 };
 function resize() {
-  DPR = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight;
-  canvas.width = W * DPR; canvas.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ({ W, H, dpr: DPR } = look.fit(canvas));
   fitBroadcast();
 }
-addEventListener('resize', resize);
+look.watch(canvas, resize);
 const BPOS = [0, 47, 17], BTGT = [0, 12, 3];
 function fitBroadcast() {
   aim(cam, BPOS, BTGT); cam.fl = 1; cam.cx = 0; cam.cy = 0;
   const pts = [[-25, 0, 0], [25, 0, 0], [-25, 34, 0], [25, 34, 0], [0, 4, 13], [-3, 4, 12.5], [3, 4, 12.5]];
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
   for (const q of pts) { const s = proj(q[0], q[1], q[2]); x0 = Math.min(x0, s[0]); x1 = Math.max(x1, s[0]); y0 = Math.min(y0, s[1]); y1 = Math.max(y1, s[1]); }
-  const top = 70, bottom = 54;
+  const top = 34, bottom = 22;
   const fl = Math.min((W * 0.96) / (x1 - x0), (H - top - bottom) / (y1 - y0));
   broad = { fl, cx: W / 2 - fl * (x0 + x1) / 2, cy: top + (H - top - bottom) / 2 - fl * (y0 + y1) / 2 };
 }
@@ -345,14 +345,16 @@ const scale = (d) => cam.fl / d;
 
 /* ---------------- drawing ---------------- */
 const FG = '#ececec', BG = '#060606', MUTED = 'rgba(236,236,236,.74)', DIM = 'rgba(236,236,236,.42)', LINE = 'rgba(236,236,236,.2)';
-const FLOOR = '#101010', PAINT = '#161616';
+const FLOOR = look.FLOOR.base, PAINT = '#151515';
 const mono = (px, w = 400) => `${w} ${px}px "IBM Plex Mono", ui-monospace, monospace`;
+const HUD = look.hud();
+let shownMsg = '', shownT = 0, shownResult = null;
 let camBlend = 0, fpHold = 0, lastShot = null, result = null, fpCam = null;
 
 function draw(dt) {
-  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
   const m = match;
-  if (!m) { idle(); return; }
+  HUD.tick(dt, input);
+  if (!m) { aim(cam, BPOS, BTGT); cam.fl = broad.fl; cam.cx = broad.cx; cam.cy = broad.cy; look.arena(ctx, W, H, { horizon: horizonY(), dt }); idle(); board(null); menuBar(); return; }
   const pal = palette(loadSettings());
   const s = m.shot && m.shot.human ? m.shot : null;
   if (s) { const p = m.players[s.id]; fpCam = { p: [p.x, p.y, 6.1 + p.z], kind: s.kind }; }
@@ -360,11 +362,20 @@ function draw(dt) {
   const rate = reducedMotion() ? 1 : dt / 0.24;
   camBlend += Math.max(-rate, Math.min(rate, want - camBlend));
   setCamera(m, camBlend);
+  look.arena(ctx, W, H, { horizon: horizonY(), dt });
   drawWorld(m, pal, camBlend > 0.5 && fpCam ? fpCam : null);
   if (camBlend > 0.9 && s) aimHud(m, s, pal);
   else if (camBlend < 0.5) hud(m, pal);
-  if (camBlend > 0.5 && !s && result) resultText();
+  if (result && result !== shownResult) HUD.call(result);
+  shownResult = result;
+  if (mode !== 'play') menuBar();
 }
+function menuBar() {
+  const pad = input.lastDevice === 'controller';
+  HUD.bar(mode === 'paused' ? 'paused' : 'menu', pad ? [{ k: '↕', t: 'pick' }, { k: '✕', t: 'choose', open: true }, { k: '○', t: 'back' }] : [{ k: '↕', t: 'pick' }, { k: 'enter', t: 'choose', open: true }, { k: 'esc', t: 'back' }], '◀ ▶ changes a setting');
+}
+/* where the floor meets the stands, so the crowd sits behind the baseline */
+function horizonY() { const q = proj(0, -14, 0); return q ? Math.max(0, Math.min(H, q[1])) : H * 0.3; }
 function setCamera(m, t) {
   const bx = Math.max(-8, Math.min(8, m.ball.x * 0.3));
   const bp = [bx, BPOS[1], BPOS[2]], bt = [bx * 0.8, BTGT[1], BTGT[2]];
@@ -384,7 +395,7 @@ function setCamera(m, t) {
 
 function drawWorld(m, pal, fp) {
   // floor
-  ctx.fillStyle = FLOOR; fillPoly([[-25, 0, 0], [25, 0, 0], [25, 47, 0], [-25, 47, 0]]);
+  floor();
   ctx.fillStyle = PAINT; fillPoly([[-8, 0, 0], [8, 0, 0], [8, 19, 0], [-8, 19, 0]]);
   courtLines();
   // shadows
@@ -401,6 +412,13 @@ function drawWorld(m, pal, fp) {
   const bq = proj(m.ball.x, m.ball.y, m.ball.z); if (bq && m.ball.mode !== 'dead') items.push({ d: bq[2] - 0.3, f: () => ball(m.ball) });
   items.sort((a, b) => b.d - a.d).forEach((i) => i.f());
 }
+/* the floor: a dark run-off, the court on it, and a pool of light around the paint */
+function floor() {
+  ctx.fillStyle = '#080808'; fillPoly([[-31, -6, 0], [31, -6, 0], [31, 53, 0], [-31, 53, 0]]);
+  ctx.fillStyle = FLOOR; fillPoly([[-25, 0, 0], [25, 0, 0], [25, 47, 0], [-25, 47, 0]]);
+  const c = proj(0, 16, 0), e = proj(17, 16, 0), f = proj(0, 30, 0);
+  if (c && e && f) look.spot(ctx, c[0], c[1], Math.abs(e[0] - c[0]) * 1.3, Math.max(8, Math.abs(f[1] - c[1]) * 0.9));
+}
 function fpShooter(m) { return m.shot ? m.shot.id : lastShot; }
 function shadow(x, y, r) {
   const pts = arc(x, y, 0.01, r, 0, Math.PI * 2, 14).map((q) => proj(q[0], q[1], q[2]));
@@ -408,7 +426,10 @@ function shadow(x, y, r) {
   ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.fill();
 }
 function courtLines() {
-  ctx.strokeStyle = 'rgba(236,236,236,.55)'; ctx.lineWidth = Math.max(1, cam.fl / 1400); ctx.lineCap = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = look.FLOOR.edge; ctx.lineWidth = Math.max(1, cam.fl / 900);
+  ctx.beginPath(); poly([[-31, 53, 0], [-31, -6, 0], [31, -6, 0], [31, 53, 0]]); ctx.stroke();
+  ctx.strokeStyle = look.FLOOR.line; ctx.lineWidth = Math.max(1, cam.fl / 1400);
   ctx.beginPath();
   poly([[-25, 47, 0], [-25, 0, 0], [25, 0, 0], [25, 47, 0], [-25, 47, 0]]);
   poly([[-8, 0, 0], [-8, 19, 0], [8, 19, 0], [8, 0, 0]]);
@@ -430,7 +451,7 @@ function hoop(m) {
   ctx.strokeStyle = 'rgba(236,236,236,.35)'; ctx.lineWidth = lw(0.25);
   ctx.beginPath(); poly([[0, -3, 0], [0, -3, 11.5], [0, 4, 11.5]]); ctx.stroke();
   // backboard
-  ctx.fillStyle = '#141414'; fillPoly([[-3, 4, 9], [3, 4, 9], [3, 4, 12.5], [-3, 4, 12.5]]);
+  ctx.fillStyle = '#121212'; fillPoly([[-3, 4, 9], [3, 4, 9], [3, 4, 12.5], [-3, 4, 12.5]]);
   ctx.strokeStyle = FG; ctx.lineWidth = lw(0.08);
   ctx.beginPath(); poly([[-3, 4, 9], [3, 4, 9], [3, 4, 12.5], [-3, 4, 12.5]], true); poly([[-1, 4, 10.1], [1, 4, 10.1], [1, 4, 11.6], [-1, 4, 11.6]], true); ctx.stroke();
   // net, then the rim on top
@@ -444,7 +465,7 @@ function hoop(m) {
 function ball(b) {
   const q = proj(b.x, b.y, b.z); if (!q) return;
   const r = Math.max(2.5, 0.39 * scale(q[2]));
-  ctx.fillStyle = FG; ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, Math.PI * 2); ctx.fill();
+  look.ball(ctx, q[0], q[1], r, null, look.TONE.white);
   if (r > 4) {
     ctx.strokeStyle = BG; ctx.lineWidth = Math.max(1, r / 7); const sp = performance.now() / 160;
     ctx.beginPath(); ctx.moveTo(q[0] - r, q[1]); ctx.lineTo(q[0] + r, q[1]);
@@ -455,7 +476,7 @@ function ball(b) {
 /* a player: built in 3D and projected, so the same figure works from the stands or in your face */
 function figure(m, p, pal, fp) {
   const isMe = p.id === me;
-  const color = p.team === 0 ? pal.home : pal.away;
+  const T = look.team(p.team);
   const z = p.z, cf = Math.cos(p.face), sf = Math.sin(p.face), sx = -sf, sy = cf;
   const moving = Math.hypot(p.vx, p.vy) > 1;
   const ph = p.stride * 0.55, sw = moving && z === 0 ? Math.sin(ph) : 0;
@@ -475,81 +496,79 @@ function figure(m, p, pal, fp) {
   const k = scale(hq[2]), near = fp && hq[2] < 9;
   ctx.save();
   if (near) ctx.globalAlpha = 0.38;
-  // your player: a ring on the floor
+  // your player: a faint ring on the floor
   if (isMe && !fp) {
-    ctx.strokeStyle = pal.mark; ctx.lineWidth = Math.max(1.5, 0.12 * k);
+    ctx.strokeStyle = 'rgba(236,236,236,.4)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); poly(arc(p.x, p.y, 0.02, 1.6, 0, Math.PI * 2, 24)); ctx.stroke();
   }
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.lineWidth = Math.max(1.5, 0.3 * k);
-  ctx.beginPath(); seg(hip, footL); seg(hip, footR); seg(shL, handL); seg(shR, handR); ctx.stroke();
-  // torso: filled for home, outlined for away, so the teams differ by shape too
-  ctx.lineWidth = Math.max(1.2, 0.16 * k);
+  // legs and arms: light suit for your side, dark suit with a light rim for theirs
+  const limbW = Math.max(2.5, 0.6 * k), skinW = Math.max(2, 0.45 * k);
+  look.strokeLimb(ctx, () => { seg(hip, footL); seg(hip, footR); }, limbW, T, T.suit);
+  look.strokeLimb(ctx, () => { seg(shL, handL); seg(shR, handR); }, skinW, T, T.skin);
+  // ankle bands: the only colour on the court
+  for (const f of [J(sw * 0.9 * 0.9, -0.5, 0.45), J(-sw * 0.9 * 0.9, 0.5, 0.45)]) {
+    const q = proj(f[0], f[1], f[2]); if (q) look.band(ctx, q[0], q[1], Math.max(2, 0.2 * scale(q[2])), T);
+  }
+  // torso: shaded jersey, square-cut for theirs so the shape differs too
   const torso = [hipL, hipR, shR, shL];
-  if (p.team === 0) { fillPoly(torso); } else { ctx.beginPath(); poly(torso, true); ctx.stroke(); }
+  const tq = [shL, hipR].map((q) => proj(q[0], q[1], q[2]));
+  const box = tq[0] && tq[1] ? [tq[0][0], tq[0][1], tq[1][0], tq[1][1]] : null;
+  if (T.rim) { ctx.strokeStyle = T.rim; ctx.lineWidth = 2.5; ctx.beginPath(); poly(torso, true); ctx.stroke(); }
+  if (box) { const g = ctx.createLinearGradient(...box); g.addColorStop(0, T.suit[0]); g.addColorStop(.55, T.suit[1]); g.addColorStop(1, T.suit[2]); ctx.fillStyle = g; } else ctx.fillStyle = T.suit[1];
+  fillPoly(torso);
   const hd = proj(head[0], head[1], head[2]);
   if (hd) {
     const r = Math.max(3, 0.42 * scale(hd[2]));
-    ctx.beginPath();
-    if (p.team === 0) { ctx.arc(hd[0], hd[1], r, 0, Math.PI * 2); ctx.fill(); }
-    else { ctx.lineWidth = Math.max(1.5, 0.14 * k); ctx.rect(hd[0] - r, hd[1] - r, r * 2, r * 2); ctx.stroke(); }
+    look.ball(ctx, hd[0], hd[1], r, T, T.skin);
     // labels: YOU over yours, numbers in team games
     if (!fp) {
-      ctx.textAlign = 'center'; ctx.font = mono(Math.max(10, Math.min(13, r * 1.3)), 600);
       const label = isMe ? 'YOU' : m.cfg.watch ? (p.team === 0 ? 'A' : 'B') + (m.cfg.size > 1 ? p.slot + 1 : '') : m.cfg.size > 1 || m.practice ? '' : 'CPU';
-      if (label) { ctx.fillStyle = isMe ? pal.mark : DIM; ctx.fillText(label, hd[0], hd[1] - r - 7); }
-      else if (m.cfg.size > 1) { ctx.fillStyle = DIM; ctx.fillText(String(p.slot + 1), hd[0], hd[1] - r - 7); }
-      if (p.stun > 0) { ctx.fillStyle = FG; ctx.fillText('?', hd[0] + r * 1.8, hd[1] - r); }
+      const ty = hd[1] - r - 13;
+      if (label) look.tag(ctx, hd[0], ty, label, { size: 10, pad: 4 });
+      else if (m.cfg.size > 1) look.tag(ctx, hd[0], ty, String(p.slot + 1), { size: 10, pad: 4 });
+      if (p.stun > 0) look.tag(ctx, hd[0] + r * 2.4, hd[1] - r, '?', { size: 10, pad: 4 });
     }
   }
   ctx.restore();
 }
 
-/* ---------------- HUD ---------------- */
-function hud(m, pal) {
-  // scoreboard
-  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+/* ---------------- HUD: the scoreboard, calls and button bar live on the page, around the stage ---------------- */
+function board(m) {
+  if (!m) { HUD.board({ a: { name: 'you', sub: look.bandWord(0), score: 0 }, b: { name: 'cpu', sub: look.bandWord(1), score: 0 }, clock: '--' }); return; }
   if (m.practice) {
-    ctx.font = mono(12); ctx.fillStyle = MUTED; ctx.fillText('SHOOT AROUND', 20, 30);
-    ctx.font = mono(30, 600); ctx.fillStyle = FG; ctx.fillText(`${m.practice.made}/${m.practice.att}`, 20, 62);
-  } else {
-    const row = (team, y) => {
-      ctx.fillStyle = team === 0 ? pal.home : pal.away; ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 2;
-      team === 0 ? ctx.fillRect(20, y - 13, 13, 13) : ctx.strokeRect(21, y - 12, 11, 11);
-      const w = m.cfg.watch ? 54 : 0;
-      ctx.font = mono(13, 600); ctx.fillStyle = MUTED; ctx.fillText(m.cfg.watch ? `DUMMY ${team === 0 ? 'A' : 'B'}` : team === 0 ? 'YOU' : 'CPU', 42, y);
-      ctx.font = mono(26, 600); ctx.fillStyle = FG; ctx.fillText(String(m.score[team]), 86 + w, y + 2);
-      if (m.poss === team && m.phase !== 'dead') { ctx.fillStyle = FG; ctx.beginPath(); ctx.arc(128 + w, y - 6, 4, 0, Math.PI * 2); ctx.fill(); }
-    };
-    row(0, 34); row(1, 66);
-    ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText(`GAME TO ${m.cfg.to} · ${CPU[m.cfg.cpu].name.toUpperCase()}`, 20, 88);
-    // the seeds: every dummy in CPU vs CPU, the CPU side in a normal game
-    seedLines(m, m.cfg.watch ? null : 1).forEach((l, i) => ctx.fillText(l, 20, 106 + i * 15));
-    // shot clock: a number, no colour, gets bold under five
-    ctx.textAlign = 'right'; ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText('SHOT CLOCK', W - 20, 26);
-    ctx.font = mono(34, m.clock < 5 ? 600 : 400); ctx.fillStyle = m.clock < 5 ? FG : MUTED;
-    ctx.fillText(String(Math.max(0, Math.ceil(m.clock))), W - 20, 60);
+    HUD.board({ a: { name: 'shoot around', sub: 'made', score: m.practice.made }, b: { name: 'no defense', sub: 'shots', score: m.practice.att }, clock: '--' });
+    return;
   }
-  // the big call
-  if (m.msgT > 0 && m.msg) {
-    ctx.save(); ctx.globalAlpha = Math.min(1, m.msgT * 2.5);
-    ctx.textAlign = 'center'; ctx.font = mono(Math.min(52, W / 13), 600); ctx.fillStyle = FG; ctx.fillText(m.msg, W / 2, H * 0.3);
-    ctx.restore();
-  }
-  if (!m.cfg.watch && !m.cleared && m.poss === 0 && m.phase === 'live' && handler(m)?.team === 0) {
-    ctx.textAlign = 'center'; ctx.font = mono(13, 600); ctx.fillStyle = FG; ctx.fillText('TAKE IT BACK PAST THE ARC', W / 2, H * 0.3 + 34);
-  }
-  // prompts
+  const live = m.phase !== 'dead', w = m.cfg.watch;
+  HUD.board({
+    a: { name: w ? 'dummy a' : 'you', sub: `${look.bandWord(0)} · to ${m.cfg.to}`, score: m.score[0], has: live && m.poss === 0 },
+    b: { name: w ? 'dummy b' : 'cpu', sub: `${look.bandWord(1)} · ${CPU[m.cfg.cpu].name}`, score: m.score[1], has: live && m.poss === 1 },
+    clock: Math.max(0, Math.ceil(m.clock)), low: m.clock < 5
+  });
+}
+/* the seeds, bottom left of the stage: every dummy in CPU vs CPU, the CPU side in a normal game */
+function seeds(m) {
+  if (m.practice || W < 520) return;
+  seedLines(m, m.cfg.watch ? null : 1).reverse().forEach((l, i) => look.tag(ctx, 14, H - 22 - i * 22, l, { size: 10, align: 'left', pad: 4 }));
+}
+function hud(m, pal) {
+  board(m);
+  seeds(m);
+  // the big call, stamped in when it changes
+  if (m.msg && m.msgT > 0 && (m.msg !== shownMsg || m.msgT > shownT + 0.05)) HUD.call(m.msg);
+  shownMsg = m.msgT > 0 ? m.msg : ''; shownT = m.msgT;
+  HUD.msg(!m.cfg.watch && !m.cleared && m.poss === 0 && m.phase === 'live' && handler(m)?.team === 0 ? 'take it back past the arc' : '');
+  // what the buttons do right now
   const pad = input.lastDevice === 'controller', h = handler(m);
-  let tip;
-  if (h && h.id === me) tip = pad ? 'hold □ / R2 shoot · flick right stick: moves · R1 pass · L1 screen' : 'hold space shoot · arrows: moves · E pass · Q screen';
-  else if (m.poss !== 0 && m.ball.mode === 'held') tip = pad ? 'right stick up: hands · □ jump · R1 steal · L1 switch' : 'up arrow: hands · space jump · E steal · Q switch';
-  else tip = pad ? '□ jump for the board · R1 call for it' : 'space jump for the board · E call for it';
-  if (m.practice) tip = pad ? 'hold □ / R2 to rise, aim with both sticks, let go' : 'hold space to rise, aim with W A S D and the arrows, let go';
-  if (m.cfg.watch) tip = `■ WATCHING · ${pad ? 'options' : 'P or Esc'} to pause`;
-  ctx.textAlign = 'center'; ctx.font = mono(12); ctx.fillStyle = MUTED; if (W > 520) ctx.fillText(tip, W / 2, H - 20);
+  const c = (k, t, open) => ({ k, t, open });
+  if (m.cfg.watch) HUD.bar('watching', [c(pad ? 'options' : 'P / esc', 'pause', true)], 'two seeded dummies. the next game starts by itself');
+  else if (m.practice) HUD.bar('shoot around', pad ? [c('□', 'hold to rise, let go to shoot', true), c('L', 'guide hand'), c('R', 'shooting hand')] : [c('space', 'hold to rise, let go to shoot', true), c('wasd', 'guide hand'), c('arrows', 'shooting hand')], 'no defense. aim with both hands');
+  else if (h && h.id === me) HUD.bar('on the ball', pad ? [c('□', 'shoot', true), c('R', 'flick: moves'), c('R1', 'pass'), c('L1', 'screen')] : [c('space', 'shoot', true), c('arrows', 'moves'), c('E', 'pass'), c('Q', 'screen')], m.cleared ? 'twos inside, threes outside' : 'take it back past the arc first');
+  else if (m.poss !== 0 && m.ball.mode === 'held') HUD.bar('defense', pad ? [c('R↑', 'hands up'), c('□', 'jump'), c('R1', 'steal'), c('L1', 'switch')] : [c('↑', 'hands up'), c('space', 'jump'), c('E', 'steal'), c('Q', 'switch')], 'hands up slows you down');
+  else HUD.bar('loose ball', pad ? [c('□', 'jump for the board', true), c('R1', 'call for it')] : [c('space', 'jump for the board', true), c('E', 'call for it')]);
 }
 
+const c2 = (k, t, open) => ({ k, t, open });
 function aimHud(m, s, pal) {
   const rim = proj(RIM.x, RIM.y - COURT.RIM_R * 0.2, RIM.z); if (!rim) return;
   const rimPx = COURT.RIM_R * scale(rim[2]), unitPx = rimPx * 0.7;
@@ -572,22 +591,16 @@ function aimHud(m, s, pal) {
   ctx.fillStyle = FG; ctx.fillText('L', gx, gy); ctx.fillStyle = BG; ctx.fillText('R', sx, sy);
   ctx.textBaseline = 'alphabetic';
   // words, not colours
-  ctx.font = mono(12, 600); ctx.fillStyle = FG;
-  ctx.fillText(SHOTS[s.kind].name.toUpperCase() + (s.three ? ' · THREE' : ''), cx, cy - R - 16);
-  if (s.contest > 0.3) { ctx.fillStyle = MUTED; ctx.font = mono(11); ctx.fillText(s.contest > 0.65 ? 'HEAVILY CONTESTED' : 'CONTESTED', cx, cy + R + 22); }
+  look.tag(ctx, cx, cy - R - 18, SHOTS[s.kind].name + (s.three ? ' · three' : ''));
+  if (s.contest > 0.3) look.tag(ctx, cx, cy + R + 20, s.contest > 0.65 ? 'heavily contested' : 'contested');
   const pad = input.lastDevice === 'controller';
-  ctx.font = mono(12); ctx.fillStyle = MUTED;
-  ctx.fillText(pad ? 'left stick: L hand · right stick: R hand · let go to shoot' : 'W A S D: L hand · arrows or mouse: R hand · let go of space to shoot', W / 2, H - 22);
+  HUD.bar('in the air', pad ? [c2('L', 'left stick: guide hand'), c2('R', 'right stick: shooting hand'), c2('□', 'let go to shoot', o.inside)] : [c2('wasd', 'guide hand'), c2('arrows', 'shooting hand, or the mouse'), c2('space', 'let go to shoot', o.inside)], o.inside ? 'both hands in. let go' : 'get both hands inside the ring');
   ctx.restore();
-}
-function resultText() {
-  ctx.textAlign = 'center'; ctx.font = mono(Math.min(40, W / 16), 600); ctx.fillStyle = FG;
-  ctx.fillText(result, W / 2, H * 0.78);
 }
 function idle() {
   // the court sits quietly behind the menus
   aim(cam, BPOS, BTGT); cam.fl = broad.fl; cam.cx = broad.cx; cam.cy = broad.cy;
-  ctx.fillStyle = FLOOR; fillPoly([[-25, 0, 0], [25, 0, 0], [25, 47, 0], [-25, 47, 0]]);
+  floor(); ctx.fillStyle = PAINT; fillPoly([[-8, 0, 0], [8, 0, 0], [8, 19, 0], [-8, 19, 0]]);
   courtLines(); hoop({ ball: {} });
 }
 
@@ -620,6 +633,7 @@ function update(dt) {
 function humanIntent2(it, m) { return it.call === 'switch' ? { ...it, call: false } : it; }
 function onEvent(m, e) {
   const t = e.type;
+  if (t === 'make' || t === 'block' || t === 'ankles') look.cheer(t === 'make' ? 0.6 : 0.8);
   if (t === 'make') { SFX.swish(); if (fpHold > 0) result = e.pts === 3 ? 'Three, good' : 'Good'; }
   else if (t === 'rim') { SFX.rim(); if (fpHold > 0) result = 'Off the iron'; }
   else if (t === 'airball') { if (fpHold > 0) result = 'Air ball'; }
