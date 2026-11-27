@@ -432,7 +432,7 @@ function drawFloor(v) {
     ctx.save(); ctx.globalAlpha = look.pulse(clock); ctx.strokeStyle = look.FLOOR.hot; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(x, far); ctx.lineTo(x, near); ctx.stroke(); ctx.restore();
   }
-  look.tag(ctx, ox + w, far - 0.15 * ppm - 12, 'floor 14 m', { size: 10, align: 'right', pad: 4 });
+  look.tag(ctx, ox + w, near + 0.2 * ppm + 14, 'floor 14 m', { size: 10, align: 'right', pad: 4 });
 }
 
 /* the judges' table behind the far edge: the other side of the scoreboard */
