@@ -7,12 +7,14 @@
 import { Input } from '../shared/input.js';
 import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
 import * as look from '../shared/look.js';
+import { dummyLabel } from '../shared/seed.js';
 import { Game, LEVELS, RINK, SK, PUCK_R, WRIST_MAX, SLAP_FULL, blankCmd } from './sim.js';
 
 const SAVE = 'jay.slapshot.v1';
 const LENGTHS = [60, 120, 180, 240];   // period length options, seconds
 const LOAD = 0.14;                     // hold the stick back this long and the shot is loaded
 const FLICK_WINDOW = 0.25;             // after letting go, this long to flick it forward
+const WATCH_NEXT = 6;                  // CPU vs CPU: seconds the result shows before the next match
 
 const input = new Input({
   UP: ['KeyW'], DOWN: ['KeyS'], LEFT: ['KeyA'], RIGHT: ['KeyD'],
@@ -22,13 +24,15 @@ const input = new Input({
 });
 
 /* ---------------- save data (this browser only) ---------------- */
+function saved() { try { return localStorage.getItem(SAVE); } catch (e) { return null; } }
 function load() {
   let d = {}; try { d = JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) {}
   const rec = {}; for (const l of LEVELS) rec[l.id] = { w: 0, l: 0, t: 0, ...((d.rec || {})[l.id] || {}) };
-  return { periodLen: LENGTHS.includes(d.periodLen) ? d.periodLen : 120, rec };
+  const watchLevel = LEVELS.some((l) => l.id === d.watchLevel) ? d.watchLevel : 'pro';
+  return { periodLen: LENGTHS.includes(d.periodLen) ? d.periodLen : 120, watchLevel, rec, fresh: !saved() };
 }
 const data = load();
-const persist = () => { try { localStorage.setItem(SAVE, JSON.stringify(data)); } catch (e) {} };
+const persist = () => { try { const { fresh, ...keep } = data; localStorage.setItem(SAVE, JSON.stringify(keep)); } catch (e) {} };
 
 /* ---------------- sound: tiny synth, no files ---------------- */
 let ac = null;
@@ -134,15 +138,21 @@ overlay.addEventListener('click', (e) => { const b = e.target.closest('button[da
 
 const recText = (r) => (r.w || r.l || r.t ? `${r.w}-${r.l}-${r.t}` : 'no games');
 const minutes = (s) => `${s / 60} min`;
+const levelName = (id) => (LEVELS.find((l) => l.id === id) || LEVELS[1]).name;
+/* team names and seed lines: "dummy a: cannon, seed 3F2A" */
+const teamName = (g, t) => (g.watch ? (t === 0 ? 'Dummy A' : 'Dummy B') : t === 0 ? 'You' : 'CPU');
+const seedLine = (g, t) => dummyLabel(g.watch ? (t === 0 ? 'dummy a' : 'dummy b') : t === 0 ? 'your line' : 'cpu', g.dummies[t]);
 
 function mainMenu() {
-  mode = 'menu'; demo = reducedMotion() ? null : new Game({ level: 'pro', humanIdx: -1, periodLen: 9999 });
+  mode = 'menu'; demo = reducedMotion() ? null : new Game({ level: 'pro', watch: true, periodLen: 9999 });
   const lv = LEVELS.map((l) => `<button class="btn" data-go="play" data-arg="${l.id}">Play: ${l.name} <small>${recText(data.rec[l.id])}</small></button>`).join('');
   show(`<p class="label">Game file / Hockey / 3 on 3</p><h1 class="title">Slapshot</h1>
-    <div class="menu">${lv}<button class="btn" data-go="practice">Practice <small>you and a goalie</small></button>
+    <div class="menu">${lv}<button class="btn" data-go="watch">CPU vs CPU <small>watch two dummies</small></button>
+    <button class="btn" data-go="watchlevel">CPU vs CPU level <small>${levelName(data.watchLevel)}</small></button>
+    <button class="btn" data-go="practice">Practice <small>you and a goalie</small></button>
     <button class="btn" data-go="length">Periods <small>3 × ${minutes(data.periodLen)}</small></button>
     <button class="btn" data-go="controls">Controls</button></div>
-    <p class="hint">Arcade 3 on 3 with computer goalies. Every skater is the same, so there is nothing to train: you win on how you skate, handle and shoot. Records are W-L-T, saved in this browser only.</p>`);
+    <p class="hint">Arcade 3 on 3 with computer goalies. Every skater is the same, so there is nothing to train: you win on how you skate, handle and shoot. Each computer team is a dummy rolled from a seed, so no two play alike. Records are W-L-T, saved in this browser only.</p>`);
 }
 function controls(from) {
   mode = from === 'pause' ? 'paused' : 'menu';
@@ -172,45 +182,59 @@ function controls(from) {
 }
 
 /* ---------------- game state ---------------- */
-let mode = 'menu';     // menu | play | paused | results
-let game = null, demo = null, gameOpts = null, endT = 0;
+let mode = 'menu';     // menu | play | paused | results  (CPU vs CPU is play with game.watch)
+let game = null, demo = null, gameOpts = null, endT = 0, nextT = 0;
 
+/* every new game rolls fresh seeds for its dummies */
 function newGame(opts) {
   gameOpts = opts;
-  game = new Game({ ...opts, humanIdx: 0 });
+  game = new Game({ ...opts, humanIdx: opts.watch ? -1 : 0 });
   gesture.reset(); pending = null;
-  mode = 'play'; hide(); endT = 0;
+  mode = 'play'; hide(); endT = 0; nextT = 0;
 }
+const watchGame = () => newGame({ level: data.watchLevel, periodLen: data.periodLen, watch: true });
 function go(what, arg) {
   audio();
   if (what === 'menu') mainMenu();
   else if (what === 'controls') controls(mode === 'paused' ? 'pause' : 'menu');
-  else if (what === 'length') { data.periodLen = LENGTHS[(LENGTHS.indexOf(data.periodLen) + 1) % LENGTHS.length]; persist(); mainMenu(); menuItems[LEVELS.length + 1].focus(); }
+  else if (what === 'length') { data.periodLen = LENGTHS[(LENGTHS.indexOf(data.periodLen) + 1) % LENGTHS.length]; persist(); mainMenu(); refocus('length'); }
+  else if (what === 'watchlevel') { const i = LEVELS.findIndex((l) => l.id === data.watchLevel); data.watchLevel = LEVELS[(i + 1) % LEVELS.length].id; persist(); mainMenu(); refocus('watchlevel'); }
   else if (what === 'play') newGame({ level: arg, periodLen: data.periodLen });
+  else if (what === 'watch') watchGame();
   else if (what === 'practice') newGame({ level: 'pro', practice: true });
   else if (what === 'again') newGame(gameOpts);
   else if (what === 'pause') pause();
   else if (what === 'resume') { mode = 'play'; hide(); }
 }
+function refocus(go) { const i = menuItems.findIndex((b) => b.dataset.go === go); if (i >= 0) { menuIndex = i; menuItems[i].focus(); } }
+function seedHint(g) {
+  if (g.practice) return '';
+  return `<p class="hint">${g.watch ? `${seedLine(g, 0)}<br>${seedLine(g, 1)}` : seedLine(g, 1)}</p>`;
+}
 function pause() {
   mode = 'paused';
-  show(`<p class="label">Paused${game.practice ? ' / Practice' : ` / ${game.level.name}`}</p><h1 class="title">${game.practice ? `${game.score[0]} <small>goals</small>` : `${game.score[0]} – ${game.score[1]}`}</h1>
-    <div class="menu"><button class="btn btn--solid" data-go="resume">Resume</button><button class="btn" data-go="again">Restart</button><button class="btn" data-go="controls">Controls</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
+  const where = game.practice ? ' / Practice' : `${game.watch ? ' / CPU vs CPU' : ''} / ${game.level.name}`;
+  show(`<p class="label">Paused${where}</p><h1 class="title">${game.practice ? `${game.score[0]} <small>goals</small>` : `${game.score[0]} – ${game.score[1]}`}</h1>
+    ${seedHint(game)}
+    <div class="menu"><button class="btn btn--solid" data-go="resume">Resume</button><button class="btn" data-go="again">${game.watch ? 'New match <small>new seeds</small>' : 'Restart'}</button><button class="btn" data-go="controls">Controls</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
 }
 function results() {
   mode = 'results';
-  const [a, b] = game.score, r = data.rec[game.level.id];
-  const res = a > b ? 'w' : a < b ? 'l' : 't'; r[res]++; persist();
-  const head = res === 'w' ? 'You win' : res === 'l' ? 'You lose' : 'Tie game';
+  const [a, b] = game.score, w = game.watch, r = data.rec[game.level.id];
+  const res = a > b ? 'w' : a < b ? 'l' : 't';
+  if (!w) { r[res]++; persist(); }   // watch games are not recorded
+  const head = w ? (res === 't' ? 'Tie game' : `${teamName(game, res === 'w' ? 0 : 1)} wins`) : res === 'w' ? 'You win' : res === 'l' ? 'You lose' : 'Tie game';
   const ot = game.ot ? (res === 't' ? ' after overtime' : ' in overtime') : '';
-  show(`<p class="label">${game.level.name} / Final${ot}</p><h1 class="title">${head} <small>${a} – ${b}</small></h1>
+  nextT = w ? WATCH_NEXT : 0;
+  show(`<p class="label">${w ? 'CPU vs CPU / ' : ''}${game.level.name} / Final${ot}</p><h1 class="title">${head} <small>${a} – ${b}</small></h1>
     <table class="board"><tbody>
-      <tr><td></td><td>You</td><td>CPU</td></tr>
+      <tr><td></td><td>${teamName(game, 0)}</td><td>${teamName(game, 1)}</td></tr>
       <tr><td>Goals</td><td>${a}</td><td>${b}</td></tr>
       <tr><td>Shots on goal</td><td>${game.sog[0]}</td><td>${game.sog[1]}</td></tr>
       <tr><td>Hits</td><td>${game.hits[0]}</td><td>${game.hits[1]}</td></tr></tbody></table>
-    <p class="hint">Record at ${game.level.name}: ${recText(r)}.</p>
-    <div class="menu"><button class="btn btn--solid" data-go="again">Play again</button><button class="btn" data-go="menu">Menu</button></div>`);
+    ${seedHint(game)}
+    <p class="hint">${w ? `Next match with new seeds in <span id="next">${WATCH_NEXT}</span> s. Watch games are not recorded.` : `Record at ${game.level.name}: ${recText(r)}.`}</p>
+    <div class="menu"><button class="btn btn--solid" data-go="again">${w ? 'Next match' : 'Play again'}</button><button class="btn" data-go="menu">Menu</button></div>`);
 }
 
 /* ---------------- your inputs → a command for your skater ---------------- */
@@ -261,8 +285,20 @@ function humanCommand(dt) {
 
 function update(dt) {
   input.poll();
-  if (mode !== 'play') { if (demo && mode === 'menu') { demo.step(dt); if (demo.over || demo.t > 240) demo = new Game({ level: 'pro', humanIdx: -1, periodLen: 9999 }); } return menuInput(); }
-  if (input.pressed('START') || input.pressed('ESC')) return pause();
+  if (mode !== 'play') {
+    if (demo && mode === 'menu') { demo.step(dt); if (demo.over || demo.t > 240) demo = new Game({ level: 'pro', watch: true, periodLen: 9999 }); }
+    if (mode === 'results' && game && game.watch && nextT > 0) { // CPU vs CPU rolls on by itself
+      nextT -= dt; const el = overlay.querySelector('#next'); if (el) el.textContent = String(Math.max(0, Math.ceil(nextT)));
+      if (nextT <= 0) return watchGame();
+    }
+    return menuInput();
+  }
+  if (input.pressed('START') || input.pressed('ESC') || (game.watch && input.pressed('B'))) return pause();
+  if (game.watch) { // CPU vs CPU: both teams think for themselves, your input only pauses
+    game.step(dt); sounds(game.events);
+    if (game.over) { endT += dt; if (endT > (game.phase === 'goal' ? 2.4 : 0.6)) results(); }
+    return;
+  }
   const h = game.human;
   h.cmd = humanCommand(dt);
   game.step(dt);
@@ -471,8 +507,8 @@ function board(g) {
   }
   const own = g.phase === 'play' && g.puck.owner ? g.puck.owner.team : -1;
   HUD.board({
-    a: { name: 'you', sub: `${look.bandWord(0)} · shots ${g.sog[0]}`, score: g.score[0], has: own === 0 },
-    b: { name: 'cpu', sub: `${look.bandWord(1)} · ${g.level.name} · shots ${g.sog[1]}`, score: g.score[1], has: own === 1 },
+    a: { name: teamName(g, 0).toLowerCase(), sub: `${look.bandWord(0)} · shots ${g.sog[0]}`, score: g.score[0], has: own === 0 },
+    b: { name: teamName(g, 1).toLowerCase(), sub: `${look.bandWord(1)} · ${g.level.name} · shots ${g.sog[1]}`, score: g.score[1], has: own === 1 },
     clock: `${g.ot ? 'OT' : 'P' + g.period} ${clock(g.clock)}`, low: g.clock <= 10 && g.phase === 'play'
   });
 }
@@ -483,7 +519,7 @@ function calls(g) {
   if (g.phase === 'faceoff') { key = 'faceoff' + g.period + g.score.join(); big = 'Faceoff'; }
   else if (g.phase === 'goal') {
     big = 'Goal'; title = true;
-    const lg = g.lastGoal; if (lg && !g.practice) small = lg.team === 0 ? (lg.by && lg.by.team === 0 ? `you scored · #${lg.by.num}` : 'you scored') : (lg.by ? `cpu scored · #${lg.by.num}` : 'cpu scored');
+    const lg = g.lastGoal; if (lg && !g.practice) small = `${teamName(g, lg.team).toLowerCase()} scored${lg.by && lg.by.team === lg.team ? ` · #${lg.by.num}` : ''}`;
     key = 'goal' + g.score.join();
   } else if (g.phase === 'break') { key = 'break' + g.period + g.msg; big = g.msg; }
   if (key && key !== shownCall) HUD.call(big, small, title);
@@ -495,7 +531,18 @@ function calls(g) {
   }
   HUD.msg(g.ot && g.phase === 'play' ? 'sudden death' : '');
 }
+function seeds(g) {
+  // seed tags: the CPU team's style and seed, or both dummies when watching
+  if (g.practice || W < 520) return;
+  const lines = g.watch ? [seedLine(g, 0), seedLine(g, 1)] : [seedLine(g, 1)];
+  lines.reverse().forEach((l, i) => look.tag(ctx, 14, H - 22 - i * 22, l, { size: 10, align: 'left', pad: 4 }));
+}
 function playBar(g) {
+  if (g.watch) {
+    const pad = input.lastDevice === 'controller';
+    HUD.bar('watching', [{ k: pad ? 'options' : 'P / esc', t: 'pause', open: true }], 'two seeded dummies. the next game starts by itself');
+    return;
+  }
   const h = g.human; if (!h) return;
   const P = g.puck, hasPuck = P.owner === h, pad = input.lastDevice === 'controller', c = (k, t, open) => ({ k, t, open });
   if (g.phase !== 'play') { HUD.bar(g.phase === 'goal' ? 'goal' : g.phase === 'faceoff' ? 'faceoff' : 'break', [], 'play stops for a moment'); return; }
@@ -527,7 +574,7 @@ function draw(dt) {
   look.arena(ctx, W, H, { horizon: horizonY(), dt });
   if (mode === 'menu') { if (demo) drawGame(demo, true); else drawRink(null); board(null); HUD.msg(''); menuBar(); return; }
   if (game) {
-    drawGame(game, false); board(game);
+    drawGame(game, false); seeds(game); board(game);
     if (mode === 'play') { calls(game); playBar(game); } else { HUD.msg(''); menuBar(); }
   }
 }
@@ -542,4 +589,6 @@ function frame(now) {
 document.documentElement.classList.toggle('calm', reducedMotion());
 addEventListener('gamepadconnected', () => { input.lastDevice = 'controller'; });
 mainMenu();
+// phones can't play without a pad: on a first visit from a touch screen, open straight into CPU vs CPU
+if (data.fresh && matchMedia('(pointer: coarse)').matches) watchGame();
 requestAnimationFrame(frame);

@@ -5,6 +5,8 @@
    Units are feet and seconds. x runs across the court (-25..25), y from the baseline (0) to half
    court (47), z is height. The hoop is at the baseline end. */
 
+import { makeDummy, newSeed } from '../shared/seed.js';
+
 export const COURT = Object.freeze({
   W: 25, L: 47,
   RIM: Object.freeze({ x: 0, y: 5.25, z: 10 }), RIM_R: 0.75, BOARD_Y: 4,
@@ -24,6 +26,36 @@ export const CPU = Object.freeze({
 });
 
 /* shot kinds: how big the drop target is, how long you hang, how far off the hands start */
+/* Every CPU player is a seeded dummy, rolled the way Folkstyle rolls its wrestlers: the CPU level
+   above is how good it is, the seed is how it plays. Numbers are drawn in this order, so a seed
+   always makes the same player. Anything that helps one way costs another (a deep shooter is a
+   little worse at the rim), so no seed is just stronger. */
+export const DUMMY = Object.freeze({
+  range: [0, 1],          // jumpers vs finishing: better from deep is worse inside, and the other way round
+  three: [0, 1],          // love of the three ball
+  drive: [0.35, 0.85],    // takes an open lane to the rim
+  pass: [0.25, 0.75],     // gives it up when a teammate is open
+  patience: [0.7, 1.8],   // seconds it holds before looking to pass
+  handle: [0.7, 2.2],     // how often it throws a dribble move at a close defender
+  stepback: [0.1, 0.45],  // of those, how many are step-backs
+  think: [0.8, 1.3],      // decision speed, times the level's
+  read: [0.85, 1.2],      // how late it sees the ball handler move, times the level's
+  gap: [-0.5, 0.5],       // feet tighter (-) or looser (+) than the level's cushion
+  reach: [0.7, 1.3],      // steal attempts, times the level's (a miss still leaves it off balance)
+  jump: [0.8, 1.25],      // how long it waits before it jumps to contest
+  crash: [0, 1],          // chases boards instead of getting back
+  cut: [0.5, 1.6],        // back cuts off the ball
+  screen: [0.4, 1.8]      // calls for screens
+});
+export const DUMMY_STYLES = Object.freeze([
+  ['shooter', (p) => p.three > 0.72 && p.range > 0.45],
+  ['slasher', (p) => p.drive > 0.72],
+  ['lockdown', (p) => p.reach > 1.15 && p.gap < 0],
+  ['glass cleaner', (p) => p.crash > 0.78],
+  ['floor general', (p) => p.pass > 0.64]
+]);
+export const rollDummy = (seed = newSeed()) => makeDummy(seed, DUMMY, DUMMY_STYLES, 'all rounder');
+
 export const SHOTS = Object.freeze({
   dunk:   { name: 'Dunk',   target: 1.9, hang: 0.85, spread: 0.6 },
   layup:  { name: 'Layup',  target: 1.4, hang: 1.05, spread: 1.1 },
@@ -58,7 +90,7 @@ export function blankIntent() {
 }
 
 export function createMatch(cfg = {}) {
-  const c = { size: 1, cpu: 'pro', to: 11, practice: false, seed: (Math.random() * 1e9) | 0, ...cfg };
+  const c = { size: 1, cpu: 'pro', to: 11, practice: false, watch: false, seeds: null, seed: (Math.random() * 1e9) | 0, ...cfg };
   if (c.practice) c.size = 1;
   const m = {
     cfg: c, rand: rng(c.seed), t: 0, players: [], score: [0, 0], poss: 0, phase: 'check', phaseT: 0,
@@ -71,6 +103,8 @@ export function createMatch(cfg = {}) {
       hands: 0, stun: 0, lunge: 0, moveCd: 0, moveT: 0, moveDir: [0, 0], moveTimes: [], burst: 0, handT: 0,
       seenX: 0, seenY: 0, mark: null, spot: 0, cut: 0, screen: null, screenT: 0, wantT: 0, think: 0, plan: null, stride: 0, jumpCd: 0 });
   }
+  // a fresh dummy for every player, every game (yours too, for whenever the CPU runs your teammates)
+  for (const p of m.players) p.bot = rollDummy(c.seeds && c.seeds[p.id] != null ? c.seeds[p.id] : newSeed());
   for (const p of m.players) {
     const opp = m.players.filter((q) => q.team !== p.team);
     p.mark = opp.length ? opp[p.slot % opp.length].id : null;
@@ -79,6 +113,8 @@ export function createMatch(cfg = {}) {
   return m;
 }
 
+/* is this player on a CPU-levelled team? the CPU side, or both sides in CPU vs CPU */
+const cpuSide = (m, p) => p.team === 1 || m.cfg.watch;
 export const handler = (m) => (m.ball.holder != null ? m.players[m.ball.holder] : null);
 const mates = (m, p) => m.players.filter((q) => q.team === p.team && q !== p);
 const foes = (m, p) => m.players.filter((q) => q.team !== p.team);
@@ -126,8 +162,10 @@ function shotKind(p, speedToRim) {
 function cpuOdds(m, p, contest, kind) {
   const d = rimDist(p.x, p.y);
   let base = kind === 'dunk' ? 0.9 : kind === 'layup' ? 0.68 : d < 16 ? 0.5 : !isThree(p.x, p.y) ? 0.43 : d < 27 ? 0.37 : 0.2;
-  const skill = p.team === 1 || m.cfg.practice ? CPU[m.cfg.cpu].shoot : 1;
-  return clamp(base * skill * (1 - 0.62 * contest), 0.02, 0.97);
+  const skill = cpuSide(m, p) || m.cfg.practice ? CPU[m.cfg.cpu].shoot : 1;
+  // the seed's range trade: up to 6% better on jumpers and 6% worse finishing, or the reverse
+  const r = p.bot ? (p.bot.p.range - 0.5) * 0.12 : 0, tilt = kind === 'jumper' ? 1 + r : 1 - r;
+  return clamp(base * skill * tilt * (1 - 0.62 * contest), 0.02, 0.97);
 }
 
 /* ---------------------------------------------------------------- the step */
@@ -192,7 +230,7 @@ function act(m, p, it, dt, realDt) {
   // speed
   const cpu = CPU[m.cfg.cpu];
   let top = hasBall ? 13.2 : 14.6;
-  if (p.team === 1 && !m.practice) top *= cpu.speed;
+  if (cpuSide(m, p) && !m.practice) top *= cpu.speed;
   if (p.hands > 0.5 && !hasBall) top *= 0.76;
   if (p.lunge > 0) top *= 0.4;
   if (p.stun > 0) top *= 0.12;
@@ -214,7 +252,7 @@ function act(m, p, it, dt, realDt) {
   const target = hasBall ? 0 : it.hands;
   p.hands += clamp(target - p.hands, -4 * dt, 6 * dt);
   // CPU defenders see the ball handler a beat late; that's what a crossover beats
-  const lag = p.team === 1 ? cpu.lag : 0.1;
+  const lag = cpuSide(m, p) ? cpu.lag * (p.bot ? p.bot.p.read : 1) : 0.1;
   const h = handler(m), follow = h || p;
   const a = 1 - Math.exp(-dt / Math.max(0.01, lag));
   p.seenX += (follow.x - p.seenX) * a; p.seenY += (follow.y - p.seenY) * a;
@@ -266,7 +304,7 @@ function swipe(m, d, h) {
   let ch = 0.1 + 0.3 * (1 - dist / 3.4);
   if (h.handT > 0) ch *= 0.35;
   if (len(h.vx, h.vy) < 2) ch *= 1.4;
-  if (d.team === 1) ch *= 0.5 + CPU[m.cfg.cpu].steal * 2;
+  if (cpuSide(m, d)) ch *= 0.5 + CPU[m.cfg.cpu].steal * 2;
   if (m.rand() < ch) {
     if (m.rand() < 0.55) { take(m, d); emit(m, 'steal', { id: d.id }); say(m, 'Stolen', 1.1); }
     else looseBall(m, h, 'Poked loose', [d.x - h.x, d.y - h.y]);
@@ -455,7 +493,7 @@ function ballTick(m, dt) {
     for (const q of m.players) {
       if (q.team === b.lastTeam || P.checked.has(q.id)) continue;
       const qd = len(q.x - b.x, q.y - b.y);
-      if (qd < 1.7) { P.checked.add(q.id); const ch = q.team === 1 ? 0.25 + CPU[m.cfg.cpu].steal : 0.5;
+      if (qd < 1.7) { P.checked.add(q.id); const ch = cpuSide(m, q) ? 0.25 + CPU[m.cfg.cpu].steal : 0.5;
         if (q.stun <= 0 && m.rand() < ch) { take(m, q); emit(m, 'pick', { id: q.id }); say(m, 'Picked off', 1.1); return; } }
     }
     if (d <= stepLen + 0.8) { take(m, to); return; }
@@ -548,7 +586,8 @@ function collide(m) {
 export function cpuIntent(m, p, dt) {
   const it = blankIntent();
   if (m.phase !== 'live') return it;
-  const b = m.ball, h = handler(m), cpu = CPU[m.cfg.cpu], dumb = p.team === 0 ? 0.85 : cpu.iq;
+  const b = m.ball, h = handler(m), cpu = CPU[m.cfg.cpu], dumb = cpuSide(m, p) ? cpu.iq : 0.85;
+  const D = p.bot, R = D.R, P = D.p;   // the dummy's own dice: its choices replay from its seed
   const goTo = (x, y, slow = 1, stopAt = 0.6) => { const dx = x - p.x, dy = y - p.y, d = len(dx, dy); if (d < stopAt) return; const k = Math.min(1, d / 3) * slow; it.mx = dx / d * k; it.my = dy / d * k; };
   p.think -= dt;
 
@@ -558,7 +597,7 @@ export function cpuIntent(m, p, dt) {
     const mineD = len(land[0] - p.x, land[1] - p.y);
     const team = m.players.filter((q) => q.team === p.team);
     const chaser = team.reduce((a, q) => (len(land[0] - q.x, land[1] - q.y) < len(land[0] - a.x, land[1] - a.y) ? q : a), team[0]);
-    if (chaser === p || mineD < 8) goTo(land[0], land[1], 1, 0.2);
+    if (chaser === p || mineD < 5 + P.crash * 6) goTo(land[0], land[1], 1, 0.2);
     else { const man = m.players[p.mark]; if (man) goTo((man.x + RIM.x) / 2, (man.y + RIM.y) / 2 + 2); }
     if (len(b.x - p.x, b.y - p.y) < 3 && b.z > 6.5 && b.z < 11 && b.vz < 4) it.shoot = true;
     return it;
@@ -581,13 +620,13 @@ export function cpuIntent(m, p, dt) {
     }
     const spots = SPOTS[m.cfg.size];
     if (p.think <= 0) {
-      p.think = 0.8 + m.rand() * 1.2;
+      p.think = (0.8 + R() * 1.2) * P.think;
       const taken = new Set(m.players.filter((q) => q.team === p.team && q !== p).map((q) => nearestSpot(spots, q)));
       const free = spots.map((s, i) => i).filter((i) => i !== 0 && !taken.has(i));
-      if (!free.includes(p.spot)) p.spot = free.length ? free[(m.rand() * free.length) | 0] : 1;
+      if (!free.includes(p.spot)) p.spot = free.length ? free[(R() * free.length) | 0] : 1;
       const def = m.players.find((q) => q.mark === p.id);
-      if (def && h && m.rand() < 0.25 * dumb && len(def.x - p.x, def.y - p.y) > 4 && m.cleared) p.cut = 1.4;
-      if (h && h.team === p.team && m.rand() < 0.08 && m.cfg.size > 1 && len(h.x - p.x, h.y - p.y) < 22 && !h.human) callScreen(m, h);
+      if (def && h && R() < 0.25 * dumb * P.cut && len(def.x - p.x, def.y - p.y) > 4 && m.cleared) p.cut = 1.4;
+      if (h && h.team === p.team && R() < 0.08 * P.screen && m.cfg.size > 1 && len(h.x - p.x, h.y - p.y) < 22 && !h.human) callScreen(m, h);
     }
     if (p.cut > 0) goTo(p.x < 0 ? -3 : 3, 7, 1, 0.3);
     else { const s = spots[p.spot] || spots[1]; goTo(s[0], s[1], 0.85); }
@@ -601,7 +640,8 @@ export function cpuIntent(m, p, dt) {
   const mx = onBall ? p.seenX : man.x, my = onBall ? p.seenY : man.y;
   const [ux, uy] = norm(RIM.x - mx, RIM.y - my);
   let gap = onBall ? cpu.gap : 6;
-  if (p.team === 0) gap = onBall ? 3.3 : 6;
+  if (!cpuSide(m, p)) gap = onBall ? 3.3 : 6;
+  if (onBall) gap = Math.max(2.2, gap + P.gap);
   let tx = mx + ux * gap, ty = my + uy * gap;
   if (!onBall && h) { tx = tx * 0.7 + (h.x + RIM.x) / 2 * 0.3; ty = ty * 0.7 + (h.y + RIM.y) / 2 * 0.3; }   // help side sags
   if (!m.cleared && onBall) { tx = mx + ux * (gap + 1.5); ty = my + uy * (gap + 1.5); }
@@ -610,9 +650,9 @@ export function cpuIntent(m, p, dt) {
   if (onBall && dist < 7) it.hands = 1;
   if (m.shot && m.shot.id === man.id) {
     it.hands = 1;
-    if (dist < 4.5) { p.wantJump = (p.wantJump ?? (0.06 + (1 - dumb) * 0.25 + m.rand() * 0.12)) - dt; if (p.wantJump <= 0) { it.shoot = true; p.wantJump = null; } }
+    if (dist < 4.5) { p.wantJump = (p.wantJump ?? ((0.06 + (1 - dumb) * 0.25 + R() * 0.12) * P.jump)) - dt; if (p.wantJump <= 0) { it.shoot = true; p.wantJump = null; } }
   } else p.wantJump = null;
-  if (onBall && dist < 3 && p.lunge <= 0 && m.rand() < (p.team === 1 ? cpu.steal : 0.15) * dt * 1.6) it.pass = true;
+  if (onBall && dist < 3 && p.lunge <= 0 && R() < (cpuSide(m, p) ? cpu.steal : 0.15) * P.reach * dt * 1.6) it.pass = true;
   return it;
 }
 
@@ -626,6 +666,7 @@ function landing(b) {
 }
 
 function handlerBrain(m, p, it, dt, goTo, dumb) {
+  const R = p.bot.R, P = p.bot.p;
   const d = rimDist(p.x, p.y), contest = contestOn(m, p), def = nearest(foes(m, p), p);
   const ddist = def ? len(def.x - p.x, def.y - p.y) : 99;
   const [rx, ry] = norm(RIM.x - p.x, RIM.y - p.y);
@@ -635,29 +676,32 @@ function handlerBrain(m, p, it, dt, goTo, dumb) {
     goTo(RIM.x + ox * 26, RIM.y + oy * 26 + 1, 1, 0.2); return it;
   }
   if (!p.plan || p.think <= 0) {
-    p.think = 0.35 + m.rand() * 0.4;
+    p.think = (0.35 + R() * 0.4) * P.think;
     const open = ddist > 6 || (def && def.stun > 0);
     const lane = !foes(m, p).some((q) => { const qx = q.x - p.x, qy = q.y - p.y, along = qx * rx + qy * ry, across = Math.abs(qx * -ry + qy * rx); return along > 0 && along < d && across < 3 && q.stun <= 0; });
-    const ev = (isThree(p.x, p.y) ? 3 : 2) * cpuOdds(m, p, contest, shotKind(p, 0));
+    const three = isThree(p.x, p.y);
+    const ev = (three ? 3 : 2) * cpuOdds(m, p, contest, shotKind(p, 0)) * (three ? 0.9 + P.three * 0.2 : 1);
     const mateOpen = m.cfg.size > 1 && mates(m, p).find((q) => { const qd = nearest(foes(m, q), q); return !qd || len(qd.x - q.x, qd.y - q.y) > 7; });
     if (m.clock < 2.5) p.plan = 'shoot';
     else if (d < 6) p.plan = 'shoot';
-    else if (ev > 1.05 - 0.15 * (1 - dumb) && (open || d < 16) && m.rand() < 0.7) p.plan = 'shoot';
-    else if (lane && m.rand() < 0.65) p.plan = 'drive';
-    else if (mateOpen && p.holdT > 1.2 && m.rand() < 0.5) p.plan = 'pass';
-    else p.plan = m.rand() < 0.5 ? 'jab' : 'drive';
-    p.planTarget = [clamp(p.x + (m.rand() - 0.5) * 16, -21, 21), clamp(p.y + (m.rand() - 0.6) * 10, 10, 31)];
+    else if (ev > 1.05 - 0.15 * (1 - dumb) && (open || d < 16 || (three && P.three > 0.7)) && R() < 0.7) p.plan = 'shoot';
+    else if (lane && R() < P.drive) p.plan = 'drive';
+    else if (mateOpen && p.holdT > P.patience && R() < P.pass) p.plan = 'pass';
+    else p.plan = R() < 1 - P.drive * 0.8 ? 'jab' : 'drive';
+    // a three-point lover sets up around the arc, a slasher closer in
+    const out = P.three > 0.6 ? 1.2 : 0.6;
+    p.planTarget = [clamp(p.x + (R() - 0.5) * 16, -21, 21), clamp(p.y + (R() - out) * 10, 10, 31)];
   }
   const caller = mates(m, p).find((q) => q.wantT > 0);
-  if (caller && m.rand() < dt * 6) { it.pass = true; it.passDir = [caller.x - p.x, caller.y - p.y]; p.plan = null; p.holdT = 0; return it; }
+  if (caller && R() < dt * 6) { it.pass = true; it.passDir = [caller.x - p.x, caller.y - p.y]; p.plan = null; p.holdT = 0; return it; }
   if (p.plan === 'shoot') { if (d < 5 || len(p.vx, p.vy) < 6 || m.clock < 2.5) { it.shoot = true; p.plan = null; p.holdT = 0; } }
   else if (p.plan === 'drive') { goTo(RIM.x, RIM.y + 1.5, 1, 0.3); if (d < 4.8) p.plan = 'shoot'; }
   else if (p.plan === 'pass') { it.pass = true; it.passDir = null; p.plan = null; p.holdT = 0; }
   else { goTo(p.planTarget[0], p.planTarget[1], 0.8); }
-  if (def && ddist < 4.2 && p.moveCd <= 0 && m.rand() < dt * 1.5 * dumb) {
+  if (def && ddist < 4.2 && p.moveCd <= 0 && R() < dt * P.handle * dumb) {
     // shake them: crossover against the way they're leaning
-    it.flick = def.vx > 0.5 ? 'left' : def.vx < -0.5 ? 'right' : m.rand() < 0.5 ? 'left' : 'right';
-    if (m.rand() < 0.25) it.flick = 'down';
+    it.flick = def.vx > 0.5 ? 'left' : def.vx < -0.5 ? 'right' : R() < 0.5 ? 'left' : 'right';
+    if (R() < P.stepback) it.flick = 'down';
   }
   return it;
 }

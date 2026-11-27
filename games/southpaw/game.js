@@ -1,10 +1,12 @@
 /* jay. — © 2026 Jay — source viewable, not reusable by others (LICENSE)
    Southpaw: side-on arcade boxing. The triggers are your hands: a light pull is a quick shot,
    a full pull lands heavy and leaves you open. The right stick picks the punch, the left stick
-   moves your feet, the bumpers are your guard. Five computer fighters, no stats to grind. */
+   moves your feet, the bumpers are your guard. Five computer fighters, no stats to grind.
+   Every computer fighter is a seeded dummy, and CPU vs CPU puts two of them in the ring to watch. */
 
 import { Input } from '../shared/input.js';
 import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
+import { dummyLabel } from '../shared/seed.js';
 import { Bout, STYLES, SPARRING, PUNCHES, RING, COUNT_STEP } from './sim.js';
 
 const SAVE = 'jay.southpaw.v1';
@@ -22,7 +24,8 @@ const input = new Input({
 /* ---------------- save data (this browser only) ---------------- */
 function load() {
   let d = {}; try { d = JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) {}
-  return { record: { ...(d.record || {}) } };
+  const w = d.watch || {};
+  return { record: { ...(d.record || {}) }, watch: { a: w.a || 'random', b: w.b || 'random' } };
 }
 const data = load();
 const persist = () => { try { localStorage.setItem(SAVE, JSON.stringify(data)); } catch (e) {} };
@@ -65,11 +68,11 @@ const $ = (sel) => document.querySelector(sel);
 const overlay = $('#overlay');
 const backLink = $('.back');
 let menuItems = [], menuIndex = 0;
-function show(html) {
+function show(html, focus = 0) {
   overlay.innerHTML = `<div class="panel">${html}</div>`; overlay.hidden = false; if (backLink) backLink.hidden = false;
   menuItems = [...overlay.querySelectorAll('button')];
-  menuIndex = 0;
-  if (menuItems[0]) menuItems[0].focus();
+  menuIndex = Math.min(focus, Math.max(0, menuItems.length - 1));
+  if (menuItems[menuIndex]) menuItems[menuIndex].focus();
   menuItems.forEach((b, i) => b.addEventListener('focus', () => { menuIndex = i; }));
 }
 function hide() { overlay.hidden = true; overlay.innerHTML = ''; menuItems = []; if (backLink) backLink.hidden = true; }
@@ -83,6 +86,7 @@ function mainMenu() {
   show(`<p class="label">Game file / Boxing / ${ROUNDS} rounds × ${ROUND_LEN} s</p><h1 class="title">Southpaw</h1>
     <div class="menu">
       <button class="btn" data-go="pick">Fight <small>pick an opponent</small></button>
+      <button class="btn" data-go="watch">CPU vs CPU <small>two seeded dummies, you watch</small></button>
       <button class="btn" data-go="practice">Practice <small>no clock, partner never punches</small></button>
       <button class="btn" data-go="controls">Controls</button>
     </div>
@@ -97,6 +101,23 @@ function pickMenu() {
     <ul class="blurbs">${STYLES.map((s) => `<li><b>${esc(s.name)}:</b> ${esc(s.blurb)}${s.stance === 'southpaw' ? ' Southpaw.' : ''}</li>`).join('')}</ul>
     <p class="hint">Listed easiest first. They play by your rules: they only see your punch once it starts, and they react about as fast as a person.</p>`);
 }
+/* CPU vs CPU setup: which opponent card each dummy boxes as (the card is the skill, the seed the style) */
+const CARDS = ['random', ...STYLES.map((s) => s.id)];
+const cardName = (id) => (id === 'random' ? 'Random' : STYLES.find((s) => s.id === id).name);
+function watchMenu(focus = 0) {
+  mode = 'menu'; fight = null;
+  const w = data.watch;
+  show(`<p class="label">Game file / Boxing / CPU vs CPU</p><h1 class="title">Dummy vs dummy</h1>
+    <div class="menu">
+      <button class="btn" data-go="watchgo">Start <small>${esc(cardName(w.a))} vs ${esc(cardName(w.b))}</small></button>
+      <button class="btn" data-go="card" data-arg="a">Dummy A boxes as <small>${esc(cardName(w.a))}</small></button>
+      <button class="btn" data-go="card" data-arg="b">Dummy B boxes as <small>${esc(cardName(w.b))}</small></button>
+      <button class="btn" data-go="menu">Back</button>
+    </div>
+    <p class="hint">Both corners are computer fighters with their own seed, so no two bouts go the same way.
+    The fight runs by itself and a new one starts after the result. Options, Circle, P or Esc pauses. Nothing here counts toward your record.</p>`, focus);
+}
+
 function controls(back = 'menu') {
   mode = mode === 'paused' ? 'paused' : 'menu';
   show(`<p class="label">Controls</p><h1 class="title">How to box</h1>
@@ -131,17 +152,31 @@ function newFight(id) {
   const practice = id === 'sparring';
   const style = practice ? SPARRING : STYLES.find((s) => s.id === id);
   const bout = new Bout(style, { practice });
+  canvas.setAttribute('aria-label', FIGHT_ARIA);
   fight = { id, style, bout, practice, round: 1, clock: ROUND_LEN, phase: 'intro', phaseT: 0, cards: [], msg: '', endT: 0,
     ghost: { me: 100, foe: 100 }, last: '' };
   resetPlayer();
   mode = 'fight'; hide();
 }
+/* CPU vs CPU: new seeds every bout, and a fresh card for a side set to Random */
+function newWatch() {
+  const card = (id) => (id === 'random' ? STYLES[Math.floor(Math.random() * STYLES.length)] : STYLES.find((s) => s.id === id));
+  const a = card(data.watch.a), style = card(data.watch.b);
+  const bout = new Bout(style, { watch: a });
+  fight = { id: 'watch', watch: true, styles: [a, style], style, bout, practice: false, round: 1, clock: ROUND_LEN, phase: 'intro', phaseT: 0,
+    cards: [], msg: '', endT: 0, ghost: { me: 100, foe: 100 }, last: '', nextT: 0 };
+  canvas.setAttribute('aria-label', `CPU vs CPU. Dummy A, boxing as ${a.name}, is on the left, drawn solid. Dummy B, boxing as ${style.name}, is on the right, drawn in outline.`);
+  resetPlayer();
+  mode = 'fight'; hide();
+}
+const FIGHT_ARIA = canvas.getAttribute('aria-label');
 function nextRound() {
   const f = fight, b = f.bout;
   f.round++; f.clock = ROUND_LEN; f.phase = 'intro'; f.phaseT = 0;
   for (const p of [b.me, b.foe]) { p.resetRound(); p.hp = Math.min(100, p.hp + 12); }
   if (f.style.switches) b.foe.stance = b.foe.stance === 'orthodox' ? 'southpaw' : 'orthodox';
-  b.brain.newRound();
+  if (f.watch && f.styles[0].switches) b.me.stance = b.me.stance === 'orthodox' ? 'southpaw' : 'orthodox';
+  for (const br of b.brains()) br.newRound();
   resetPlayer();
   mode = 'fight'; hide();
 }
@@ -154,21 +189,43 @@ function go(what, arg) {
   else if (what === 'pause') pauseMenu();
   else if (what === 'fight') newFight(arg);
   else if (what === 'practice') newFight('sparring');
-  else if (what === 'again') newFight(fight.id);
+  else if (what === 'watch') watchMenu();
+  else if (what === 'watchgo') newWatch();
+  else if (what === 'card') {
+    const w = data.watch; w[arg] = CARDS[(CARDS.indexOf(w[arg]) + 1) % CARDS.length]; persist();
+    watchMenu(arg === 'a' ? 1 : 2);
+  }
+  else if (what === 'again') fight.watch ? newWatch() : newFight(fight.id);
   else if (what === 'next') nextRound();
   else if (what === 'resume') { mode = 'fight'; hide(); resetPlayer(); }
 }
 
+/* "dummy a: brawler, seed 3F2A"; against you the computer fighter goes by its card's name */
+function seedLine(side) {
+  const f = fight, b = f.bout;
+  if (side === 'me') return f.watch ? dummyLabel('dummy a', b.meBrain.d) : '';
+  return dummyLabel(f.watch ? 'dummy b' : f.style.name.toLowerCase(), b.brain.d);
+}
 function pauseMenu() {
   mode = 'paused';
   const f = fight;
+  if (f.watch) {
+    return show(`<p class="label">Paused / CPU vs CPU / round ${f.round} of ${ROUNDS}</p><h1 class="title">Timeout</h1>
+    <div class="menu">
+      <button class="btn" data-go="resume">Resume</button>
+      <button class="btn" data-go="again">New bout <small>new seeds</small></button>
+      <button class="btn" data-go="menu">Quit to menu</button>
+    </div>
+    <ul class="blurbs"><li><b>Dummy A (${esc(f.styles[0].name)}):</b> ${esc(seedLine('me'))}</li><li><b>Dummy B (${esc(f.style.name)}):</b> ${esc(seedLine('foe'))}</li></ul>`);
+  }
   show(`<p class="label">Paused / ${f.practice ? 'practice' : `round ${f.round} of ${ROUNDS}`}</p><h1 class="title">Timeout</h1>
     <div class="menu">
       <button class="btn" data-go="resume">Resume</button>
       <button class="btn" data-go="again">${f.practice ? 'Restart practice' : 'Restart fight'}</button>
       <button class="btn" data-go="controls">Controls</button>
       <button class="btn" data-go="${f.practice ? 'menu' : 'pick'}">${f.practice ? 'End practice' : 'Quit fight'}</button>
-    </div>`);
+    </div>
+    <p class="hint">Opponent ${esc(seedLine('foe'))}.</p>`);
 }
 
 /* round scoring: 10 to whoever did more damage, 9 to the other, a point off per knockdown */
@@ -196,6 +253,7 @@ function corner() {
 function finish(winner, how) {
   const f = fight, b = f.bout;
   mode = 'results';
+  if (f.watch) return watchResult(winner, how);
   if (!f.practice) {
     const r = rec(f.id); if (winner === 'me') r.w++; else if (winner === 'foe') r.l++; else r.d++;
     data.record[f.id] = r; persist();
@@ -217,6 +275,35 @@ function finish(winner, how) {
       ${row('Punches blocked', m.blocked, o.blocked)}
       ${row('Knockdowns scored', m.kds, o.kds)}</tbody></table>
     <div class="menu"><button class="btn" data-go="again">Rematch</button><button class="btn" data-go="pick">Pick an opponent</button><button class="btn" data-go="menu">Menu</button></div>`);
+}
+
+/* CPU vs CPU: the result stays up for a few seconds, then the next bout starts with new seeds */
+const WATCH_NEXT = 6;
+function watchResult(winner, how) {
+  const f = fight, b = f.bout;
+  f.nextT = WATCH_NEXT;
+  const mm = Math.floor((ROUND_LEN - f.clock) / 60), ss = Math.floor((ROUND_LEN - f.clock) % 60);
+  const method = how === 'decision' ? `Decision, ${total(0)}–${total(1)}` : `${how}, round ${f.round} at ${mm}:${String(ss).padStart(2, '0')}`;
+  const title = winner === 'me' ? 'Dummy A wins' : winner === 'foe' ? 'Dummy B wins' : 'Draw';
+  const row = (name, a, c) => `<tr><td>${name}</td><td>${a}</td><td>${c}</td></tr>`;
+  const pct = (s) => (s.thrown ? Math.round(100 * s.landed / s.thrown) + '%' : '–');
+  const m = b.me.stats, o = b.foe.stats;
+  show(`<p class="label">Result / CPU vs CPU</p><h1 class="title">${title}</h1>
+    <p class="hint">${esc(method)}. Next bout in <span id="next-in">${WATCH_NEXT}</span> s.</p>
+    <table class="board"><tbody><tr><td></td><td>Dummy A · ${esc(f.styles[0].name)}</td><td>Dummy B · ${esc(f.style.name)}</td></tr>
+      ${row('Style, seed', esc(`${b.meBrain.d.style}, ${b.meBrain.d.tag}`), esc(`${b.brain.d.style}, ${b.brain.d.tag}`))}
+      ${row('Landed / thrown', `${m.landed} / ${m.thrown}`, `${o.landed} / ${o.thrown}`)}
+      ${row('Accuracy', pct(m), pct(o))}
+      ${row('Counters', m.counters, o.counters)}
+      ${row('Punches slipped', m.slips, o.slips)}
+      ${row('Knockdowns scored', m.kds, o.kds)}</tbody></table>
+    <div class="menu"><button class="btn" data-go="again">Next bout now</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
+}
+function watchCountdown(dt) {
+  const f = fight;
+  f.nextT -= dt;
+  const el = document.getElementById('next-in'); if (el) el.textContent = String(Math.max(0, Math.ceil(f.nextT)));
+  if (f.nextT <= 0) newWatch();
 }
 
 /* ---------------- your hands: triggers, keys, stick ---------------- */
@@ -302,7 +389,10 @@ function frame(t) {
   const dt = Math.min(0.1, (t - lastT) / 1000); lastT = t;
   input.poll();
   if (mode === 'fight') runFight(dt, t / 1000);
-  else menuInput();
+  else {
+    menuInput();
+    if (mode === 'results' && fight && fight.watch) watchCountdown(dt);
+  }
   draw(dt);
   requestAnimationFrame(frame);
 }
@@ -323,8 +413,9 @@ function menuInput() {
 
 function runFight(dt, now) {
   const f = fight, b = f.bout;
-  if (input.pressed('START')) { pauseMenu(); return; }
-  const it = myIntent(now);
+  if (input.pressed('START') || (f.watch && input.pressed('B'))) { pauseMenu(); return; }
+  if (f.watch) kbQueue.length = 0;   // your buttons do nothing while you watch
+  const it = f.watch ? { move: 0, guard: 'none', punch: null, slip: false, stance: false } : myIntent(now);
   f.phaseT += dt;
   const acting = f.phase === 'live';
   acc += dt;
@@ -343,7 +434,7 @@ function runFight(dt, now) {
   if (f.phase === 'live' && !f.practice && f.clock <= 0 && !b.downed) { f.phase = 'bell'; f.phaseT = 0; sfx.bell(); scoreRound(); }
   if (f.phase === 'stopped' && f.phaseT > 2.2) return finish(f.result.winner, f.result.how);
   if (f.phase === 'bell' && f.phaseT > 1.6) {
-    if (f.round < ROUNDS) return corner();
+    if (f.round < ROUNDS) return f.watch ? nextRound() : corner();
     const a = total(0), c = total(1);
     return finish(a > c ? 'me' : c > a ? 'foe' : 'draw', 'decision');
   }
@@ -507,7 +598,7 @@ function drawFighter(p, o, color, isMe, f) {
   }
   // name tag
   ctx.font = mono(Math.max(10, Math.min(13, ppm * 0.1)), 600); ctx.textAlign = 'center'; ctx.fillStyle = isMe ? FG : color;
-  const tag = isMe ? 'YOU' : f.style.name.toUpperCase();
+  const tag = f.watch ? (isMe ? 'DUMMY A' : 'DUMMY B') : isMe ? 'YOU' : f.style.name.toUpperCase();
   ctx.fillText(tag, X(p.x), Y(2.1));
   if (p.is('stun') && p.act.dur > 0.22) { ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText('ROCKED', X(p.x), Y(2.23)); }
 }
@@ -551,18 +642,21 @@ function drawHud(f, b, pal, dt) {
   f.ghost.me = Math.max(me.hp, f.ghost.me - 22 * dt); f.ghost.foe = Math.max(foe.hp, f.ghost.foe - 22 * dt);
   if (me.hp > f.ghost.me) f.ghost.me = me.hp; if (foe.hp > f.ghost.foe) f.ghost.foe = foe.hp;
   ctx.textAlign = 'left'; ctx.font = mono(11, 600); ctx.fillStyle = FG;
-  ctx.fillText(`YOU · ${me.stance.toUpperCase()}`, m, 30);
+  const nameA = f.watch ? `DUMMY A · ${f.styles[0].name.toUpperCase()}` : 'YOU', nameB = f.watch ? `DUMMY B · ${f.style.name.toUpperCase()}` : f.style.name.toUpperCase();
+  ctx.fillText(`${nameA} · ${me.stance.toUpperCase()}`, m, 30);
   bar(m, 38, bw, 16, me.hp / 100, pal.home, f.ghost.me / 100, false);
   bar(m, 58, bw * 0.8, 7, me.stam / 100, 'rgba(236,236,236,.6)', null, false);
   ctx.font = mono(10); ctx.fillStyle = MUTED; ctx.fillText('HEALTH', m, 80); ctx.fillText('STAMINA', m + 64, 80);
   if (me.kd) ctx.fillText('DOWN ×' + me.kd, m + 136, 80);
+  if (f.watch) ctx.fillText(seedLine('me').toUpperCase(), m, 96);
 
   ctx.textAlign = 'right'; ctx.font = mono(11, 600); ctx.fillStyle = pal.away;
-  ctx.fillText(`${f.style.name.toUpperCase()} · ${foe.stance.toUpperCase()}`, W - m, 30);
+  ctx.fillText(`${nameB} · ${foe.stance.toUpperCase()}`, W - m, 30);
   bar(W - m - bw, 38, bw, 16, foe.hp / 100, pal.away, f.ghost.foe / 100, true);
   bar(W - m - bw * 0.8, 58, bw * 0.8, 7, foe.stam / 100, 'rgba(236,236,236,.6)', null, true);
   ctx.font = mono(10); ctx.fillStyle = MUTED; ctx.fillText('HEALTH', W - m, 80); ctx.fillText('STAMINA', W - m - 70, 80);
   if (foe.kd) ctx.fillText('DOWN ×' + foe.kd, W - m - 150, 80);
+  ctx.fillText(seedLine('foe').toUpperCase(), W - m, 96);
 
   // clock
   ctx.textAlign = 'center'; ctx.fillStyle = FG;
@@ -577,11 +671,16 @@ function drawHud(f, b, pal, dt) {
   let msg = '', sub = '';
   if (f.phase === 'intro') { msg = f.practice ? 'PRACTICE' : f.phaseT < 1 ? `ROUND ${f.round}` : 'BOX'; }
   if (f.phase === 'bell') msg = 'BELL';
-  if (b.downed) { msg = String(Math.max(1, b.downed.count)); sub = b.downed.who === me ? 'YOU ARE DOWN' : `${f.style.name.toUpperCase()} IS DOWN`; }
-  if (f.phase === 'stopped') { msg = f.result.how; sub = f.result.winner === 'me' ? 'YOU WIN' : 'YOU LOSE'; }
+  if (b.downed) { msg = String(Math.max(1, b.downed.count)); sub = f.watch ? `DUMMY ${b.downed.who === me ? 'A' : 'B'} IS DOWN` : b.downed.who === me ? 'YOU ARE DOWN' : `${f.style.name.toUpperCase()} IS DOWN`; }
+  if (f.phase === 'stopped') { msg = f.result.how; sub = f.watch ? `DUMMY ${f.result.winner === 'me' ? 'A' : 'B'} WINS` : f.result.winner === 'me' ? 'YOU WIN' : 'YOU LOSE'; }
   if (msg) {
     ctx.font = mono(Math.min(84, W / 9), 600); ctx.fillStyle = FG; ctx.fillText(msg, W / 2, H * 0.3);
     if (sub) { ctx.font = mono(13); ctx.fillStyle = MUTED; ctx.fillText(sub, W / 2, H * 0.3 + 30); }
+  }
+  if (f.watch) {   // nothing of yours to show: just how to get out
+    ctx.textAlign = 'right'; ctx.font = mono(10); ctx.fillStyle = MUTED;
+    ctx.fillText('CPU VS CPU · ' + (input.lastDevice === 'keyboard' ? 'P OR ESC PAUSE' : 'OPTIONS OR CIRCLE PAUSE'), W - m, H - 26);
+    return;
   }
   if (me.counterT > 0) { ctx.font = mono(12, 600); ctx.fillStyle = pal.mark; ctx.textAlign = 'left'; ctx.fillText('COUNTER READY', m, 100); }
 
