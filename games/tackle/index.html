@@ -5,19 +5,102 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Tackle · jay.</title>
+  <title>Tackle — jay.</title>
   <meta name="description" content="Tackle: arcade football in the browser. The ball is in one hand, picked at random every play, and only that hand's stick and trigger run the play.">
+  <link rel="canonical" href="https://ag0nyy-ops.github.io/games/tackle/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="jay.">
+  <meta property="og:title" content="Tackle">
+  <meta property="og:description" content="Tackle: arcade football in the browser. The ball is in one hand, picked at random every play, and only that hand's stick and trigger run the play.">
+  <meta property="og:url" content="https://ag0nyy-ops.github.io/games/tackle/">
+  <meta property="og:image" content="https://ag0nyy-ops.github.io/games/tackle/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A play from above in Tackle: the quarterback drops back with an aim marker downfield and the receivers running their routes">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#060606">
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="../games.css?v=2">
-  <link rel="stylesheet" href="../shared/game.css?v=3">
+  <link rel="preload" href="../../assets/fonts/ibm-plex-mono-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../../assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../shared/look.css?v=2">
 </head>
 <body>
-  <canvas id="c" aria-label="The field, seen from above. You attack left to right. Your players are filled circles, defenders are hollow diamonds, and the player with the ball has a ring and a ball on the side of the hand holding it."></canvas>
-  <div class="overlay" id="overlay" role="dialog" aria-label="Tackle menu"></div>
-  <a class="btn back" href="../">All games</a>
-  <noscript><p class="overlay">Tackle needs JavaScript to run.</p></noscript>
-  <script type="module" src="game.js?v=2"></script>
+  <a class="skip" href="#field">Skip to the field</a>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <p class="label"><a href="../../">jay.</a> / the field</p>
+        <h1>Tackle</h1>
+      </div>
+      <nav aria-label="Pages"><a class="btn" href="../">All games</a></nav>
+    </header>
+
+    <div id="board" role="group" aria-label="Scoreboard">
+      <span class="l"><b id="nm0">you</b><small id="sb0">green</small></span>
+      <strong id="sc0">0</strong>
+      <span id="clock" role="timer" aria-label="Game clock">--</span>
+      <strong id="sc1">0</strong>
+      <span><b id="nm1">cpu</b><small id="sb1">red</small></span>
+    </div>
+
+    <main class="stage" id="field">
+      <canvas id="c" aria-label="The field, seen from above. You attack left to right. Your players are light circles, defenders are diamonds, and the player with the ball has a ring and a ball on the side of the hand holding it."></canvas>
+      <div class="atmosphere" aria-hidden="true"></div>
+      <p id="msg" role="status"></p>
+      <div id="call" hidden aria-live="polite"></div>
+      <div class="overlay" id="overlay" role="dialog" aria-label="Tackle menu"></div>
+      <noscript><p class="overlay">Tackle needs JavaScript to run.</p></noscript>
+    </main>
+
+    <div id="moves" aria-label="What your buttons do right now" aria-live="off"><em>menu</em><small>arrows or the left stick to pick, enter or cross to choose</small></div>
+    <p id="pad" role="status">no controller seen. press a button, or use the keyboard</p>
+
+    <section aria-labelledby="how">
+      <p class="label">file 02 / how it plays</p>
+      <h2 id="how">One hand has the ball. Only that hand plays.</h2>
+      <figure class="shot">
+        <img src="og-image.jpg" width="1200" height="630" alt="A play from above in Tackle: the quarterback drops back with an aim marker downfield and the receivers running their routes" loading="lazy">
+        <figcaption>slants called, the quarterback aiming downfield</figcaption>
+      </figure>
+      <ul class="rules">
+        <li><b>Random hand.</b> Every play the ball goes in your left or right hand. Only that side's stick and trigger do anything, so muscle memory can't run the play.</li>
+        <li><b>Throw it.</b> Hold the trigger to drop back and aim with the stick. Hold longer and pull deeper for more zip. Let go to throw.</li>
+        <li><b>Run it.</b> The stick runs. Flick it sideways to juke right as a tackler arrives. Hold the trigger to burst or stiff-arm while the meter lasts.</li>
+        <li><b>Short drives.</b> You play offense and their drives are simulated in between. On fourth down you can punt or kick. Players never get stats, you get better.</li>
+      </ul>
+      <details open>
+        <summary>Controls</summary>
+        <div class="tw"><table>
+          <thead><tr><th></th><th>Ball in left hand</th><th>Ball in right hand</th></tr></thead>
+          <tbody>
+            <tr><td>Controller</td><td>Left stick + L2</td><td>Right stick + R2</td></tr>
+            <tr><td>Keyboard</td><td>WASD + left Shift</td><td>Arrows (or IJKL) + right Shift (or Space)</td></tr>
+          </tbody>
+        </table>
+        <table>
+          <thead><tr><th></th><th>What to do</th></tr></thead>
+          <tbody>
+            <tr><td>Pick a play</td><td>Left and right on any stick, d-pad or keys, then Cross / A or Enter</td></tr>
+            <tr><td>Snap</td><td>Pull the trigger</td></tr>
+            <tr><td>Pass</td><td>Hold the trigger to drop back. The stick moves the target. Let go to throw.</td></tr>
+            <tr><td>Zip</td><td>Hold longer and pull deeper for a faster ball</td></tr>
+            <tr><td>Run</td><td>The stick runs</td></tr>
+            <tr><td>Juke</td><td>Flick the stick up or down fast, or double tap up or down on the keys</td></tr>
+            <tr><td>Burst / stiff-arm</td><td>Hold the trigger. Uses the meter, which refills when you let go.</td></tr>
+            <tr><td>Field goal</td><td>Pull the trigger when the needle is inside the box</td></tr>
+            <tr><td>Pause</td><td>Options / Start, P or Esc</td></tr>
+          </tbody>
+        </table></div>
+      </details>
+      <p class="fine">Stick drifting? Raise the deadzone in the settings on the <a href="../">games page</a>.</p>
+    </section>
+
+    <footer>
+      <span>© 2026 Jaymz</span>
+      <span>source viewable, not reusable (<a href="https://github.com/ag0nyy-ops/ag0nyy-ops.github.io">code and licence</a>)</span>
+    </footer>
+  </div>
+  <script type="module" src="game.js?v=3"></script>
 </body>
 </html>

@@ -6,7 +6,8 @@
    The other team is a seeded dummy. CPU vs CPU plays a whole game between two of them (newMatch in sim.js). */
 
 import { Input } from '../shared/input.js';
-import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
+import { loadSettings, reducedMotion } from '../shared/settings.js';
+import * as look from '../shared/look.js';
 import { newSeed, dummyLabel } from '../shared/seed.js';
 import { FW, MID, DIFFS, PLAYS, newPlay, step, simDrive, simOT, makeTeam, kickSpec, newMatch, matchTick, offTeam, defTeam } from './sim.js';
 
@@ -493,21 +494,25 @@ function menuInput() {
 /* ---------------- drawing ---------------- */
 const canvas = $('#c'), ctx = canvas.getContext('2d');
 let W = 0, H = 0, dpr = 1;
-function resize() {
-  dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight;
-  canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
-addEventListener('resize', resize); resize();
+function resize() { ({ W, H, dpr } = look.fit(canvas)); }
+look.watch(canvas, resize); resize();
 
-const FG = '#ececec', BG = '#060606', MUTED = 'rgba(236,236,236,.6)', DIM = 'rgba(236,236,236,.32)', LINE = 'rgba(236,236,236,.14)';
+const FG = '#ececec', BG = '#060606', MUTED = 'rgba(236,236,236,.6)', STRONG = '#4d4d4d';
 const mono = (px, w = 400) => `${w} ${px}px "IBM Plex Mono", ui-monospace, monospace`;
-const TOP = 58, BOTTOM = 124;
+// a strip at the top for the stands, and one at the bottom for the play cards while you pick a play
+const TOP = 48, CARDS = 96;
+let BOTTOM = CARDS;
 const cam = { x: null, y: 0 };
 let ppy = 10, oy = 0, view = 40, viewY = FW, fits = true;
 const sx = (x) => (x - cam.x) * ppy, sy = (y) => oy + (y - cam.y) * ppy;
+const HUD = look.hud();
+let lastMode = '', shownKick = null, pulseT = 0;
+const faces = new WeakMap();
 
 /* about 80 yards across on a laptop, never less than about 34 yards top to bottom */
-function layout() {
+function layout(dt) {
+  const want = mode === 'call' || (mode === 'paused' && pausedFrom === 'call') ? CARDS : 14;
+  BOTTOM = reducedMotion() ? want : BOTTOM + (want - BOTTOM) * Math.min(1, dt * 7);
   const fh = H - TOP - BOTTOM;
   ppy = Math.max(4, fh / FW, Math.min(W / 44, fh / 34));
   view = W / ppy; viewY = fh / ppy;
@@ -537,123 +542,104 @@ function updateCam(dt) {
   const k = Math.min(1, dt * (reducedMotion() ? 10 : 5));
   cam.x += (target - cam.x) * k; cam.y += (ty - cam.y) * k;
 }
+/* no game: the whole field sits quietly behind the menus */
+function idleCam() { cam.x = 50 - view / 2; cam.y = fits ? 0 : (FW - viewY) / 2; }
+/* where the far sideline meets the stands, so the crowd sits behind the field. When the field is
+   taller than the stage the stands keep their strip and the field scrolls under it */
+function horizonY() { return Math.max(TOP, Math.min(H, sy(-3))); }
+function clipWorld() { const hz = horizonY(); ctx.save(); ctx.beginPath(); ctx.rect(0, hz, W, H - hz); ctx.clip(); }
 
 function draw(dt) {
-  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
-  layout();
-  if (!g) return drawIdle();
+  pulseT += dt;
+  HUD.tick(dt, input);
+  layout(dt);
+  if (!g) {
+    idleCam(); look.arena(ctx, W, H, { horizon: horizonY(), dt }); clipWorld(); drawField(null); ctx.restore();
+    board(); HUD.msg(''); menuBar(); lastMode = mode; return;
+  }
   updateCam(dt);
-  const pal = palette();
-  drawField(pal);
-  if (watch) return drawWatch(pal);
-  const p = g.play || g.preview;
-  if (mode === 'call' || mode === 'pre') drawRoutes(p);
-  if (mode === 'kick') {
-    drawKick(pal); drawTop();
-    if (g.wrong > 0) centerNote(`Wrong hand. The ball is in your ${g.hand === 'L' ? 'left' : 'right'} hand.`, H - BOTTOM + 30);
-    return;
-  }
-  drawPlayers(p, pal);
-  if (p.ball.air) drawBall(p);
-  if (mode === 'live' && p.play.kind === 'pass' && !p.carrier && !p.ball.air) drawAim(p, pal);
-  drawTop();
-  if (mode === 'call') drawCalls(pal); else drawHands(pal, p);
-  if (mode === 'dead') drawBanner();
-  if (mode === 'pre') drawSnapPrompt(pal);
-  if (mode === 'pre' && g.wrong > 0) centerNote(`Wrong hand. The ball is in your ${g.hand === 'L' ? 'left' : 'right'} hand.`, H * 0.5 + 44);
-  if (mode === 'live' && g.noteT > 0) centerNote(g.note, TOP + 28);
-}
-
-/* ---------------- CPU vs CPU drawing ---------------- */
-function drawWatch(pal) {
-  const p = g.play || g.preview, ph = g.phase;
-  if (ph === 'kick') { drawKick(pal); drawWatchTop(); drawSeeds(); return; }
-  if (p) {
-    if (ph === 'pre') drawRoutes(p);
-    drawPlayers(p, pal);
+  look.arena(ctx, W, H, { horizon: horizonY(), dt });
+  // in CPU vs CPU the match says what is on the field (g.phase); otherwise the mode does
+  const p = g.play || g.preview, ph = phase();
+  board(); status(); stamps();
+  clipWorld();
+  drawField(p);
+  if (p && (ph === 'call' || ph === 'pre')) drawRoutes(p);
+  if (p && ph !== 'kick') {
+    drawPlayers(p);
     if (p.ball.air) drawBall(p);
-    if (ph === 'live' && p.play.kind === 'pass' && !p.carrier && !p.ball.air) drawAim(p, pal);
+    if (ph === 'live' && p.play.kind === 'pass' && !p.carrier && !p.ball.air) drawAim(p);
   }
-  drawWatchTop();
-  drawSeeds();
-  if (ph === 'pre' && g.play) centerNote(`${offTeam(g).name} calls ${g.play.play.name}`, TOP + 28);
-  if (ph === 'dead' || ph === 'final') drawBanner();
-  if (ph === 'final') centerNote(`New match in ${Math.max(1, Math.ceil(WATCH_FINAL - g.finalT))} · pause to quit`, TOP + (H - TOP - BOTTOM) * 0.42 + 84);
-}
-function drawWatchTop() {
-  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, TOP - 6);
-  ctx.strokeStyle = LINE; ctx.beginPath(); ctx.moveTo(0, TOP - 6); ctx.lineTo(W, TOP - 6); ctx.stroke();
-  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left'; ctx.font = mono(W < 640 ? 16 : 22, 600);
-  let x = 18;
-  g.teams.forEach((t, i) => {
-    const txt = `${g.pos === i && g.phase !== 'final' ? '■ ' : ''}${t.abbr === 'A' ? 'DUMMY A' : 'DUMMY B'} ${t.score}`;
-    ctx.fillStyle = g.pos === i ? FG : MUTED; ctx.fillText(txt, x, 36); x += ctx.measureText(txt).width + 22;
-  });
-  ctx.textAlign = 'center'; ctx.font = mono(16, 600); ctx.fillStyle = FG;
-  if (W > 900) ctx.fillText(clockText(), W / 2, 34);
-  ctx.textAlign = 'right'; ctx.font = mono(15, 600);
-  ctx.fillText(g.phase === 'final' ? 'FINAL' : `${downText()} · ${spotShort(g.x)}`, W - 18, 34);
-  ctx.font = mono(10); ctx.fillStyle = DIM; ctx.fillText(`CPU VS CPU · ${g.diff.name.toUpperCase()}${W > 900 ? '' : ' · ' + clockText()}`, W - 18, 50);
-}
-function drawSeeds() {
-  // one chip per dummy: who it is, how it plays, its seed
-  ctx.fillStyle = BG; ctx.fillRect(0, H - BOTTOM, W, BOTTOM);
-  const y = H - BOTTOM + 10, h = BOTTOM - 22, bw = Math.min(300, W * 0.42);
-  g.teams.forEach((t, i) => {
-    const on = g.pos === i && g.phase !== 'final', x = i === 0 ? 18 : W - 18 - bw;
-    ctx.fillStyle = on ? FG : BG; ctx.fillRect(x, y, bw, h);
-    ctx.strokeStyle = on ? FG : LINE; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, bw - 1, h - 1);
-    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = on ? BG : DIM; ctx.font = mono(10);
-    ctx.fillText(`${t.name.toUpperCase()} · ${on ? 'BALL' : g.phase === 'final' ? 'FINAL' : 'DEFENSE'}`, x + 12, y + 18);
-    ctx.fillStyle = on ? BG : FG; ctx.font = mono(bw < 220 ? 12 : 15, 600); ctx.fillText(t.d.style, x + 12, y + 44);
-    ctx.fillStyle = on ? BG : MUTED; ctx.font = mono(11);
-    ctx.fillText(dummyLabel(`dummy ${t.abbr.toLowerCase()}`, t.d), x + 12, y + 68);
-  });
+  ctx.restore();
+  if (watch) drawSeeds();
+  if (ph === 'kick' && g.kick) drawKick();
+  if (mode === 'call') drawCalls();
+  if (mode === 'menu' || mode === 'paused' || mode === 'card' || mode === 'final') menuBar(); else if (watch) watchBar(); else bar(p);
+  lastMode = mode === 'paused' ? 'paused' : ph;
 }
 
-function drawField(pal) {
+/* CPU vs CPU: one tag per dummy under the field, who it is, how it plays, its seed */
+function drawSeeds() {
+  if (W < 560) return;
+  const y = H - Math.max(16, BOTTOM / 2 + 4);
+  g.teams.forEach((t, i) => {
+    const on = g.pos === i && g.phase !== 'final';
+    look.tag(ctx, i === 0 ? 16 : W - 16, y, `${dummyLabel(`dummy ${t.abbr.toLowerCase()}`, t.d)}${on ? ' · ball' : ''}`, { size: 10, pad: 4, align: i === 0 ? 'left' : 'right' });
+  });
+}
+function drawField(p) {
   const x0 = sx(-10), x1 = sx(110), y0 = sy(0), y1 = sy(FW);
-  ctx.fillStyle = 'rgba(236,236,236,.025)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+  // a dark run-off around the field, then the field, then a pool of light where the ball is
+  ctx.fillStyle = '#080808'; ctx.fillRect(sx(-16), sy(-3), sx(116) - sx(-16), sy(FW + 3) - sy(-3));
+  ctx.strokeStyle = look.FLOOR.edge; ctx.lineWidth = 1.5; ctx.strokeRect(sx(-16), sy(-3), sx(116) - sx(-16), sy(FW + 3) - sy(-3));
+  ctx.fillStyle = look.FLOOR.base; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+  ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, x1 - x0, y1 - y0); ctx.clip();
+  look.spot(ctx, sx(g ? focusX() : 50), sy(MID), Math.min(W * 0.75, 46 * ppy), FW * ppy * 0.62);
+  ctx.restore();
   // end zones: hatched
   ctx.save(); ctx.beginPath(); ctx.rect(sx(-10), y0, 10 * ppy, y1 - y0); ctx.rect(sx(100), y0, 10 * ppy, y1 - y0); ctx.clip();
-  ctx.strokeStyle = 'rgba(236,236,236,.07)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(236,236,236,.06)'; ctx.lineWidth = 1;
   for (let i = -20; i < 140; i += 2) { ctx.beginPath(); ctx.moveTo(sx(i), y1); ctx.lineTo(sx(i + FW), y0); ctx.stroke(); }
   ctx.restore();
-  ctx.save(); ctx.fillStyle = DIM; ctx.font = mono(Math.max(12, ppy * 3.2), 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const ends = watch ? [`DUMMY ${offTeam(g).abbr}`, `DUMMY ${defTeam(g).abbr}`] : ['HOME', g.diff.abbr];
+  ctx.save(); ctx.fillStyle = look.FLOOR.inner; ctx.font = mono(Math.max(12, ppy * 3.2), 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const ends = watch && g ? [`DUMMY ${offTeam(g).abbr}`, `DUMMY ${defTeam(g).abbr}`] : ['HOME', g ? g.diff.abbr : 'AWAY'];
   for (const [x, txt, rot] of [[-5, ends[0], -Math.PI / 2], [105, ends[1], Math.PI / 2]]) {
     ctx.save(); ctx.translate(sx(x), sy(MID)); ctx.rotate(rot); ctx.fillText(txt, 0, 0); ctx.restore();
   }
   ctx.restore();
+  // who is about to cross a line: the line brightens, slowly
+  const c = p && phase() === 'live' ? p.carrier : null;
+  const near = (lx) => c && lx - c.x < 4 && lx - c.x > -1;
   // yard lines
   for (let x = 0; x <= 100; x += 5) {
     const X = sx(x); if (X < -20 || X > W + 20) continue;
-    ctx.strokeStyle = x === 0 || x === 100 ? FG : x % 10 ? LINE : 'rgba(236,236,236,.24)';
-    ctx.lineWidth = x === 0 || x === 100 ? 2.5 : 1;
-    ctx.beginPath(); ctx.moveTo(X, y0); ctx.lineTo(X, y1); ctx.stroke();
+    const goal = x === 0 || x === 100;
+    ctx.strokeStyle = goal ? look.FLOOR.line : x % 10 ? '#262626' : look.FLOOR.inner;
+    ctx.lineWidth = goal ? 2.5 : 1;
+    if (x === 100 && near(100)) { ctx.strokeStyle = look.FLOOR.hot; ctx.globalAlpha = look.pulse(pulseT); }
+    ctx.beginPath(); ctx.moveTo(X, y0); ctx.lineTo(X, y1); ctx.stroke(); ctx.globalAlpha = 1;
     if (x % 10 === 0 && x > 0 && x < 100) {
-      ctx.fillStyle = DIM; ctx.font = mono(Math.max(10, ppy * 1.8), 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = look.FLOOR.inner; ctx.font = mono(Math.max(10, ppy * 1.8), 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const n = String(x <= 50 ? x : 100 - x);
       ctx.fillText(n, X, sy(7)); ctx.fillText(n, X, sy(FW - 7));
     }
   }
   // hash marks
-  ctx.strokeStyle = LINE; ctx.lineWidth = 1;
+  ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1;
   for (let x = 1; x < 100; x++) {
     const X = sx(x); if (X < 0 || X > W) continue;
     for (const hy of [0.6, 23.58, 29.75, FW - 0.6]) { ctx.beginPath(); ctx.moveTo(X, sy(hy) - ppy * 0.4); ctx.lineTo(X, sy(hy) + ppy * 0.4); ctx.stroke(); }
   }
   // sidelines
-  ctx.strokeStyle = FG; ctx.lineWidth = 2; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
-  // line of scrimmage (solid) and first down line (dashed, in the highlight colour)
-  {
-    ctx.strokeStyle = 'rgba(236,236,236,.75)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(sx(g.x), y0); ctx.lineTo(sx(g.x), y1); ctx.stroke();
-    if (g.firstX < 100) {
-      ctx.strokeStyle = pal.mark; ctx.lineWidth = 3; ctx.setLineDash([10, 7]);
-      ctx.beginPath(); ctx.moveTo(sx(g.firstX), y0); ctx.lineTo(sx(g.firstX), y1); ctx.stroke(); ctx.setLineDash([]);
-    }
+  ctx.strokeStyle = look.FLOOR.line; ctx.lineWidth = 2; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  if (!g) return;
+  // line of scrimmage (solid) and the first down line (dashed, brighter)
+  ctx.strokeStyle = look.FLOOR.mark; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(sx(g.x), y0); ctx.lineTo(sx(g.x), y1); ctx.stroke();
+  if (g.firstX < 100) {
+    ctx.strokeStyle = near(g.firstX) ? look.FLOOR.hot : look.FLOOR.line; ctx.lineWidth = 3; ctx.setLineDash([10, 7]);
+    if (near(g.firstX)) ctx.globalAlpha = look.pulse(pulseT);
+    ctx.beginPath(); ctx.moveTo(sx(g.firstX), y0); ctx.lineTo(sx(g.firstX), y1); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
   }
 }
 function drawRoutes(p) {
@@ -678,36 +664,53 @@ function drawRoutes(p) {
   }
   ctx.setLineDash([]);
 }
-function drawPlayers(p, pal) {
-  const r = Math.max(5, ppy * 0.85);
-  // CPU vs CPU: each dummy keeps its colour all game; offense is still a filled circle, defense a hollow diamond
-  const offC = watch && g.pos === 1 ? pal.away : pal.home, defC = watch && g.pos === 1 ? pal.home : pal.away;
-  for (const d of Object.values(p.def)) {
-    const X = sx(d.x), Y = sy(d.y); if (X < -30 || X > W + 30) continue;
-    ctx.save(); ctx.translate(X, Y); ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = BG; ctx.strokeStyle = defC; ctx.lineWidth = 2;
-    if (d.stun > 0) ctx.setLineDash([3, 3]);
-    ctx.fillRect(-r * 0.8, -r * 0.8, r * 1.6, r * 1.6); ctx.strokeRect(-r * 0.8, -r * 0.8, r * 1.6, r * 1.6);
-    ctx.restore();
-    if (r >= 8) { ctx.fillStyle = defC; ctx.font = mono(Math.round(r * 0.9), 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.role[0], X, Y + 1); }
-  }
-  for (const o of Object.values(p.off)) {
-    const X = sx(o.x), Y = sy(o.y); if (X < -30 || X > W + 30) continue;
-    ctx.fillStyle = offC; ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2); ctx.fill();
-    if (r >= 8) { ctx.fillStyle = BG; ctx.font = mono(Math.round(r * 0.85), 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(o.role === 'OL' ? '' : o.role === 'RB' ? 'B' : o.role[0], X, Y + 1); }
-  }
+function drawPlayers(p) {
+  const r = Math.max(6, ppy * 0.9);
+  const holder = p.carrier || (!p.ball.air ? p.off.QB : null), mine = holder && mode !== 'call';
+  // your player: a faint ring on the grass under them
+  if (mine) { const X = sx(holder.x), Y = sy(holder.y); look.ring(ctx, X, Y, r * 1.55, r * 1.55); }
+  // defenders: dark, diamond shoulders. yours: light, round shoulders.
+  // CPU vs CPU: each dummy keeps its tones all game, the shoulders still say who has the ball
+  const swap = watch && g.pos === 1, T0 = look.team(swap ? 1 : 0), T1 = look.team(swap ? 0 : 1);
+  for (const d of Object.values(p.def)) figure(d, T1, r, false, d.role[0], false);
+  for (const o of Object.values(p.off)) figure(o, T0, r, true, o.role === 'OL' ? '' : o.role === 'RB' ? 'B' : o.role[0], mine && o === holder);
   // the ball and the hand it is in
-  const holder = p.carrier || (!p.ball.air ? p.off.QB : null);
-  if (holder && phase() !== 'call') {
-    const X = sx(holder.x), Y = sy(holder.y);
-    ctx.strokeStyle = pal.mark; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X, Y, r + 4, 0, Math.PI * 2); ctx.stroke();
-    // facing down the field, the left hand is on the top side of the screen
-    const side = g.hand === 'L' ? -1 : 1, bx = X + r * 0.3, by = Y + side * (r + 9);
-    footballAt(bx, by, Math.max(5, r * 0.6));
-    if (watch) return;
-    ctx.fillStyle = pal.mark; ctx.font = mono(11, 600); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(g.hand, bx + Math.max(5, r * 0.6) + 4, by);
-  }
+  if (!mine) return;
+  const X = sx(holder.x), Y = sy(holder.y);
+  // facing down the field, the left hand is on the top side of the screen
+  const side = g.hand === 'L' ? -1 : 1, s = Math.max(5, r * 0.6), bx = X + r * 0.3, by = Y + side * (r + 9);
+  footballAt(bx, by, s);
+  if (watch) return;
+  look.tag(ctx, bx + s + 4, by, g.hand, { size: 10, pad: 3, align: 'left' });
+  // the meter for what the trigger does right now, on the other side of the player
+  if (mode !== 'live') return;
+  const label = p.carrier ? 'burst' : p.play.kind === 'pass' ? 'zip' : '';
+  if (!label) return;
+  const v = p.carrier ? p.meter : p.qb.zip, bw = Math.max(34, r * 3.4), my = Y - side * (r + 11), mx = X - bw / 2 + 12;
+  look.tag(ctx, mx - 4, my, label, { size: 9, pad: 3, align: 'right' });
+  ctx.fillStyle = BG; ctx.fillRect(mx, my - 3.5, bw, 7);
+  ctx.fillStyle = look.FLOOR.line; ctx.fillRect(mx, my - 3.5, bw * clamp(v, 0, 1), 7);
+  ctx.strokeStyle = FG; ctx.lineWidth = 1; ctx.strokeRect(mx + 0.5, my - 3, bw - 1, 6);
+}
+/* one player from above: shoulders, helmet, arms, and the band at the gloves */
+function figure(q, T, r, round, letter, isHolder) {
+  const X = sx(q.x), Y = sy(q.y); if (X < -30 || X > W + 30) return;
+  const speed = Math.hypot(q.vx, q.vy);
+  let a = faces.has(q) ? faces.get(q) : (q.team === 'off' ? 0 : Math.PI);
+  if (speed > 0.8) { const want = Math.atan2(q.vy, q.vx); let d = want - a; d = Math.atan2(Math.sin(d), Math.cos(d)); a += d * 0.3; }
+  faces.set(q, a);
+  const swing = speed > 0.8 && !reducedMotion() ? Math.sin((q.x + q.y) * 1.7) * r * 0.28 : 0;
+  ctx.save(); ctx.translate(X, Y); ctx.rotate(a);
+  const h1 = [r * 0.62 + swing, -r * 0.66], h2 = [r * 0.62 - swing, r * 0.66];
+  look.strokeLimb(ctx, () => { ctx.moveTo(0, -r * 0.82); ctx.lineTo(h1[0], h1[1]); ctx.moveTo(0, r * 0.82); ctx.lineTo(h2[0], h2[1]); }, Math.max(2.5, r * 0.36), T, T.skin);
+  for (const h of [h1, h2]) look.band(ctx, h[0], h[1], Math.max(1.8, r * 0.2), T);
+  const shoulders = round ? () => ctx.ellipse(0, 0, r * 0.58, r * 0.98, 0, 0, Math.PI * 2)
+    : () => { ctx.moveTo(r * 0.72, 0); ctx.lineTo(0, r * 1.02); ctx.lineTo(-r * 0.72, 0); ctx.lineTo(0, -r * 1.02); ctx.closePath(); };
+  look.fillBody(ctx, shoulders, T, T.suit, [-r, -r, r, r]);
+  look.ball(ctx, r * 0.08, 0, r * 0.42, T, T.skin);
+  ctx.restore();
+  if (letter && r >= 8 && !isHolder) look.tag(ctx, X, Y - r - 10, letter, { size: 9, pad: 3 });
+  if (q.stun > 0) look.tag(ctx, X + r * 1.6, Y - r * 0.6, '?', { size: 9, pad: 3 });
 }
 function footballAt(x, y, s, lift = 0) {
   ctx.save(); ctx.translate(x, y - lift);
@@ -726,144 +729,147 @@ function drawBall(p) {
   ctx.strokeStyle = MUTED; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
   ctx.beginPath(); ctx.arc(sx(a.to.x), sy(a.to.y), 1.35 * ppy, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
 }
-function drawAim(p, pal) {
+function drawAim(p) {
   const qb = p.off.QB, X = sx(p.aim.x), Y = sy(p.aim.y), R = 1.35 * ppy;
   ctx.strokeStyle = 'rgba(236,236,236,.35)'; ctx.lineWidth = 1; ctx.setLineDash([4, 6]);
   ctx.beginPath(); ctx.moveTo(sx(qb.x), sy(qb.y));
   const mx = (sx(qb.x) + X) / 2, my = (sy(qb.y) + Y) / 2 - Math.hypot(X - sx(qb.x), Y - sy(qb.y)) * (0.35 - 0.25 * p.qb.zip);
   ctx.quadraticCurveTo(mx, my, X, Y); ctx.stroke(); ctx.setLineDash([]);
-  ctx.strokeStyle = pal.mark; ctx.lineWidth = 2;
+  ctx.strokeStyle = FG; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(X, Y, R, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(X - R - 6, Y); ctx.lineTo(X - R + 4, Y); ctx.moveTo(X + R - 4, Y); ctx.lineTo(X + R + 6, Y);
   ctx.moveTo(X, Y - R - 6); ctx.lineTo(X, Y - R + 4); ctx.moveTo(X, Y + R - 4); ctx.lineTo(X, Y + R + 6); ctx.stroke();
 }
-
-function drawTop() {
-  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, TOP - 6);
-  ctx.strokeStyle = LINE; ctx.beginPath(); ctx.moveTo(0, TOP - 6); ctx.lineTo(W, TOP - 6); ctx.stroke();
-  ctx.textBaseline = 'alphabetic';
-  ctx.textAlign = 'left'; ctx.font = mono(22, 600); ctx.fillStyle = FG;
-  const sc = `YOU ${g.you}`, th = `${g.diff.abbr} ${g.them}`;
-  ctx.fillText(sc, 18, 36);
-  const w1 = ctx.measureText(sc).width;
-  ctx.fillStyle = MUTED; ctx.fillText(th, 18 + w1 + 22, 36);
-  if (g.cpu) { ctx.font = mono(10); ctx.fillStyle = DIM; ctx.fillText(dummyLabel(`${g.diff.abbr} dummy`, g.cpu), 18, 50); }
-  ctx.textAlign = 'center'; ctx.font = mono(16, 600); ctx.fillStyle = FG;
-  if (W > 560) ctx.fillText(clockText(), W / 2, 34);
-  ctx.textAlign = 'right'; ctx.font = mono(15, 600);
-  ctx.fillText(`${downText()} · ${spotShort(g.x)}`, W - 18, 34);
-}
-function drawCalls(pal) {
-  ctx.fillStyle = BG; ctx.fillRect(0, H - BOTTOM - 18, W, BOTTOM + 18);
-  const n = g.calls.length, gap = 8, y = H - BOTTOM + 8, h = BOTTOM - 18;
+/* the play cards sit in the strip under the field */
+function drawCalls() {
+  const n = g.calls.length, gap = 8, h = CARDS - 18, y = H - CARDS + 8;
   const w = Math.min(176, (W - 36 - gap * (n - 1)) / n), x0 = (W - (w * n + gap * (n - 1))) / 2;
   g.cardRects = [];
   g.calls.forEach((c, i) => {
     const x = x0 + i * (w + gap), on = i === g.callIdx;
     g.cardRects.push([x, y, w, h]);
     ctx.fillStyle = on ? FG : BG; ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = on ? FG : 'rgba(236,236,236,.32)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.strokeStyle = on ? FG : STRONG; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     ctx.fillStyle = on ? BG : MUTED; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.font = mono(10); ctx.fillText((c.kind === 'run' ? '■ RUN' : c.kind === 'kick' ? '■ KICK' : '■ PASS'), x + 10, y + 18);
     ctx.fillStyle = on ? BG : FG; ctx.font = mono(w < 120 ? 13 : 16, 600); ctx.fillText(c.name, x + 10, y + 44);
     if (w >= 110) { ctx.fillStyle = on ? BG : MUTED; ctx.font = mono(11); ctx.fillText(c.blurb, x + 10, y + 66); }
   });
-  ctx.textAlign = 'center'; ctx.fillStyle = MUTED; ctx.font = mono(11);
-  ctx.fillText(input.lastDevice === 'controller' ? 'Pick a play with the stick or d-pad · Cross / A to call it' : 'Pick a play with the arrows or A / D · Enter to call it', W / 2, H - BOTTOM - 2);
 }
-function drawHands(pal, p) {
-  ctx.fillStyle = BG; ctx.fillRect(0, H - BOTTOM, W, BOTTOM);
-  const y = H - BOTTOM + 10, h = BOTTOM - 22, bw = Math.min(260, W * 0.3);
-  for (const side of ['L', 'R']) {
-    const on = side === g.hand, x = side === 'L' ? 18 : W - 18 - bw;
-    ctx.fillStyle = on ? FG : BG; ctx.fillRect(x, y, bw, h);
-    ctx.strokeStyle = on ? FG : LINE; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, bw - 1, h - 1);
-    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = on ? BG : DIM; ctx.font = mono(10);
-    ctx.fillText(on ? `■ ${HAND[side].name.toUpperCase()} · BALL` : `${HAND[side].name.toUpperCase()} · OFF`, x + 12, y + 18);
-    ctx.font = mono(bw < 200 ? 13 : 16, 600); ctx.fillText(on ? handText(side) : '—', x + 12, y + 44);
-    if (on && mode === 'live' && p) {
-      const label = p.carrier ? 'BURST' : p.play.kind === 'pass' ? 'ZIP' : '';
-      const v = p.carrier ? p.meter : p.qb.zip;
-      if (label) {
-        ctx.font = mono(10); ctx.fillText(label, x + 12, y + 68);
-        const bx = x + 64, bww = bw - 80;
-        ctx.strokeStyle = BG; ctx.strokeRect(bx, y + 60, bww, 10);
-        ctx.fillStyle = BG; ctx.fillRect(bx, y + 60, bww * v, 10);
-      }
-    }
-  }
-  // the middle: what to do now
-  if (W < 640) return;
-  ctx.textAlign = 'center'; ctx.fillStyle = MUTED; ctx.font = mono(12);
-  const t = trigText(g.hand);
-  let tip = '';
-  if (mode === 'pre') tip = `Pull ${t} to snap`;
-  else if (mode === 'live' && p.carrier) tip = 'Stick runs · flick sideways to juke · hold the trigger to burst';
-  else if (mode === 'live' && p.play.kind === 'pass') tip = `Hold ${t} to drop back · aim with the stick · let go to throw`;
-  else if (mode === 'live') tip = 'Handoff';
-  const lines = wrap(tip, W - bw * 2 - 80);
-  lines.forEach((l, i) => ctx.fillText(l, W / 2, y + 30 + i * 18));
-}
-function wrap(text, maxW) {
-  const words = text.split(' '), out = []; let cur = '';
-  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t; }
-  if (cur) out.push(cur); return out;
-}
-function drawSnapPrompt(pal) {
-  const y = TOP + (H - TOP - BOTTOM) * 0.2;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = BG; const bw = Math.min(W - 40, 520); ctx.fillRect(W / 2 - bw / 2, y - 40, bw, 84);
-  ctx.strokeStyle = pal.mark; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - bw / 2, y - 40, bw, 84);
-  ctx.fillStyle = FG; ctx.font = mono(Math.min(30, W / 18), 600);
-  ctx.fillText(`${g.hand === 'L' ? 'LEFT' : 'RIGHT'} HAND`, W / 2, y);
-  ctx.fillStyle = MUTED; ctx.font = mono(14);
-  ctx.fillText(`${handText(g.hand)} · pull ${trigText(g.hand)} to snap`, W / 2, y + 28);
-}
-function centerNote(text, y) {
-  ctx.font = mono(14, 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const w = ctx.measureText(text).width + 28;
-  ctx.fillStyle = BG; ctx.fillRect(W / 2 - w / 2, y - 16, w, 32);
-  ctx.strokeStyle = FG; ctx.lineWidth = 1; ctx.strokeRect(W / 2 - w / 2, y - 16, w, 32);
-  ctx.fillStyle = FG; ctx.fillText(text, W / 2, y + 1);
-}
-function drawBanner() {
-  const y = TOP + (H - TOP - BOTTOM) * 0.42;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-  const bw = Math.min(W - 40, 620);
-  ctx.fillStyle = BG; ctx.fillRect(W / 2 - bw / 2, y - 56, bw, g.sub ? 104 : 80);
-  ctx.strokeStyle = FG; ctx.lineWidth = 1; ctx.strokeRect(W / 2 - bw / 2, y - 56, bw, g.sub ? 104 : 80);
-  ctx.fillStyle = FG; ctx.font = mono(Math.min(44, W / 14), 600); ctx.fillText(g.banner.replace(/\.$/, ''), W / 2, y);
-  if (g.sub) { ctx.fillStyle = MUTED; ctx.font = mono(15); ctx.fillText(g.sub, W / 2, y + 32); }
-}
-function drawKick(pal) {
-  const k = g.kick, cx = W / 2, cy = TOP + (H - TOP - BOTTOM) * 0.62, R = Math.min(W * 0.36, (H - TOP - BOTTOM) * 0.5);
-  ctx.fillStyle = 'rgba(6,6,6,.82)'; ctx.fillRect(0, TOP, W, H - TOP);
-  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = FG; ctx.font = mono(Math.min(30, W / 18), 600);
-  ctx.fillText(`${k.kd} yard field goal`, cx, cy - R - 34);
-  ctx.fillStyle = MUTED; ctx.font = mono(14);
-  ctx.fillText(watch ? `${offTeam(g).name} lines it up` : `${g.hand === 'L' ? 'Left' : 'Right'} hand · pull ${trigText(g.hand)} when the needle is in the box`, cx, cy - R - 10);
+function drawKick() {
+  const k = g.kick, cx = W / 2, cy = TOP + (H - TOP - BOTTOM) * 0.66, R = Math.min(W * 0.36, (H - TOP - BOTTOM) * 0.5);
+  ctx.fillStyle = 'rgba(6,6,6,.82)'; ctx.fillRect(0, 0, W, H);
   // the arc runs from -1 (left) to 1 (right); 0 is straight up
   const ang = (v) => -Math.PI / 2 + v * 1.1;
-  ctx.strokeStyle = LINE; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, R, ang(-1), ang(1)); ctx.stroke();
-  ctx.strokeStyle = pal.mark; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(cx, cy, R, ang(-k.win), ang(k.win)); ctx.stroke();
+  ctx.strokeStyle = look.FLOOR.inner; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, R, ang(-1), ang(1)); ctx.stroke();
+  ctx.strokeStyle = look.FLOOR.line; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(cx, cy, R, ang(-k.win), ang(k.win)); ctx.stroke();
   ctx.lineWidth = 1; ctx.strokeStyle = FG;
   for (const e of [-k.win, k.win]) { const a = ang(e); ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * (R - 14), cy + Math.sin(a) * (R - 14)); ctx.lineTo(cx + Math.cos(a) * (R + 14), cy + Math.sin(a) * (R + 14)); ctx.stroke(); }
   const v = k.done ? k.at : Math.sin(k.t * k.w), a = ang(v);
   ctx.strokeStyle = FG; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * (R + 8), cy + Math.sin(a) * (R + 8)); ctx.stroke();
   ctx.fillStyle = FG; ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2); ctx.fill();
-  if (k.done) { ctx.font = mono(Math.min(40, W / 14), 600); ctx.fillText(k.good ? "It's good" : 'No good', cx, cy + 50); }
+  look.tag(ctx, cx, cy - R - 24, watch ? `${offTeam(g).name} lines it up` : `${g.hand === 'L' ? 'left' : 'right'} hand · ${trigText(g.hand)} in the box`);
+  if (k.done) look.tag(ctx, cx, cy + 30, k.good ? "it's good" : 'no good', { size: 14 });
 }
-function drawIdle() {
-  ctx.strokeStyle = LINE; ctx.lineWidth = 1;
-  const top = H * 0.5, step1 = Math.max(30, W / 22);
-  for (let i = 0; i * step1 < W + step1; i++) { ctx.beginPath(); ctx.moveTo(i * step1, top); ctx.lineTo(i * step1, H); ctx.stroke(); }
+
+/* ---------------- HUD: the scoreboard, calls and button bar live on the page, around the stage ---------------- */
+function board() {
+  if (!g) { HUD.board({ a: { name: 'you', sub: `${look.bandWord(0)} · offense`, score: 0 }, b: { name: 'cpu', sub: `${look.bandWord(1)} · defense`, score: 0 }, clock: '--' }); return; }
+  if (watch) {
+    const [a, b] = g.teams, on = g.phase !== 'final';
+    HUD.board({
+      a: { name: 'dummy a', sub: `${look.bandWord(0)} · ${a.d.style}`, score: a.score, has: on && g.pos === 0 },
+      b: { name: 'dummy b', sub: `${look.bandWord(1)} · ${b.d.style}`, score: b.score, has: on && g.pos === 1 },
+      clock: g.phase === 'final' ? 'final' : clockText(), low: (g.q === 2 || g.q === 4) && g.clock < 60
+    });
+    return;
+  }
+  const onField = mode === 'call' || mode === 'pre' || mode === 'live' || mode === 'kick' || mode === 'dead';
+  HUD.board({
+    a: { name: 'you', sub: `${look.bandWord(0)} · offense`, score: g.you, has: onField },
+    b: { name: g.diff.team, sub: `${look.bandWord(1)} · ${g.diff.name}`, score: g.them },
+    clock: clockText(), low: (g.q === 2 || g.q === 4) && g.clock < 60
+  });
+}
+/* the stamp over the field: down and distance, or what went wrong */
+function status() {
+  let t = '';
+  if (watch) {
+    const ph = g.phase;
+    if (ph === 'kick' && g.kick) t = `${g.kick.kd} yard field goal · ${offTeam(g).name.toLowerCase()}`;
+    else if (ph === 'final') t = `new match in ${Math.max(1, Math.ceil(WATCH_FINAL - g.finalT))} · pause to quit`;
+    else if (ph === 'pre' && g.play) t = `${offTeam(g).name.toLowerCase()} calls ${g.play.play.name.toLowerCase()} · ${downText()} · ${spotShort(g.x)}`;
+    else t = `${downText()} · ${spotShort(g.x)}`;
+    return HUD.msg(t);
+  }
+  if ((mode === 'pre' || mode === 'kick') && g.wrong > 0) t = `wrong hand. the ball is in your ${g.hand === 'L' ? 'left' : 'right'} hand`;
+  else if (mode === 'live' && g.noteT > 0) t = g.note;
+  else if (mode === 'kick') t = `${g.kick.kd} yard field goal`;
+  else if (mode === 'call' || mode === 'pre' || mode === 'live' || mode === 'dead') t = `${downText()} · ${spotShort(g.x)}`;
+  HUD.msg(t);
+}
+/* the big calls, stamped once when they happen */
+function stamps() {
+  if (watch) {
+    const ph = g.phase, was = lastMode;
+    if ((ph === 'dead' || ph === 'final') && was !== ph && was !== 'paused' && g.banner) {
+      const big = g.banner === 'Touchdown' || ph === 'final';
+      HUD.call(g.banner.replace(/\.$/, ''), g.sub, big);
+      if (big) look.cheer(0.9); else if (/Intercepted|Safety|downs/.test(g.banner)) look.cheer(0.6);
+    }
+    if (ph === 'kick' && g.kick && g.kick.done && shownKick !== g.kick) {
+      shownKick = g.kick;
+      HUD.call(g.kick.good ? "It's good" : 'No good', `${g.kick.kd} yards · ${offTeam(g).name}`, g.kick.good);
+      if (g.kick.good) look.cheer(0.8);
+    }
+    return;
+  }
+  if (mode === 'pre' && lastMode !== 'pre' && lastMode !== 'paused') HUD.call(`${g.hand === 'L' ? 'Left' : 'Right'} hand`, `pull ${trigText(g.hand)} to snap`);
+  if (mode === 'dead' && lastMode !== 'dead' && lastMode !== 'paused') {
+    const td = g.banner === 'Touchdown';
+    HUD.call(g.banner.replace(/\.$/, ''), g.sub, td);
+    if (td) look.cheer(0.9);
+    else if (/Intercepted|Safety|downs/.test(g.banner)) look.cheer(0.6);
+    else if (/First down/.test(g.sub)) look.cheer(0.5);
+  }
+  if (mode === 'kick' && g.kick.done && shownKick !== g.kick) {
+    shownKick = g.kick;
+    HUD.call(g.kick.good ? "It's good" : 'No good', `${g.kick.kd} yards`, g.kick.good);
+    if (g.kick.good) look.cheer(0.8);
+  }
+}
+/* what the buttons do right now */
+const chip = (k, t, open) => ({ k, t, open });
+function bar(p) {
+  const pad = input.lastDevice === 'controller', h = g.hand, o = h === 'L' ? 'R' : 'L';
+  const stick = (s) => (pad ? s : s === 'L' ? 'wasd' : 'arrows');
+  const trig = (s) => (pad ? HAND[s].trig : s === 'L' ? 'l shift' : 'r shift');
+  const side = `${h === 'L' ? 'left' : 'right'} hand`, off = chip(`${stick(o)} + ${trig(o)}`, 'off');
+  if (mode === 'call') return HUD.bar('play call', pad ? [chip('◀ ▶', 'pick a play'), chip('✕', 'call it', true), chip('options', 'pause')] : [chip('← →', 'pick a play'), chip('enter', 'call it', true), chip('esc', 'pause')], 'or click a card, then click it again to call it');
+  if (mode === 'pre') return HUD.bar(`${side} · ball`, [chip(trig(h), 'snap', true), off], 'only the side with the ball does anything');
+  if (mode === 'kick') return HUD.bar(`${side} · kick`, [chip(trig(h), 'kick when the needle is in the box', !g.kick.done), off], 'longer kicks swing faster into a smaller box');
+  if (mode === 'dead') return HUD.bar('whistle', [chip(pad ? '✕' : 'enter', 'next play', g.deadT > 0.4)]);
+  if (!p) return HUD.bar(side, [off]);
+  if (p.carrier) return HUD.bar(`${side} · ball carrier`, [chip(stick(h), 'run', true), chip(pad ? `flick ${h} ↕` : h === 'L' ? 'w w / s s' : '↑↑ / ↓↓', 'juke'), chip(trig(h), 'burst / stiff-arm', p.meter >= 0.15), off], 'juke right as a tackler reaches you');
+  if (p.ball.air) return HUD.bar('ball in the air', [off], 'the receiver goes to the spot');
+  if (p.play.kind === 'pass') return HUD.bar(`${side} · quarterback`, [chip(trig(h), p.qb.holding ? 'let go to throw' : 'hold to drop back', true), chip(stick(h), 'aim', p.qb.holding), off], 'hold longer and pull deeper for more zip');
+  HUD.bar(`${side} · handoff`, [off]);
+}
+function watchBar() {
+  const pad = input.lastDevice === 'controller';
+  HUD.bar('watching', [chip(pad ? 'options' : 'P / esc', 'pause', true)], `cpu vs cpu · ${g.diff.name.toLowerCase()}. a new match starts by itself`);
+}
+function menuBar() {
+  const pad = input.lastDevice === 'controller';
+  const label = mode === 'paused' ? 'paused' : mode === 'card' ? 'their drive' : mode === 'final' ? 'final' : 'menu';
+  HUD.bar(label, pad ? [chip('↕', 'pick'), chip('✕', 'choose', true), chip('○', 'back')] : [chip('↕', 'pick'), chip('enter', 'choose', true), chip('esc', 'back')]);
 }
 
 /* mouse or touch can pick plays too */
 canvas.addEventListener('pointerdown', (e) => {
   if (mode !== 'call' || !g.cardRects) return;
-  const i = g.cardRects.findIndex(([x, y, w, h]) => e.clientX >= x && e.clientX <= x + w && e.clientY >= y && e.clientY <= y + h);
+  const b = canvas.getBoundingClientRect(), px = e.clientX - b.left, py = e.clientY - b.top;
+  const i = g.cardRects.findIndex(([x, y, w, h]) => px >= x && px <= x + w && py >= y && py <= y + h);
   if (i < 0) return;
   audio();
   if (i === g.callIdx) confirmCall(); else { g.callIdx = i; previewPlay(); }
