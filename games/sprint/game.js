@@ -1,11 +1,14 @@
 /* jay. — © 2026 Jay — source viewable, not reusable by others (LICENSE)
    Sprint: 100 m in the browser. Alternate the triggers to stride, set your lean with the left
    stick, dip at the line. Training drills grade your starts, rhythm and lean, and your best grade
-   in each builds your athlete, so getting better means training well, not training a lot. */
+   in each builds your athlete, so getting better means training well, not training a lot.
+   The other lanes are seeded dummies (see sim.js). CPU vs CPU fills all eight lanes with them and
+   runs race after race on its own, with new seeds each time. */
 
 import { Input } from '../shared/input.js';
 import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
-import { Runner, Pacer, athlete, idealGap, idealLean, LEVELS, DIST } from './sim.js';
+import { dummyLabel } from '../shared/seed.js';
+import { Runner, CpuRunner, rollDummy, athlete, idealLean, LEVELS, DIST } from './sim.js';
 
 const SAVE = 'jay.sprint.v1';
 const DRILLS = [
@@ -78,9 +81,16 @@ function mainMenu() {
   mode = 'menu';
   const lv = LEVELS.map((l) => `<button class="btn" data-go="race" data-arg="${l.id}">${l.name}${data.pb[l.id] ? ` <small>PB ${data.pb[l.id].toFixed(2)}</small>` : ''}</button>`).join('');
   show(`<p class="label">Game file / Track / 100 m</p><h1 class="title">Sprint</h1>
-    <div class="menu">${lv}<button class="btn" data-go="train">Training</button><button class="btn" data-go="controls">Controls</button></div>
+    <div class="menu">${lv}<button class="btn" data-go="watch">CPU vs CPU</button><button class="btn" data-go="train">Training</button><button class="btn" data-go="controls">Controls</button></div>
     <h2 class="label">Your athlete</h2>${statBars()}
     <p class="hint">Train to fill the bars. Only your best grade in each drill counts, so there is nothing to grind.</p>`);
+}
+function watchMenu() {
+  mode = 'menu';
+  const lv = LEVELS.map((l) => `<button class="btn" data-go="watchgo" data-arg="${l.id}">${l.name}</button>`).join('');
+  show(`<p class="label">CPU vs CPU</p><h1 class="title">Watch</h1>
+    <div class="menu">${lv}<button class="btn" data-go="menu">Back</button></div>
+    <p class="hint">Eight seeded dummies, Dummy A to Dummy H, race on their own. Each one is rolled from a new seed every race. Options / P pauses.</p>`);
 }
 function trainMenu() {
   mode = 'menu';
@@ -112,19 +122,26 @@ function controls() {
 /* ---------------- race state ---------------- */
 let mode = 'menu';          // menu | race | paused | results
 let race = null;
+let watchT = 0;             // time on the CPU vs CPU results screen before the next race
 const canvas = $('#c'), ctx = canvas.getContext('2d');
 
 function newRace(kind, arg) {
-  const me = new Runner(athlete(stats()));
+  const watch = kind === 'watch';
+  const me = watch ? null : new Runner(athlete(stats()));
   const drill = kind === 'drill' ? DRILLS.find((d) => d.id === arg) : null;
-  const level = kind === 'race' ? LEVELS.find((l) => l.id === arg) : null;
-  const field = level ? shuffle(level.field.slice()).map((t) => new Pacer(t + rand(-0.06, 0.06), rand(0.13, 0.2))) : [];
-  const lanes = [1, 2, 3, 4, 5, 6, 7, 8];
-  const myLane = level ? 4 : 4;
-  const others = lanes.filter((l) => l !== myLane);
+  const level = kind === 'race' || watch ? LEVELS.find((l) => l.id === arg) : null;
+  const times = level ? level.field.slice() : [];
+  if (watch) times.push((times[0] + times[times.length - 1]) / 2);   // eight lanes of dummies
+  shuffle(times);
+  const myLane = watch ? null : 4;
+  const lanes = [1, 2, 3, 4, 5, 6, 7, 8].filter((l) => l !== myLane);
+  // every computer runner is a fresh seeded dummy; the level only sets its target time
+  const cpus = times.map((t, i) => {
+    const d = rollDummy();
+    return { c: new CpuRunner(d, t + d.rand(-0.06, 0.06)), d, lane: lanes[i], name: watch ? `Dummy ${'ABCDEFGH'[i]}` : `Lane ${lanes[i]}` };
+  });
   race = {
-    kind, drill, level, me, myLane, rep: 0, reps: drill ? drill.reps : 1, repResults: [],
-    pacers: field.map((p, i) => ({ p, lane: others[i] })),
+    kind, watch, drill, level, me, myLane, rep: 0, reps: drill ? drill.reps : 1, repResults: [], cpus,
     phase: 'marks', phaseT: 0, gunAt: 0, t: -10, falseStarts: 0, reaction: null, msg: 'On your marks',
     trig: { L: arm(), R: arm() }, lean: 0.5, lastGrade: null, ticks: []
   };
@@ -132,9 +149,10 @@ function newRace(kind, arg) {
   mode = 'race'; hide();
 }
 function startRep() {
-  const r = race; r.me.reset(); r.phase = 'marks'; r.phaseT = 0; r.reaction = null; r.ticks = [];
+  const r = race; r.ticks = []; r.phase = 'marks'; r.phaseT = 0; r.reaction = null;
+  if (r.me) r.me.reset();
   r.setFor = 1.2 + rand(0.6, 1.8); r.msg = 'On your marks'; r.t = -10; r.lean = 0.85;
-  r.pacers.forEach(({ p }) => { p.x = 0; p.v = 0; p.finish = null; });
+  r.cpus.forEach(({ c }) => c.prepStart());
 }
 const arm = () => ({ armed: true, pressing: false, start: 0, max: 0 });
 
@@ -145,7 +163,9 @@ function go(what, arg) {
   else if (what === 'controls') controls();
   else if (what === 'race') newRace('race', arg);
   else if (what === 'drill') newRace('drill', arg);
-  else if (what === 'again') newRace(race.kind, race.kind === 'race' ? race.level.id : race.drill.id);
+  else if (what === 'watch') watchMenu();
+  else if (what === 'watchgo') newRace('watch', arg);
+  else if (what === 'again') newRace(race.kind, race.drill ? race.drill.id : race.level.id);
   else if (what === 'resume') { mode = 'race'; hide(); }
 }
 
@@ -162,24 +182,28 @@ function readTrigger(tr, value, now) {
 
 function update(dt) {
   input.poll();
+  // CPU vs CPU: show the result for a few seconds, then the next race with new seeds
+  if (mode === 'results' && race && race.watch && (watchT += dt) > 5) return newRace('watch', race.level.id);
   if (mode === 'menu' || mode === 'results' || mode === 'paused') return menuInput();
   if (mode !== 'race') return;
   const r = race, me = r.me;
   if (input.pressed('START') || input.pressed('B')) { pause(); return; }
   r.phaseT += dt;
 
-  // lean: controller sets it directly, keyboard nudges it and it stays
+  // lean: controller sets it directly, keyboard nudges it and it stays (ignored when watching)
   const s = input.state;
-  if (input.lastDevice === 'controller') r.lean += ((0.5 - s.ly * 0.5) - r.lean) * Math.min(1, dt * 14);
-  else if (s.ly) r.lean = Math.max(0, Math.min(1, r.lean - s.ly * dt * 1.4));
-  me.lean = r.lean;
+  if (me) {
+    if (input.lastDevice === 'controller') r.lean += ((0.5 - s.ly * 0.5) - r.lean) * Math.min(1, dt * 14);
+    else if (s.ly) r.lean = Math.max(0, Math.min(1, r.lean - s.ly * dt * 1.4));
+    me.lean = r.lean;
+  }
 
   if (r.phase === 'marks' && r.phaseT > 1.2) { r.phase = 'set'; r.phaseT = 0; r.msg = 'Set'; beep(440, 0.06, 'sine', 0.15); }
   if (r.phase === 'set' && r.phaseT > r.setFor) { r.phase = 'run'; r.phaseT = 0; r.t = 0; r.msg = ''; gun(); }
   const now = r.phase === 'run' ? r.t : -1;
 
-  const L = readTrigger(r.trig.L, s.lt, performance.now() / 1000);
-  const R = readTrigger(r.trig.R, s.rt, performance.now() / 1000);
+  const L = me ? readTrigger(r.trig.L, s.lt, performance.now() / 1000) : null;
+  const R = me ? readTrigger(r.trig.R, s.rt, performance.now() / 1000) : null;
   for (const [side, depth] of [[-1, L], [1, R]]) {
     if (depth == null) continue;
     if (r.phase === 'marks' || r.phase === 'set') { if (r.phase === 'set') return falseStart(); continue; }
@@ -191,19 +215,22 @@ function update(dt) {
     const g = me.stride(side, depth, now);
     if (g) { r.ticks.push(g.stumble ? -1 : g.total); if (r.ticks.length > 10) r.ticks.shift(); beep(g.stumble ? 120 : 180 + 140 * (g.total || 0), 0.03, 'triangle', 0.12); }
   }
-  if (r.phase === 'run' && input.pressed('A')) me.dip(now);
+  if (me && r.phase === 'run' && input.pressed('A')) me.dip(now);
 
   if (r.phase === 'run') {
     r.t += dt;
-    me.step(dt, r.t);
-    r.pacers.forEach(({ p }) => p.at(r.t));
+    if (me) me.step(dt, r.t);
+    r.cpus.forEach(({ c }) => c.step(dt, r.t));
+    // a dummy that guessed the gun is caught by the blocks 0.1 s after it: recall the field
+    if (r.t >= 0.1) { const fs = r.cpus.find(({ c }) => c.falseStart); if (fs) return cpuFalseStart(fs); }
     const goal = r.drill ? r.drill.dist : DIST;
-    const done = r.drill ? me.x >= goal : me.finish != null && r.pacers.every(({ p }) => p.finish != null || p.x > DIST);
+    const done = r.drill ? me.x >= goal : (!me || me.finish != null) && r.cpus.every(({ c }) => c.finish != null);
     if (r.drill && me.x >= goal && me.finish == null) me.finish = r.t;
     if (done && r.phase === 'run') { r.phase = 'after'; r.phaseT = 0; }
   }
   if (r.phase === 'after') {
-    me.step(dt, r.t + r.phaseT); r.pacers.forEach(({ p }) => p.at(r.t + r.phaseT));
+    if (me) me.step(dt, r.t + r.phaseT);
+    r.cpus.forEach(({ c }) => c.step(dt, r.t + r.phaseT));
     if (r.phaseT > 1.1) finishRep();
   }
 }
@@ -212,6 +239,11 @@ function falseStart() {
   if (r.drill) { r.repResults.push({ reaction: null, score: 0, note: 'False start' }); r.rep++; return r.rep >= r.reps ? drillDone() : (r.flash = 'False start', startRep()); }
   if (r.falseStarts >= 2) { mode = 'results'; return show(`<p class="label">Disqualified</p><h1 class="title">False start</h1><p class="hint">Two false starts and you're out. Wait for the gun.</p><div class="menu"><button class="btn btn--solid" data-go="again">Run it again</button><button class="btn" data-go="menu">Menu</button></div>`); }
   r.flash = 'False start. One more and you are out.'; startRep();
+}
+function cpuFalseStart(fs) {
+  const r = race; fs.c.warned = true; beep(140, 0.25, 'sawtooth', 0.2);
+  r.flash = `False start, ${r.watch ? fs.name : `lane ${fs.lane}`}. Recall.`;
+  startRep();
 }
 function finishRep() {
   const r = race;
@@ -255,9 +287,19 @@ function tip(id, r) {
   if (avg('rhythm') < 0.75) return 'Find the beat. Slower out of the blocks, quicker once you are moving.';
   return '';
 }
+function watchDone() {
+  const r = race; mode = 'results'; watchT = 0;
+  const res = r.cpus.slice().sort((a, b) => a.c.finish - b.c.finish);
+  const rows = res.map((x, i) => `<tr><td>${i + 1}</td><td>${x.name} <small>lane ${x.lane} · ${x.d.style} · ${x.d.tag}</small></td><td>${x.c.finish.toFixed(2)}</td></tr>`).join('');
+  show(`<p class="label">CPU vs CPU / ${r.level.name}</p><h1 class="title">${res[0].name} <small>${res[0].c.finish.toFixed(2)}</small></h1>
+    <p class="hint">Next race in a few seconds, with new seeds.</p>
+    <table class="board"><tbody>${rows}</tbody></table>
+    <div class="menu"><button class="btn btn--solid" data-go="again">Next race</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
+}
 function raceDone() {
   const r = race, me = r.me;
-  const results = [{ who: 'You', lane: r.myLane, time: me.finish, me: true }, ...r.pacers.map(({ p, lane }) => ({ who: `Lane ${lane}`, lane, time: p.target }))]
+  if (r.watch) return watchDone();
+  const results = [{ who: 'You', lane: r.myLane, time: me.finish, me: true }, ...r.cpus.map(({ c, d, lane }) => ({ who: `Lane ${lane} <small>${d.style} · ${d.tag}</small>`, lane, time: c.finish }))]
     .sort((a, b) => a.time - b.time);
   const place = results.findIndex((x) => x.me) + 1;
   const id = r.level.id, pb = data.pb[id], newPb = !pb || me.finish < pb;
@@ -271,7 +313,9 @@ function raceDone() {
 }
 function pause() {
   mode = 'paused';
-  show(`<p class="label">Paused</p><div class="menu"><button class="btn btn--solid" data-go="resume">Resume</button><button class="btn" data-go="again">Restart</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
+  const r = race;
+  const field = r.cpus.length ? `<ul class="blurbs">${r.cpus.slice().sort((a, b) => a.lane - b.lane).map((x) => `<li>${dummyLabel(x.name.toLowerCase(), x.d)}</li>`).join('')}</ul>` : '';
+  show(`<p class="label">${r.watch ? 'Paused / CPU vs CPU' : 'Paused'}</p><div class="menu"><button class="btn btn--solid" data-go="resume">Resume</button><button class="btn" data-go="again">${r.watch ? 'New seeds' : 'Restart'}</button><button class="btn" data-go="menu">Quit to menu</button></div>${field}`);
 }
 function menuInput() {
   if (!menuItems.length) return;
@@ -298,8 +342,15 @@ function draw() {
   if (!race || mode === 'menu') return drawIdle();
   const r = race, me = r.me, pal = palette();
   const top = 92, bottom = H - 150, laneH = (bottom - top) / 8;
-  const ppm = Math.max(26, Math.min(64, W / 26));               // pixels per metre
-  const camX = me.x - (W * 0.3) / ppm;
+  let ppm = Math.max(26, Math.min(64, W / 26));                 // pixels per metre
+  let camX;
+  if (me) camX = me.x - (W * 0.3) / ppm;
+  else {
+    // watching: keep the whole field on screen, zooming out as it spreads
+    const xs = r.cpus.map(({ c }) => c.x), lead = Math.max(...xs), tail = Math.min(...xs);
+    ppm = Math.max(8, Math.min(ppm, (W * 0.7) / (lead - tail + 4)));
+    camX = (lead + tail) / 2 - (W * 0.5) / ppm;
+  }
   const sx = (x) => (x - camX) * ppm;
 
   // lanes
@@ -320,17 +371,24 @@ function draw() {
   for (let i = 0; i < 8; i++) { ctx.fillStyle = i + 1 === r.myLane ? FG : MUTED; ctx.fillText(String(i + 1), 10, top + i * laneH + laneH * 0.6); }
 
   // runners
-  for (const { p, lane } of r.pacers) figure(sx(p.x), top + (lane - 0.15) * laneH, laneH, p.x, 0.25 + Math.max(0, 0.5 - p.x / 60), MUTED, false);
-  figure(sx(me.x), top + (r.myLane - 0.15) * laneH, laneH, me.x, r.lean, pal.mark, true, me.dipAt != null && r.t - me.dipAt < 0.45, me.stumble > 0);
-  ctx.fillStyle = pal.mark; ctx.font = mono(11, 600); ctx.textAlign = 'right';
-  ctx.fillText('YOU', sx(me.x) - 22, top + (r.myLane - 0.5) * laneH);
+  const clock = r.phase === 'after' ? r.t + r.phaseT : r.t;
+  for (const { c, lane, name } of r.cpus) {
+    const x = sx(c.x), y = top + (lane - 0.15) * laneH;
+    figure(x, y, laneH, c.ph, c.lean, r.watch ? FG : MUTED, false, c.dipping(clock), false, c.x <= 0.01);
+    if (r.watch) { ctx.fillStyle = MUTED; ctx.font = mono(11, 600); ctx.textAlign = 'right'; ctx.fillText(name.slice(-1), x - 16, top + (lane - 0.5) * laneH); }
+  }
+  if (me) {
+    figure(sx(me.x), top + (r.myLane - 0.15) * laneH, laneH, me.x * 1.35, r.lean, pal.mark, true, me.dipAt != null && r.t - me.dipAt < 0.45, me.stumble > 0, me.x <= 0.01);
+    ctx.fillStyle = pal.mark; ctx.font = mono(11, 600); ctx.textAlign = 'right';
+    ctx.fillText('YOU', sx(me.x) - 22, top + (r.myLane - 0.5) * laneH);
+  }
 
-  hud(r, me, pal);
+  if (me) hud(r, me, pal); else watchHud(r);
 }
-function figure(x, footY, laneH, dist, lean, color, isMe, dipping = false, stumble = false) {
+function figure(x, footY, laneH, phase, lean, color, isMe, dipping = false, stumble = false, still = false) {
   if (x < -60 || x > W + 60) return;
-  const h = Math.min(laneH * 0.82, 70), phase = dist * 1.35;
-  const swing = Math.sin(phase) * 0.9, still = dist <= 0.01;
+  const h = Math.min(laneH * 0.82, 70);
+  const swing = Math.sin(phase) * 0.9;
   const tilt = (dipping ? 0.9 : lean * 0.55) + (stumble ? 0.4 : 0);
   ctx.save(); ctx.translate(x, footY); ctx.strokeStyle = color; ctx.fillStyle = color;
   ctx.lineWidth = isMe ? 3 : 2; ctx.lineCap = 'round';
@@ -358,11 +416,7 @@ function hud(r, me, pal) {
   ctx.font = mono(12); ctx.fillStyle = MUTED;
   ctx.fillText(`${Math.max(0, (r.drill ? r.drill.dist : DIST) - me.x).toFixed(0)} m to go`, W - 20, 68);
 
-  // big call in the middle: on your marks / set / false start
-  const msg = r.msg || (r.flash && r.phase !== 'run' ? r.flash : '');
-  if (msg) { ctx.textAlign = 'center'; ctx.font = mono(Math.min(56, W / 14), 600); ctx.fillStyle = FG; ctx.fillText(msg, W / 2, H * 0.45); }
-  if (r.flash && r.phase !== 'marks' && r.phase !== 'set') r.flash = '';
-  if ((r.phase === 'marks' || r.phase === 'set') && r.flash) { ctx.font = mono(14); ctx.fillStyle = MUTED; ctx.textAlign = 'center'; ctx.fillText(r.flash, W / 2, H * 0.45 + 34); }
+  callout(r);
 
   // bottom panel: trigger pads, lean gauge, last strides
   const y0 = H - 128;
@@ -373,6 +427,35 @@ function hud(r, me, pal) {
   strides(470, y0, r.ticks);
   ctx.textAlign = 'right'; ctx.font = mono(11); ctx.fillStyle = MUTED;
   if (W > 760) ctx.fillText(input.lastDevice === 'controller' ? 'L2 R2 stride · left stick lean · cross dip' : 'F J stride · W S lean · space dip', W - 20, H - 18);
+}
+// big call in the middle: on your marks / set / false start
+function callout(r) {
+  const msg = r.msg || (r.flash && r.phase !== 'run' ? r.flash : '');
+  if (msg) { ctx.textAlign = 'center'; ctx.font = mono(Math.min(56, W / 14), 600); ctx.fillStyle = FG; ctx.fillText(msg, W / 2, H * 0.45); }
+  if (r.flash && r.phase !== 'marks' && r.phase !== 'set') r.flash = '';
+  if ((r.phase === 'marks' || r.phase === 'set') && r.flash) { ctx.font = mono(14); ctx.fillStyle = MUTED; ctx.textAlign = 'center'; ctx.fillText(r.flash, W / 2, H * 0.45 + 34); }
+}
+/* CPU vs CPU: race clock, the leader, and one line per dummy with its style and seed */
+function watchHud(r) {
+  const cs = r.cpus.map(({ c }) => c), lead = cs.reduce((a, b) => (b.x > a.x ? b : a));
+  const done = cs.filter((c) => c.finish != null).map((c) => c.finish);
+  const t = r.phase === 'run' || r.phase === 'after' ? (done.length ? Math.min(...done) : r.t) : 0;
+  ctx.textAlign = 'left'; ctx.fillStyle = FG; ctx.font = mono(34, 600);
+  ctx.fillText(t.toFixed(2), 20, 50);
+  ctx.font = mono(12); ctx.fillStyle = MUTED;
+  ctx.fillText(`CPU VS CPU · ${r.level.name.toUpperCase()}`, 20, 72);
+  ctx.textAlign = 'right'; ctx.font = mono(22, 600); ctx.fillStyle = FG;
+  ctx.fillText(`${lead.v.toFixed(1)} m/s`, W - 20, 46);
+  ctx.font = mono(12); ctx.fillStyle = MUTED;
+  ctx.fillText(`leader ${Math.max(0, DIST - lead.x).toFixed(0)} m to go`, W - 20, 68);
+  callout(r);
+  const cols = W > 560 ? 2 : 1, rows = Math.ceil(r.cpus.length / cols), lh = Math.min(18, 112 / rows);
+  ctx.textAlign = 'left'; ctx.font = mono(11); ctx.fillStyle = MUTED;
+  r.cpus.slice().sort((a, b) => a.lane - b.lane).forEach((x, i) => {
+    ctx.fillText(dummyLabel(x.name.toLowerCase(), x.d), 20 + Math.floor(i / rows) * 270, H - 118 + (i % rows) * lh);
+  });
+  ctx.textAlign = 'right';
+  if (W > 860) ctx.fillText(input.lastDevice === 'controller' ? 'options pause' : 'P or esc pause', W - 20, H - 18);
 }
 function pad(x, y, name, v, next, pal) {
   ctx.strokeStyle = next ? pal.mark : LINE; ctx.lineWidth = next ? 2 : 1; ctx.strokeRect(x, y, 110, 96);
