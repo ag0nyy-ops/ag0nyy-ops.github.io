@@ -53,7 +53,11 @@ button:hover { border-color: var(--fg); }
 #board small { display: block; font-size: .6rem; color: var(--muted); }
 #board strong { min-width: 2.4em; text-align: center; font-size: 2.2rem; line-height: 1.5; background: var(--fg); color: var(--bg); }
 #board #sc1 { background: var(--strong); color: var(--fg); }
-#board .has::after { content: " ●"; font-size: .7em; }
+#board strong { position: relative; }
+/* the "has it" dot sits in the score box's top inner corner, so it never widens the box or pushes the number */
+#board .has::after { content: ""; position: absolute; top: .3em; width: .24em; height: .24em; border-radius: 50%; background: currentColor; }
+#board #sc0.has::after { left: .3em; }
+#board #sc1.has::after { right: .3em; }
 #clock { align-self: center; min-width: 4.4em; text-align: center; font-size: 1.7rem; }
 #clock.low { text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; }
 .tanks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
