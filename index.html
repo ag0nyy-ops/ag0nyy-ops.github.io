@@ -23,7 +23,7 @@
   <!-- fonts are self-hosted (assets/fonts); preload the two the first screen needs -->
   <link rel="preload" href="assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/css/style.css?v=24">
+  <link rel="stylesheet" href="assets/css/style.css?v=25">
   <script>
     /* The only blocking JS, kept tiny:
        1. skip the eyelid intro on repeat visits this session
@@ -53,7 +53,8 @@
       d.setAttribute('data-fx', tier); d.setAttribute('data-fx-src', src);
     })(document.documentElement);
   </script>
-  <script src="assets/js/main.js?v=14" defer></script>
+  <script src="assets/js/main.js?v=15" defer></script>
+  <noscript><style>.reel__game[hidden] { display: block !important; } .fresh__next { display: none; }</style></noscript>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -182,17 +183,23 @@
       <div class="tape__strip tape__strip--a"><div class="tape__track"><span>Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶ Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶&nbsp;</span><span>Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶ Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶&nbsp;</span></div></div>
     </div>
 
-    <!-- ================= NEW: FOLKSTYLE ================= -->
-    <section class="section fresh" id="wrestle" tabindex="-1" aria-labelledby="wrestle-title wrestle-name">
+    <!-- ================= NEW: the game reel =================
+         One .reel__game per game with a promo. The arrow next to the name steps to the next one
+         and wraps around; to add a game, copy a block and give it data-name. -->
+    <section class="section fresh" id="wrestle" tabindex="-1" aria-labelledby="wrestle-title wrestle-name" data-reel>
       <span class="section__ghost" aria-hidden="true">00</span>
       <header class="sh">
-        <p class="sh__label">File 00 / Folkstyle / just filed</p>
+        <p class="sh__label">File 00 / <span data-reel-label>Folkstyle</span> / just filed</p>
         <h2 class="sh__title fresh__title distort" id="wrestle-title" data-text="New!!!">New!!!</h2>
       </header>
 
+      <div class="reel__game" data-name="Folkstyle">
       <div class="fresh__intro bleed">
         <div>
-          <h3 class="fresh__name" id="wrestle-name">Folkstyle</h3>
+          <div class="fresh__head">
+            <h3 class="fresh__name" id="wrestle-name">Folkstyle</h3>
+            <button class="fresh__next" type="button" aria-label="Next game: Southpaw" title="Next: Southpaw"><span aria-hidden="true">→</span></button>
+          </div>
           <p class="fresh__lead">A wrestling game that runs in your browser. Your sticks are your hands, your triggers are your hips, your bumpers grab wrists.</p>
           <ul class="fresh__links">
             <li><a class="btn btn--solid" href="/wrestle/">Play it</a></li>
@@ -226,6 +233,49 @@
         <li><b>Dummy vs dummy</b>, seeded so you can't call it</li>
       </ul>
       <p class="fresh__note bleed">Needs a controller or keyboard to play. On a phone it opens on dummy vs dummy.</p>
+      </div>
+
+      <div class="reel__game" data-name="Southpaw" hidden>
+      <div class="fresh__intro bleed">
+        <div>
+          <div class="fresh__head">
+            <h3 class="fresh__name" id="southpaw-name">Southpaw</h3>
+            <button class="fresh__next" type="button" aria-label="Next game: Folkstyle" title="Next: Folkstyle"><span aria-hidden="true">→</span></button>
+          </div>
+          <p class="fresh__lead">A boxing game that runs in your browser. Your triggers throw the punches: a light pull is a quick shot, a full pull lands heavy and leaves you open.</p>
+          <ul class="fresh__links">
+            <li><a class="btn btn--solid" href="/games/southpaw/">Play it</a></li>
+            <li><a class="btn" href="/games/">All games</a></li>
+            <li><a class="btn" href="https://github.com/ag0nyy-ops/ag0nyy-ops.github.io/tree/main/games/southpaw" target="_blank" rel="noopener">Source ↗</a></li>
+          </ul>
+        </div>
+        <span class="stamp stamp--big">Early build</span>
+      </div>
+
+      <figure class="exhibit exhibit--video bleed">
+        <video controls playsinline preload="none" width="1280" height="720" poster="assets/img/southpaw/poster.webp" aria-label="Southpaw highlight video with sound: trigger controls, exchanges, a non-stop section at 1.35 times speed, a knockdown and the get-up">
+          <source src="assets/img/southpaw/promo-v3.mp4" type="video/mp4">
+          <a href="assets/img/southpaw/promo-v3.mp4">Watch the video</a>
+        </video>
+        <figcaption>Sound on. Edited game footage. The controller part is scripted input, the 1.35x part uses cranked dummies that can't be dropped, and the count runs at 2x.</figcaption>
+      </figure>
+
+      <div class="exhibits">
+        <figure class="exhibit exhibit--wide bleed"><a href="/games/southpaw/"><img src="assets/img/southpaw/knockdown.webp" width="1600" height="900" loading="lazy" alt="One boxer flat on the canvas while the other waits out the count, under a scoreboard, health and stamina meters"></a><figcaption>Down, and the count is on</figcaption></figure>
+        <figure class="exhibit bleed"><a href="/games/southpaw/"><img src="assets/img/southpaw/counter.webp" width="1200" height="675" loading="lazy" alt="Two boxers trading at close range as a counter lands"></a><figcaption>Counters land harder</figcaption></figure>
+        <figure class="exhibit bleed"><a href="/games/southpaw/"><img src="assets/img/southpaw/get-up.webp" width="1200" height="675" loading="lazy" alt="A knocked-down boxer on one knee, getting back up"></a><figcaption>Getting up off the canvas</figcaption></figure>
+        <figure class="exhibit bleed"><a href="/games/southpaw/"><img src="assets/img/southpaw/opponents.webp" width="1200" height="675" loading="lazy" alt="The opponent menu: Rook, Bull, Kestrel, Dutch and The Clerk"></a><figcaption>Five to fight</figcaption></figure>
+      </div>
+
+      <ul class="fresh__facts bleed">
+        <li><b>5</b> opponents, each with their own way of boxing</li>
+        <li>The <b>pull</b> sets the power</li>
+        <li>Hooks and uppercuts off the <b>right stick</b></li>
+        <li><b>Three knockdowns</b> and the referee stops it</li>
+        <li><b>Dummy vs dummy</b>, seeded so you can't call it</li>
+      </ul>
+      <p class="fresh__note bleed">Needs a controller or keyboard to box. On a phone you can watch dummy vs dummy.</p>
+      </div>
     </section>
 
     <!-- ================= GAMES ================= -->

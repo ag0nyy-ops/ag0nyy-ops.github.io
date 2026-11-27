@@ -386,6 +386,24 @@
     document.addEventListener('visibilitychange', () => { if (document.hidden) close(); });
   }
 
+  /* the game reel under New!!!: the arrow steps to the next game and wraps around */
+  const reel = document.querySelector('[data-reel]');
+  if (reel) {
+    const games = [...reel.querySelectorAll('.reel__game')];
+    const label = reel.querySelector('[data-reel-label]');
+    reel.addEventListener('click', (e) => {
+      if (!(e.target instanceof Element) || !e.target.closest('.fresh__next')) return;
+      const i = games.findIndex((g) => !g.hidden);
+      const next = games[(i + 1) % games.length];
+      games[i].querySelectorAll('video').forEach((v) => v.pause());
+      games[i].hidden = true;
+      next.hidden = false;
+      if (label) label.textContent = next.dataset.name;
+      reel.setAttribute('aria-labelledby', `wrestle-title ${next.querySelector('.fresh__name').id}`);
+      next.querySelector('.fresh__next').focus({ preventScroll: true });
+    });
+  }
+
   /* 4d. easter egg: "?" opens the source panel.
      Not "/": Firefox uses "/" for quick find, and we never steal browser shortcuts.
      Any modifier other than Shift (which "?" needs) means it's someone else's shortcut. */

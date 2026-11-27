@@ -604,6 +604,11 @@
   .fresh__intro { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem 3rem; margin-bottom: clamp(2rem, 5vw, 3.5rem); }
   .fresh__intro > div { min-width: 0; }
   .fresh__name { font: 600 clamp(2.2rem, 6vw, 4.4rem)/1.05 var(--mono); letter-spacing: -.045em; margin-bottom: .8rem; }
+  .fresh__head { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1.4rem; margin-bottom: .8rem; }
+  .fresh__head .fresh__name { margin: 0; min-width: 9.2ch; }   /* same width for every name, so the arrow stays put */
+  .fresh__next { flex: none; display: grid; place-items: center; width: clamp(3rem, 6vw, 4.2rem); aspect-ratio: 1; padding: 0; border: 1px solid var(--fg); border-radius: 0; background: transparent; color: var(--fg); font: 600 clamp(1.4rem, 3vw, 2rem)/1 var(--mono); cursor: pointer; transition: background .2s, color .2s; }
+  .fresh__next:hover { background: var(--fg); color: var(--bg); }
+  .fresh__next:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
   .fresh__lead { color: var(--muted); max-width: 48ch; margin-bottom: 1.5rem; }
   .fresh__links { display: flex; flex-wrap: wrap; gap: .8rem; }
   .exhibit { margin: 0; }
