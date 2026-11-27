@@ -302,20 +302,22 @@ function humanCommand(dt) {
 
 /* ---------------- your fists ---------------- */
 let swings, leanHeld = true;
-/* a trigger has to come back up before it throws again, so the squeeze that took the fight is not a punch */
-function resetSwings() { swings = [0, 1].map(() => ({ armed: false, t: -1, peak: 0 })); leanHeld = true; }
+/* a trigger has to come back up before it throws again, so the squeeze that took the fight is not a punch.
+   "Up" is the lowest it has read, so a trigger that rests a little pulled in still throws. */
+function resetSwings() { swings = [0, 1].map(() => ({ armed: false, t: -1, peak: 0, rest: 0.3 })); leanHeld = true; }
 resetSwings();
 function fightCommand(dt) {
   const s = input.state, c = blankCmd(), me = game.fight.f.find((m) => m.s === game.human);
   if (!me) return c;
   swings.forEach((w, hand) => {
     const v = hand ? s.rt : s.lt;
-    if (w.t < 0 && w.armed && v > 0.15) { w.t = 0; w.peak = v; w.armed = false; }
+    w.rest = Math.min(w.rest, v);
+    if (w.t < 0 && w.armed && v > w.rest + 0.15) { w.t = 0; w.peak = v; w.armed = false; }
     if (w.t >= 0) {
       w.t += dt; w.peak = Math.max(w.peak, v);
-      if (w.t >= SWING_READ || v < w.peak - 0.1) { c.punch = { hand, power: w.peak }; w.t = -1; }
+      if (w.t >= SWING_READ || v < w.peak - 0.1) { c.punch = { hand, power: (w.peak - w.rest) / (1 - w.rest) }; w.t = -1; }
     }
-    if (v < 0.1) w.armed = true;
+    if (v < w.rest + 0.1) w.armed = true;
   });
   if (input.pressed('LB')) c.punch = { hand: 0, power: 0.35 };
   if (input.pressed('RB')) c.punch = { hand: 1, power: 1 };
