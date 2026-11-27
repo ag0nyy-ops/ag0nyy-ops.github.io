@@ -10,3 +10,16 @@ Arcade football, side view in the spirit of old-school pocket football games. Sh
 - **Difficulty** only changes how fast the defense reads the play, never player speed. All-Pro can also switch the hand after a catch.
 - **No stat training.** Players are equal; you get better, they don't.
 - Keyboard: left hand = WASD + Shift, right hand = arrows + Right Shift (or IJKL + Space). The prompt on screen always shows which side is live.
+
+## Seeded dummies
+
+The CPU team is a dummy rolled from a fresh 32-bit seed every game (`makeTeam` in `sim.js`, built on `../shared/seed.js`), the same way Folkstyle rolls its wrestlers. The difficulty is still how good the defense is (how fast it reads the play); the seed only changes how it plays, with trade-offs instead of raw strength. It uses its own random source for its choices, so a seed always plays the same way.
+
+- Offense numbers: `tempo` (time at the line), `runCall`, `deep` (love of the deep shot), `patience` (how long the QB holds), `open` (room it wants before it throws), `gamble` (forced throws, long kicks), `vision` (how hard the runner cuts), `juke`, `burst` (meter it keeps), `goFor` (4th down).
+- Defense numbers: `lean` (reads the pass fast and the run late, or the other way round), `cushion` (corners play off: deep help vs. underneath room), `blitz` (a backer leaves the back to rush), `pursuit` (pursuit angle), `safe` (how far the safety leans).
+- Styles, first match: gunslinger, ground and pound, blitz happy, ball hawk, run stopper, else balanced.
+- In your games the dummy plays the defense and its offensive numbers shape the simulated drives a little (deep teams score more touchdowns and fewer field goals, gamblers turn it over more, running teams eat clock). Its style and seed tag show under the score and in the pause menu.
+
+## CPU vs CPU
+
+"CPU vs CPU" on the main menu plays a whole game between Dummy A and Dummy B, both drives on the field, at the skill picked in "CPU vs CPU skill" and the usual game length. The dummy's offense plays through the same stick and trigger a player does (`cpuControl`): it reads the coverage imperfectly, misses by a little on long or hurried throws, and picks when to juke and burst. The match flow lives in `newMatch` / `matchTick` so it can be tested in node. Options / Start, Esc or P pauses (New match, Quit to menu). After the final it shows the result for a few seconds and starts again with two new seeds. Watch games are not recorded.
