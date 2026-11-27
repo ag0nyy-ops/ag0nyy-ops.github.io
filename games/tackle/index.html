@@ -7,12 +7,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Tackle — jay.</title>
   <meta name="description" content="Tackle: arcade football in the browser. The ball is in one hand, picked at random every play, and only that hand's stick and trigger run the play.">
+  <link rel="canonical" href="https://ag0nyy-ops.github.io/games/tackle/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="jay.">
+  <meta property="og:title" content="Tackle">
+  <meta property="og:description" content="Tackle: arcade football in the browser. The ball is in one hand, picked at random every play, and only that hand's stick and trigger run the play.">
+  <meta property="og:url" content="https://ag0nyy-ops.github.io/games/tackle/">
+  <meta property="og:image" content="https://ag0nyy-ops.github.io/games/tackle/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A play from above in Tackle: the quarterback drops back with an aim marker downfield and the receivers running their routes">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#060606">
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="../../assets/fonts/ibm-plex-mono-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../../assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="../shared/look.css?v=1">
+  <link rel="stylesheet" href="../shared/look.css?v=2">
 </head>
 <body>
   <a class="skip" href="#field">Skip to the field</a>
@@ -48,13 +59,17 @@
     <section aria-labelledby="how">
       <p class="label">file 02 / how it plays</p>
       <h2 id="how">One hand has the ball. Only that hand plays.</h2>
+      <figure class="shot">
+        <img src="og-image.jpg" width="1200" height="630" alt="A play from above in Tackle: the quarterback drops back with an aim marker downfield and the receivers running their routes" loading="lazy">
+        <figcaption>slants called, the quarterback aiming downfield</figcaption>
+      </figure>
       <ul class="rules">
         <li><b>Random hand.</b> Every play the ball goes in your left or right hand. Only that side's stick and trigger do anything, so muscle memory can't run the play.</li>
         <li><b>Throw it.</b> Hold the trigger to drop back and aim with the stick. Hold longer and pull deeper for more zip. Let go to throw.</li>
         <li><b>Run it.</b> The stick runs. Flick it sideways to juke right as a tackler arrives. Hold the trigger to burst or stiff-arm while the meter lasts.</li>
         <li><b>Short drives.</b> You play offense and their drives are simulated in between. On fourth down you can punt or kick. Players never get stats, you get better.</li>
       </ul>
-      <details>
+      <details open>
         <summary>Controls</summary>
         <div class="tw"><table>
           <thead><tr><th></th><th>Ball in left hand</th><th>Ball in right hand</th></tr></thead>
