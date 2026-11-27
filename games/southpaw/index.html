@@ -10,14 +10,83 @@
   <meta name="theme-color" content="#060606">
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="../games.css?v=2">
-  <link rel="stylesheet" href="../shared/game.css?v=3">
+  <link rel="preload" href="../../assets/fonts/ibm-plex-mono-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../../assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../shared/look.css?v=1">
 </head>
 <body>
-  <canvas id="c" aria-label="The ring, seen from the side. You are on the left, solid and marked YOU. Your opponent is on the right, drawn in outline."></canvas>
-  <div class="overlay" id="overlay" role="dialog" aria-label="Southpaw menu"></div>
-  <a class="btn back" href="../">All games</a>
-  <noscript><p class="overlay">Southpaw needs JavaScript to run.</p></noscript>
-  <script type="module" src="game.js?v=2"></script>
+  <a class="skip" href="#ring">Skip to the ring</a>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <p class="label"><a href="../../">jay.</a> / the ring</p>
+        <h1>Southpaw</h1>
+      </div>
+      <nav aria-label="Pages"><a class="btn" href="../">All games</a></nav>
+    </header>
+
+    <div id="board" role="group" aria-label="Scoreboard">
+      <span class="l"><b id="nm0">you</b><small id="sb0">green</small></span>
+      <strong id="sc0">0</strong>
+      <span id="clock" role="timer" aria-label="Round and clock">--</span>
+      <strong id="sc1">0</strong>
+      <span><b id="nm1">cpu</b><small id="sb1">red</small></span>
+    </div>
+
+    <div class="tanks" aria-label="Health">
+      <div class="tank"><span>you · health <b>100</b></span><div class="gauge"><i></i><u></u></div></div>
+      <div class="tank"><span>cpu · health <b>100</b></span><div class="gauge"><i></i><u></u></div></div>
+    </div>
+    <div class="tanks" id="gas" aria-label="Stamina">
+      <div class="tank"><span>you · stamina <b>100</b></span><div class="gauge"><i></i><u></u></div></div>
+      <div class="tank"><span>cpu · stamina <b>100</b></span><div class="gauge"><i></i><u></u></div></div>
+    </div>
+
+    <main class="stage" id="ring">
+      <canvas id="c" aria-label="The ring, seen from the side. You are on the left, solid and marked YOU. Your opponent is on the right, drawn in outline."></canvas>
+      <div class="atmosphere" aria-hidden="true"></div>
+      <p id="msg" role="status"></p>
+      <div id="call" hidden aria-live="polite"></div>
+      <div class="overlay" id="overlay" role="dialog" aria-label="Southpaw menu"></div>
+      <noscript><p class="overlay">Southpaw needs JavaScript to run.</p></noscript>
+    </main>
+
+    <div id="moves" aria-label="What your buttons do right now" aria-live="off"><em>menu</em><small>arrows or the left stick to pick, enter or cross to choose</small></div>
+    <p id="pad" role="status">no controller seen. press a button, or use the keyboard</p>
+
+    <section aria-labelledby="how">
+      <p class="label">file 05 / how it plays</p>
+      <h2 id="how">Your triggers are your hands.</h2>
+      <ul class="rules">
+        <li><b>Pull sets the power.</b> A light pull is a quick shot. A full pull lands heavy, costs more stamina and leaves you open longer if it misses.</li>
+        <li><b>The stick picks the punch.</b> Centre throws a straight, sideways a hook, down an uppercut. Hold the left stick down to go to the body. Hooks and uppercuts need you close.</li>
+        <li><b>Guard, slip, counter.</b> High guard stops head shots, low guard the body. Slip a straight or hook and your next punch is a counter that lands harder.</li>
+        <li><b>Three rounds, ten point must.</b> Every punch costs stamina and tired arms are slow. You go down when your health runs out. Three knockdowns and the referee stops it.</li>
+      </ul>
+      <details>
+        <summary>Controls</summary>
+        <div class="tw"><table>
+          <thead><tr><th></th><th>Controller</th><th>Keyboard</th></tr></thead>
+          <tbody>
+            <tr><td>Left hand / right hand</td><td>L2 / R2. Pull depth sets power</td><td>F / J. Hold longer for power</td></tr>
+            <tr><td>Pick the punch</td><td>Right stick when you throw: centre straight, sideways hook, down uppercut</td><td>Arrows when you throw: none straight, left or right hook, down uppercut</td></tr>
+            <tr><td>Go to the body</td><td>Hold the left stick down while you throw</td><td>Hold S while you throw</td></tr>
+            <tr><td>Feet</td><td>Left stick, in and out</td><td>A back, D in</td></tr>
+            <tr><td>High guard / low guard</td><td>L1 / R1. Both is the shell</td><td>E / U. Both is the shell</td></tr>
+            <tr><td>Slip</td><td>Flick the right stick and let go, or press Circle</td><td>Space</td></tr>
+            <tr><td>Switch stance</td><td>Click the left stick</td><td>Q</td></tr>
+            <tr><td>Pause</td><td>Options</td><td>P or Esc</td></tr>
+          </tbody>
+        </table></div>
+      </details>
+      <p class="fine">Stick drifting? Raise the deadzone in the settings on the <a href="../">games page</a>.</p>
+    </section>
+
+    <footer>
+      <span>© 2026 Jaymz</span>
+      <span>source viewable, not reusable (<a href="https://github.com/ag0nyy-ops/ag0nyy-ops.github.io">code and licence</a>)</span>
+    </footer>
+  </div>
+  <script type="module" src="game.js?v=3"></script>
 </body>
 </html>
