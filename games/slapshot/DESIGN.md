@@ -15,6 +15,9 @@ Top-down 3-on-3 arcade hockey with computer goalies. **These controls are a prop
 | Body check | L1 | Q |
 | Poke check | A quick push of the right stick at the puck | Tap an arrow at the puck, or click |
 | Switch player | Cross / A | Space |
+| Take the fight (when asked) | Squeeze L2 + R2 | Shift + R |
+| Punch | L2 left hand, R2 right hand; pull depth is power | Q jab, E heavy |
+| Lean away | Left stick away from him | A or D, away from him |
 | Pause | Options / Start | P or Esc |
 
 ## How it plays
@@ -25,6 +28,25 @@ Top-down 3-on-3 arcade hockey with computer goalies. **These controls are a prop
 - Moving the blade (stickhandling) makes poke checks miss more. A missed check or poke costs you a moment.
 - No stat training and no unlocks: every skater is the same. Three levels (Rookie, Pro, All-Star) change the computer's speed, decisions and goalie. Records are W-L-T per level, saved under `jay.slapshot.v1`.
 - 3 periods of 1 to 4 minutes, sudden-death overtime if tied. Practice mode is you, a puck and a goalie.
+
+## Fights
+
+Jay's five rules (numbers live in `ANGER` and `BIG_HIT` in `sim.js`):
+
+1. Anger runs 0 to 100 per skater. Taking a big hit +25, being poked off the puck +10, being scored on while on the ice +15, draining 1 a second. The team's seeded `temper` (0.5x to 1.5x) multiplies every gain.
+2. Only a big hit can start a fight, and only the skater who took it can snap, if he is over 50 (counting that hit's +25).
+3. A computer skater rolls his anger as the odds (75 anger is 75%). A failed roll gives him a 20 s cooldown.
+4. If it's you, you have one second to squeeze both triggers. If a computer skater snaps on you, you get the same prompt, and ignoring it plays on (he cools down for 20 s). Between two computer skaters the other one always accepts.
+5. After a fight both go to 0, there's a faceoff, and there are no more fights that game.
+
+Choices made on top of those rules, open to change:
+
+- A big hit is a check with a closing speed of 180 or more at contact.
+- Drain and cooldown only run while the puck is in play.
+- The fight stops the clock. Both start with full health, punches are slower the harder they're thrown, leaning away dodges, a punch that lands on someone mid-swing counts extra, and it ends when one goes down or after 10 s (more health wins). No penalties.
+- All-Star CPU vs CPU only: both teams go looking for hits, on and off the puck, so most of those games end up with a fight. Normal games use the level's usual hitting.
+- No fights in practice or behind the main menu.
+- The camera eases in on the fight (not with reduced motion). No shake, no flashes.
 
 ## Seeded dummies
 
@@ -46,6 +68,7 @@ Each computer team is a dummy rolled from a fresh seed with `makeDummy` from `..
 | forecheck | 0–1 | how high the third skater sits: pressure or guard the slot |
 | chase | 80–150 | how close a second skater must be to join a loose-puck chase |
 | depth | 0.8–1.2 | how far its goalie plays out of the net |
+| temper | 0.5–1.5 | how fast its skaters get angry |
 
 Styles, first match wins: `hit > 1.32` enforcer, `slap > 0.58` cannon, `pass > 1.15` playmaker, `dangle > 1.25` dangler, else two way. In a normal game your AI teammates play with your team's roll, and the CPU's style and seed tag show top right (`cpu: cannon, seed 3F2A`) and on the pause menu.
 

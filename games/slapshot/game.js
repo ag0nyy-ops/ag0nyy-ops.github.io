@@ -1,20 +1,23 @@
 /* jay. — © 2026 Jay — source viewable, not reusable by others (LICENSE)
    Slapshot: 3-on-3 arcade hockey. The left stick skates, the right stick is your hockey stick.
    Hold the stick back to wind up and flick it forward to shoot: a short wind-up is a quick wrist
-   shot, a long one is a slapshot that is harder but easier to read. No stat training: every
-   skater is the same, so the only thing that gets better is you. */
+   shot, a long one is a slapshot that is harder but easier to read. Big hits make skaters angry, and
+   once a game one of them can drop the gloves: squeeze both triggers to take him on. No stat
+   training: every skater is the same, so the only thing that gets better is you. */
 
 import { Input } from '../shared/input.js';
 import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
 import * as look from '../shared/look.js';
 import { dummyLabel } from '../shared/seed.js';
-import { Game, LEVELS, RINK, SK, PUCK_R, WRIST_MAX, SLAP_FULL, blankCmd } from './sim.js';
+import { Game, LEVELS, RINK, SK, PUCK_R, WRIST_MAX, SLAP_FULL, ANGER, FIGHT, blankCmd } from './sim.js?v=4';
 
 const SAVE = 'jay.slapshot.v1';
 const LENGTHS = [60, 120, 180, 240];   // period length options, seconds
 const LOAD = 0.14;                     // hold the stick back this long and the shot is loaded
 const FLICK_WINDOW = 0.25;             // after letting go, this long to flick it forward
 const WATCH_NEXT = 6;                  // CPU vs CPU: seconds the result shows before the next match
+const FIGHT_ZOOM = 2.6;                // how close the camera comes in on a fight (not with reduced motion)
+const SWING_READ = 0.09;               // a punch's power is how deep the trigger got in this long
 
 const input = new Input({
   UP: ['KeyW'], DOWN: ['KeyS'], LEFT: ['KeyA'], RIGHT: ['KeyD'],
@@ -68,6 +71,13 @@ function sounds(events) {
     else if (e.type === 'steal' || e.type === 'tip') noise(0.03, 0.2, 2000);
     else if (e.type === 'goal') { tone(196, 1.1, 'sawtooth', 0.12); tone(247, 1.1, 'sawtooth', 0.08); }
     else if (e.type === 'whistle' || e.type === 'drop') tone(2100, e.type === 'drop' ? 0.12 : 0.4, 'sine', 0.08);
+    else if (e.type === 'prompt') { tone(520, 0.12, 'square', 0.07); tone(780, 0.22, 'square', 0.05); }
+    else if (e.type === 'letgo') tone(300, 0.12, 'triangle', 0.08, 0.7);
+    else if (e.type === 'fight') { noise(1.1, 0.22, 300); tone(2100, 0.5, 'sine', 0.08); }
+    else if (e.type === 'swing') noise(0.025, 0.05 + 0.05 * e.power, 3000);
+    else if (e.type === 'dodge') noise(0.06, 0.1, 2500);
+    else if (e.type === 'punch') { noise(0.07, 0.22 + 0.35 * e.power, 150); tone(130 - 50 * e.power, 0.11, 'sine', 0.16 + 0.26 * e.power, 0.55); }
+    else if (e.type === 'knockout') { tone(70, 0.5, 'sine', 0.42, 0.5); noise(0.7, 0.34, 200); }
   }
 }
 
@@ -144,7 +154,7 @@ const teamName = (g, t) => (g.watch ? (t === 0 ? 'Dummy A' : 'Dummy B') : t === 
 const seedLine = (g, t) => dummyLabel(g.watch ? (t === 0 ? 'dummy a' : 'dummy b') : t === 0 ? 'your line' : 'cpu', g.dummies[t]);
 
 function mainMenu() {
-  mode = 'menu'; demo = reducedMotion() ? null : new Game({ level: 'pro', watch: true, periodLen: 9999 });
+  mode = 'menu'; demo = reducedMotion() ? null : new Game({ level: 'pro', watch: true, periodLen: 9999, noFights: true });
   const lv = LEVELS.map((l) => `<button class="btn" data-go="play" data-arg="${l.id}">Play: ${l.name} <small>${recText(data.rec[l.id])}</small></button>`).join('');
   show(`<p class="label">Game file / Hockey / 3 on 3</p><h1 class="title">Slapshot</h1>
     <div class="menu">${lv}<button class="btn" data-go="watch">CPU vs CPU <small>watch two dummies</small></button>
@@ -167,6 +177,9 @@ function controls(from) {
     <tr><td>Body check</td><td>L1</td><td>Q</td></tr>
     <tr><td>Poke check</td><td>Right stick: a quick push at the puck</td><td>Tap an arrow toward the puck, or click</td></tr>
     <tr><td>Switch player</td><td>Cross / A</td><td>Space</td></tr>
+    <tr><td>Take the fight</td><td>Squeeze L2 + R2 when asked</td><td>Shift + R</td></tr>
+    <tr><td>Punch</td><td>L2 and R2 are your hands. Pull deeper to hit harder</td><td>Q jab, E heavy</td></tr>
+    <tr><td>Lean away</td><td>Left stick away from him</td><td>A or D, away from him</td></tr>
     <tr><td>Pause</td><td>Options / Start</td><td>P or Esc</td></tr></tbody></table>
     <ul class="blurbs">
       <li><b>Wrist shot:</b> a short wind-up, under ${WRIST_MAX.toFixed(1)} s. Quick and accurate, the goalie barely sees it coming.</li>
@@ -175,6 +188,8 @@ function controls(from) {
       <li><b>One-timer:</b> wind up before a pass reaches you and flick as it arrives.</li>
       <li><b>Stickhandling:</b> keep the blade moving and poke checks miss more often. Hold the puck on the far side of your body from a defender.</li>
       <li><b>Checks:</b> land one and they drop the puck. Miss and you stumble for a moment.</li>
+      <li><b>Anger:</b> taking a big hit, getting poked off the puck and being scored on fill it. It drains on its own, and every team has its own temper.</li>
+      <li><b>Fights:</b> only a big hit starts one, and only if the skater who took it is over half angry. You get ${ANGER.prompt} s to answer. Ignore it to play on. One fight a game.</li>
       <li><b>Goalies</b> slide late on quick shots. Pass across the crease and shoot before they get there.</li>
     </ul>
     <p class="hint">Stick drifting? Raise the deadzone in the games settings on the <a href="../">games page</a>. Colour-vision modes are there too.</p>
@@ -189,7 +204,7 @@ let game = null, demo = null, gameOpts = null, endT = 0, nextT = 0;
 function newGame(opts) {
   gameOpts = opts;
   game = new Game({ ...opts, humanIdx: opts.watch ? -1 : 0 });
-  gesture.reset(); pending = null;
+  gesture.reset(); pending = null; resetSwings(); cam.z = 1; hits.length = 0; downT = 0;
   mode = 'play'; hide(); endT = 0; nextT = 0;
 }
 const watchGame = () => newGame({ level: data.watchLevel, periodLen: data.periodLen, watch: true });
@@ -277,16 +292,42 @@ function humanCommand(dt) {
     else { c.windup = Math.max(c.windup, 0.05); }
   }
   if (input.pressed('RB')) c.pass = { dx: s.lx, dy: s.ly, saucer: false };
-  if (input.pressed('RT')) c.pass = { dx: s.lx, dy: s.ly, saucer: true };
+  // while you're being asked to fight, the triggers answer that and R2 does not pass
+  if (game.prompt) c.squeeze = s.lt > 0.5 && s.rt > 0.5;
+  else if (input.pressed('RT')) c.pass = { dx: s.lx, dy: s.ly, saucer: true };
   if (input.pressed('LB')) c.check = true;
   if (input.pressed('A') && game.switchPlayer()) { gesture.reset(); pending = null; }
+  return c;
+}
+
+/* ---------------- your fists ---------------- */
+let swings, leanHeld = true;
+/* a trigger has to come back up before it throws again, so the squeeze that took the fight is not a punch */
+function resetSwings() { swings = [0, 1].map(() => ({ armed: false, t: -1, peak: 0 })); leanHeld = true; }
+resetSwings();
+function fightCommand(dt) {
+  const s = input.state, c = blankCmd(), me = game.fight.f.find((m) => m.s === game.human);
+  if (!me) return c;
+  swings.forEach((w, hand) => {
+    const v = hand ? s.rt : s.lt;
+    if (w.t < 0 && w.armed && v > 0.15) { w.t = 0; w.peak = v; w.armed = false; }
+    if (w.t >= 0) {
+      w.t += dt; w.peak = Math.max(w.peak, v);
+      if (w.t >= SWING_READ || v < w.peak - 0.1) { c.punch = { hand, power: w.peak }; w.t = -1; }
+    }
+    if (v < 0.1) w.armed = true;
+  });
+  if (input.pressed('LB')) c.punch = { hand: 0, power: 0.35 };
+  if (input.pressed('RB')) c.punch = { hand: 1, power: 1 };
+  const away = s.lx * me.side > 0.6;
+  c.lean = away && !leanHeld; leanHeld = away;
   return c;
 }
 
 function update(dt) {
   input.poll();
   if (mode !== 'play') {
-    if (demo && mode === 'menu') { demo.step(dt); if (demo.over || demo.t > 240) demo = new Game({ level: 'pro', watch: true, periodLen: 9999 }); }
+    if (demo && mode === 'menu') { demo.step(dt); if (demo.over || demo.t > 240) demo = new Game({ level: 'pro', watch: true, periodLen: 9999, noFights: true }); }
     if (mode === 'results' && game && game.watch && nextT > 0) { // CPU vs CPU rolls on by itself
       nextT -= dt; const el = overlay.querySelector('#next'); if (el) el.textContent = String(Math.max(0, Math.ceil(nextT)));
       if (nextT <= 0) return watchGame();
@@ -300,10 +341,12 @@ function update(dt) {
     return;
   }
   const h = game.human;
-  h.cmd = humanCommand(dt);
+  if (game.fight) { h.cmd = fightCommand(dt); gesture.reset(); pending = null; mouse.click = mouse.rclick = false; mouse.release = null; }
+  else { h.cmd = humanCommand(dt); resetSwings(); }
   game.step(dt);
   // a pass to a teammate of yours hands you control of them when it arrives
-  for (const e of game.events) if (e.type === 'pickup' && e.s.team === 0 && !e.s.human && e.intended) { game.setHuman(e.s); gesture.reset(); pending = null; }
+  // (not while you're being asked to fight: the question is for the skater you're on)
+  for (const e of game.events) if (e.type === 'pickup' && e.s.team === 0 && !e.s.human && e.intended && !game.prompt) { game.setHuman(e.s); gesture.reset(); pending = null; }
   sounds(game.events);
   if (game.over) { endT += dt; if (endT > (game.phase === 'goal' ? 2.4 : 0.6)) results(); }
 }
@@ -325,7 +368,10 @@ addEventListener('blur', () => { if (mode === 'play') pause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play') pause(); });
 
 /* ---------------- drawing ---------------- */
-let W = 0, H = 0, dpr = 1, sc = 1, ox = 0, oy = 0;
+let W = 0, H = 0, dpr = 1, sc = 1, ox = 0, oy = 0, base = null;
+const cam = { z: 1, x: 0, y: 0 };
+const hits = [];     // punches that landed, for the little ring where they hit
+let downT = 0;
 const TOP = 26, BOTTOM = 12, BOARDS = 9;   // the boards stand this far outside the ice, in rink units
 function resize() {
   ({ W, H, dpr } = look.fit(canvas));
@@ -334,8 +380,20 @@ function resize() {
   // spare height goes mostly above the rink, so the crowd has room behind the far boards
   const free = Math.max(0, H - TOP - BOTTOM - by * 2 * sc);
   ox = W / 2; oy = TOP + free * 0.7 + by * sc;
+  base = { sc, ox, oy };
 }
 look.watch(canvas, resize); resize();
+/* the camera eases in on a fight and back out again: one slow move each way, no shake */
+function camera(g, dt) {
+  const F = g && g.fight, want = F && !reducedMotion() ? FIGHT_ZOOM : 1;
+  if (F) { cam.x = F.cx; cam.y = F.cy; }
+  cam.z += (want - cam.z) * (1 - Math.exp(-3.2 * dt));
+  if (Math.abs(cam.z - want) < 0.002) cam.z = want;
+  const k = (cam.z - 1) / (FIGHT_ZOOM - 1);
+  sc = base.sc * cam.z;
+  ox = base.ox + (W / 2 - cam.x * sc - base.ox) * k;
+  oy = base.oy + (H * 0.56 - cam.y * sc - base.oy) * k;
+}
 const X = (x) => ox + x * sc, Y = (y) => oy + y * sc;
 /* the pointer gives page coordinates; the canvas now sits inside the stage, so take its box off first */
 function toWorld(px, py) { const r = canvas.getBoundingClientRect(); return [(px - r.left - ox) / sc, (py - r.top - oy) / sc]; }
@@ -451,6 +509,111 @@ function drawSkater(s, calm, dim) {
   ctx.fillText(String(s.num), x, y + 0.5);
   ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
 }
+/* a fighter: no stick, two fists with the team band at the wrist */
+const ease = (u) => u * u * (3 - 2 * u);
+function reach(m, hand) {
+  const p = m.punch;
+  if (p && p.hand === hand) {
+    const u = Math.min(1, p.t / p.dur), back = -0.45 * p.power;   // a big one is drawn back further first
+    return u < 0.4 ? back * ease(u / 0.4) : back + (1 - back) * ease((u - 0.4) / 0.6);
+  }
+  return !p && m.last === hand && m.rest > 0 ? m.rest / 0.16 : 0;
+}
+function drawFighter(m, F) {
+  const s = m.s, x = X(s.x), y = Y(s.y), r = SK.r * sc, T = look.team(s.team);
+  const fall = s.down ? ease(Math.min(1, F.overT / 0.45)) : 0;
+  const face = -m.side;
+  if (!fall) for (const hand of [0, 1]) {
+    const lat = (hand ? 1 : -1) * face, e = reach(m, hand);
+    const gx = 11, gy = lat * 6, tx = FIGHT.gap - SK.r * 0.9, ty = lat * 1;
+    const fx = x + face * (gx + (tx - gx) * e) * sc, fy = y + (gy + (ty - gy) * Math.max(0, e)) * sc;
+    const sx = x + face * 2.5 * sc, sy = y + lat * 6.5 * sc;
+    look.strokeLimb(ctx, () => { ctx.moveTo(sx, sy); ctx.lineTo(fx, fy); }, Math.max(3, 3.4 * sc), T, T.suit);
+    look.band(ctx, sx + (fx - sx) * 0.72, sy + (fy - sy) * 0.72, Math.max(2.2, 2.4 * sc), T);
+    look.ball(ctx, fx, fy, Math.max(2.8, 3 * sc), T);
+  }
+  ctx.save(); ctx.translate(x, y);
+  ctx.globalAlpha = 1 - 0.3 * fall;
+  ctx.scale(1 + 0.5 * fall, 1 - 0.28 * fall);
+  body(s.team, 0, 0, r, T);
+  ctx.fillStyle = T.light ? BG : FG; ctx.font = look.mono(Math.max(8, r * 0.95)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(s.num), 0, 0.5); ctx.textBaseline = 'alphabetic';
+  ctx.restore(); ctx.globalAlpha = 1;
+  if (fall) { ctx.setLineDash([3, 3]); ctx.strokeStyle = fg(0.8 * fall); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y, r * 1.85, r * 1.25, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+}
+/* sticks and gloves left on the ice: they slide out as the fight starts */
+function drawGear(F, calm) {
+  const k = calm ? 1 : ease(Math.min(1, F.t / 0.6));
+  for (const m of F.f) {
+    const T = look.team(m.s.team), side = m.side;
+    const at = (dx, dy) => [X(F.cx + side * (8 + dx * k)), Y(F.cy + dy * k)];
+    const [ax, ay] = at(14, 20), [bx, by] = at(38, 27);
+    ctx.globalAlpha = 0.8;
+    look.strokeLimb(ctx, () => { ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(bx + side * 5 * sc, by - 4 * sc); }, Math.max(2, 2.2 * sc), T, T.suit);
+    // two gloves: a mitt with a cuff, lying where they landed
+    [[at(31, -9), 0.7], [at(44, 7), -1.1]].forEach(([[gx, gy], turn]) => {
+      ctx.save(); ctx.translate(gx, gy); ctx.rotate(turn * side * (0.4 + 0.6 * k));
+      const u = Math.max(0.7, sc);
+      ctx.fillStyle = '#242424'; ctx.strokeStyle = fg(0.75); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.roundRect(-3.4 * u, -2.6 * u, 6.2 * u, 5.2 * u, 2.2 * u); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(-5.4 * u, -2.1 * u, 2.2 * u, 4.2 * u, 0.6 * u); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    });
+    ctx.globalAlpha = 1;
+  }
+}
+function drawHealth(F) {
+  const w = 64, h = 6;
+  for (const m of F.f) {
+    const x = X(m.s.x) + m.side * 36 - w / 2, y = Y(m.s.y) - SK.r * sc - 24;
+    ctx.fillStyle = BG; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+    ctx.strokeStyle = fg(0.7); ctx.lineWidth = 1; ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
+    // both bars empty toward the middle
+    const len = w * m.hp / 100; ctx.fillStyle = FG; ctx.fillRect(m.side < 0 ? x : x + w - len, y, len, h);
+    look.tag(ctx, x + w / 2, y - 12, m.s.human ? `you #${m.s.num}` : `#${m.s.num}`, { size: 10, pad: 4 });
+  }
+}
+function drawHits(dt, calm) {
+  for (let i = hits.length - 1; i >= 0; i--) {
+    const h = hits[i]; h.t += dt;
+    if (h.t > 0.3) { hits.splice(i, 1); continue; }
+    if (calm) continue;
+    const u = h.t / 0.3;
+    ctx.strokeStyle = fg(0.55 * (1 - u)); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(X(h.x), Y(h.y), (3 + (4 + 9 * h.power) * u) * sc, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+/* a short bar under anyone angry enough to snap, and under you as soon as there's any */
+function drawAnger(g) {
+  if (g.noFights || g.fought) return;
+  for (const s of g.skaters) {
+    if (!(s.anger > ANGER.snap || (s.human && s.anger >= 1))) continue;
+    const w = Math.max(18, 20 * sc), x = X(s.x) - w / 2, y = Y(s.y) + SK.r * sc + 8;
+    ctx.fillStyle = BG; ctx.fillRect(x - 1, y - 1, w + 2, 5);
+    ctx.fillStyle = s.anger > ANGER.snap ? FG : '#777'; ctx.fillRect(x, y, w * s.anger / ANGER.max, 3);
+    ctx.fillStyle = FG; ctx.fillRect(x + w * ANGER.snap / ANGER.max, y - 2, 1, 7);
+  }
+}
+/* the question: one second, both triggers */
+function drawPrompt(g) {
+  const q = g.prompt; if (!q || !q.me.human) return;
+  const pad = input.lastDevice === 'controller', w = 236, h = 84;
+  const x = Math.max(8, Math.min(W - w - 8, X(q.me.x) - w / 2));
+  let y = Y(q.me.y) - SK.r * sc - h - 30; if (y < 8) y = Y(q.me.y) + SK.r * sc + 22;
+  ctx.fillStyle = 'rgba(4,4,4,.92)'; ctx.fillRect(x, y, w, h); ctx.strokeStyle = FG; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#a9a9a9'; ctx.font = look.mono(10); ctx.fillText((q.theirs ? `#${q.foe.num} wants to go` : `drop them on #${q.foe.num}?`).toUpperCase(), x + w / 2, y + 18);
+  ctx.fillStyle = FG; ctx.font = look.mono(16); ctx.fillText(pad ? 'SQUEEZE L2 + R2' : 'PRESS SHIFT + R', x + w / 2, y + 40);
+  // how far each trigger is in
+  [input.state.lt, input.state.rt].forEach((v, i) => {
+    const bx = x + (i ? w / 2 + 6 : 16), bw = w / 2 - 22;
+    ctx.strokeStyle = fg(0.45); ctx.lineWidth = 1; ctx.strokeRect(bx, y + 52, bw, 9);
+    ctx.fillStyle = FG; ctx.fillRect(bx, y + 52, bw * v, 9);
+  });
+  // time left
+  ctx.fillStyle = '#333'; ctx.fillRect(x + 16, y + 70, w - 32, 4);
+  ctx.fillStyle = FG; ctx.fillRect(x + 16, y + 70, (w - 32) * Math.max(0, q.t / ANGER.prompt), 4);
+}
 function drawYou(s) {
   const x = X(s.x), y = Y(s.y), r = SK.r * sc;
   ctx.strokeStyle = 'rgba(236,236,236,.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 6, 0, Math.PI * 2); ctx.stroke();
@@ -522,14 +685,27 @@ function calls(g) {
     const lg = g.lastGoal; if (lg && !g.practice) small = `${teamName(g, lg.team).toLowerCase()} scored${lg.by && lg.by.team === lg.team ? ` · #${lg.by.num}` : ''}`;
     key = 'goal' + g.score.join();
   } else if (g.phase === 'break') { key = 'break' + g.period + g.msg; big = g.msg; }
+  else if (g.phase === 'fight') {
+    const F = g.fight, [a, b] = F.f;
+    if (F.winner) {
+      key = 'scrap won'; big = `#${F.winner.num} wins`;
+      const side = F.winner.team === 0 ? 'your line takes' : 'cpu takes';
+      small = F.winner === g.human ? 'you take the scrap' : `${g.watch ? `${teamName(g, F.winner.team).toLowerCase()} takes` : side} the scrap`;
+    }
+    else { key = 'scrap'; big = 'Fight'; title = true; small = `#${a.s.num} vs #${b.s.num} · gloves off`; }
+  }
   if (key && key !== shownCall) HUD.call(big, small, title);
   shownCall = key;
   for (const e of g.events) {
     if (e.type === 'goal') look.cheer(0.9);
     else if (e.type === 'hit') look.cheer(0.5);
     else if (e.type === 'post') look.cheer(0.6);
+    else if (e.type === 'fight') look.cheer(0.9);
+    else if (e.type === 'punch') { look.cheer(0.2 + 0.3 * e.power); hits.push({ x: (e.by.x + e.on.x * 2) / 3, y: (e.by.y + e.on.y * 2) / 3, power: e.power, t: 0 }); }
+    else if (e.type === 'knockout') look.cheer(1);
+    else if (e.type === 'letgo') HUD.call('Play on', 'you let it go');
   }
-  HUD.msg(g.ot && g.phase === 'play' ? 'sudden death' : '');
+  HUD.msg(g.phase === 'fight' ? 'the clock is stopped' : g.ot && g.phase === 'play' ? 'sudden death' : '');
 }
 function seeds(g) {
   // seed tags: the CPU team's style and seed, or both dummies when watching
@@ -538,13 +714,19 @@ function seeds(g) {
   lines.reverse().forEach((l, i) => look.tag(ctx, 14, H - 22 - i * 22, l, { size: 10, align: 'left', pad: 4 }));
 }
 function playBar(g) {
+  const pad = input.lastDevice === 'controller', c = (k, t, open) => ({ k, t, open });
+  if (g.fight && g.human && g.fight.f.some((m) => m.s === g.human)) {
+    HUD.bar('fighting', pad ? [c('L2', 'left', true), c('R2', 'right', true), c('L', 'away: lean', true)] : [c('Q', 'jab', true), c('E', 'heavy', true), c('A / D', 'away: lean', true)], pad ? 'pull deeper to hit harder. harder is slower' : 'the heavy one is slower: he can lean off it');
+    return;
+  }
+  if (g.fight) { HUD.bar('fight', [], 'play stops until someone goes down'); return; }
+  if (g.prompt && g.prompt.me.human) { HUD.bar('your call', pad ? [c('L2 + R2', 'fight', true)] : [c('shift + R', 'fight', true)], 'do nothing to play on'); return; }
   if (g.watch) {
-    const pad = input.lastDevice === 'controller';
     HUD.bar('watching', [{ k: pad ? 'options' : 'P / esc', t: 'pause', open: true }], 'two seeded dummies. the next game starts by itself');
     return;
   }
   const h = g.human; if (!h) return;
-  const P = g.puck, hasPuck = P.owner === h, pad = input.lastDevice === 'controller', c = (k, t, open) => ({ k, t, open });
+  const P = g.puck, hasPuck = P.owner === h;
   if (g.phase !== 'play') { HUD.bar(g.phase === 'goal' ? 'goal' : g.phase === 'faceoff' ? 'faceoff' : 'break', [], 'play stops for a moment'); return; }
   if (h.windup > 0 && !pending) {
     const slap = h.windup >= WRIST_MAX;
@@ -565,12 +747,25 @@ function drawGame(g, dim) {
   const calm = reducedMotion();
   drawRink(dim ? null : g);
   for (const gl of g.goalies) if (gl) drawGoalie(gl, dim);
-  for (const s of g.skaters) drawSkater(s, calm, dim);
-  drawPuck(g.puck, calm || dim);
-  if (!dim && g.human) { drawYou(g.human); drawAim(g.human, g.puck); }
+  const F = g.fight, men = F ? F.f.map((m) => m.s) : [];
+  if (F) drawGear(F, calm);
+  for (const s of g.skaters) if (!men.includes(s)) drawSkater(s, calm, dim);
+  if (!F) drawPuck(g.puck, calm || dim);   // the officials have the puck during a fight
+  if (F) {
+    // the one on the ice goes underneath
+    for (const m of [...F.f].sort((a, b) => b.s.down - a.s.down)) drawFighter(m, F);
+    drawHits(frameDt, calm); drawHealth(F);
+    return;
+  }
+  if (dim) return;
+  drawAnger(g);
+  if (g.human) { drawYou(g.human); drawAim(g.human, g.puck); drawPrompt(g); }
 }
+let frameDt = 1 / 60;
 function draw(dt) {
   HUD.tick(dt, input);
+  frameDt = mode === 'paused' ? 0 : dt;
+  camera(mode === 'menu' ? null : game, frameDt);
   look.arena(ctx, W, H, { horizon: horizonY(), dt });
   if (mode === 'menu') { if (demo) drawGame(demo, true); else drawRink(null); board(null); HUD.msg(''); menuBar(); return; }
   if (game) {

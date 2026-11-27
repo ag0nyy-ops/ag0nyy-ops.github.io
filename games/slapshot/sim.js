@@ -40,7 +40,8 @@ export const RANGES = {
   hit: [0.4, 1.6],        // how often it throws body checks, times the level's rate
   forecheck: [0, 1],      // how high the third man sits: high pressures, low guards the slot
   chase: [80, 150],       // how close a second skater has to be to join a loose-puck chase
-  depth: [0.8, 1.2]       // how far its goalie plays out of the net
+  depth: [0.8, 1.2],      // how far its goalie plays out of the net
+  temper: [0.5, 1.5]      // how fast its skaters get angry: multiplies every anger gain
 };
 export const STYLES = [
   ['enforcer', (p) => p.hit > 1.32],
@@ -53,6 +54,15 @@ export const rollTeam = (seed = newSeed()) => makeDummy(seed, RANGES, STYLES, FA
 const HUMAN_POKE = 0.72;
 export const WRIST_MAX = 0.4;   // a wind-up shorter than this is a wrist shot, longer is a slapshot
 export const SLAP_FULL = 1.0;
+
+/* Anger, 0 to 100 per skater. Only a big hit can start a fight, and only the skater who took it
+   can snap, if that puts him over SNAP. A computer skater rolls his anger as the odds; you get
+   PROMPT seconds to squeeze both triggers. One fight a game. */
+export const ANGER = Object.freeze({ max: 100, hit: 25, poked: 10, scored: 15, drain: 1, snap: 50, cool: 20, prompt: 1 });
+export const BIG_HIT = 180;      // closing speed at contact that makes a check a big one
+const WATCH_HITS = 0.4;          // All-Star CPU vs CPU only: both teams go looking for hits,
+const ROUGH = 0.03;              // on and off the puck
+export const FIGHT = Object.freeze({ square: 1.1, gap: 30, ring: 92, limit: 10, after: 2.2 });
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const len = (x, y) => Math.hypot(x, y);
@@ -110,12 +120,13 @@ export class Skater {
     this.stun = 0; this.recover = 0; this.lunge = 0; this.checkCd = 0; this.hitDone = false;
     this.pokeT = 0; this.pokeCd = 0; this.pokeDx = 0; this.pokeDy = 0; this.poked = false;
     this.pickCd = 0; this.windup = 0; this.wdx = 0; this.wdy = 0;
+    this.anger = 0; this.cool = 0; this.down = false;
     this.human = false; this.ai = { next: Math.random() * 0.2, tx: 0, ty: 0, phase: Math.random() * 6, wind: 0, power: 0, sdx: 0, sdy: 0, chase: false };
     this.cmd = blankCmd();
   }
   get blade() { return [this.x + this.bx, this.y + this.by]; }
 }
-export function blankCmd() { return { mx: 0, my: 0, stop: 0, sx: 0, sy: 0, windup: 0, wdx: 0, wdy: 0, shoot: null, poke: null, pass: null, check: false }; }
+export function blankCmd() { return { mx: 0, my: 0, stop: 0, sx: 0, sy: 0, windup: 0, wdx: 0, wdy: 0, shoot: null, poke: null, pass: null, check: false, squeeze: false, punch: null, lean: false }; }
 
 class Goalie {
   constructor(team, lv, depth = 1) {
@@ -136,7 +147,11 @@ export class Game {
     const seeds = opts.seeds || [newSeed(), newSeed()];
     this.dummies = [rollTeam(seeds[0]), rollTeam(seeds[1])];
     // in CPU vs CPU both teams play at the chosen level; otherwise your teammates play at Pro
-    this.ais = [this.watch ? this.level.ai : TEAMMATE_AI, this.level.ai];
+    const rough = this.watch && this.level.id === 'allstar';
+    const cpuAi = rough ? { ...this.level.ai, check: WATCH_HITS, rough: (opts.rough ?? ROUGH) } : this.level.ai;
+    this.ais = [this.watch ? cpuAi : TEAMMATE_AI, cpuAi];
+    // fights: not in practice, and one a game
+    this.noFights = this.practice || !!opts.noFights; this.fought = false; this.fight = null; this.prompt = null;
     this.periodLen = opts.periodLen || 120; this.periods = opts.periods || 3;
     this.period = 1; this.clock = this.periodLen; this.ot = false;
     this.score = [0, 0]; this.sog = [0, 0]; this.hits = [0, 0];
@@ -161,7 +176,7 @@ export class Game {
 
   /* switch the player you control to the teammate nearest the puck */
   switchPlayer() {
-    const h = this.human; if (!h || this.puck.owner === h) return false;
+    const h = this.human; if (!h || this.puck.owner === h || this.prompt || this.fight) return false;
     const mates = this.team(h.team).filter((s) => s !== h);
     if (!mates.length) return false;
     mates.sort((a, b) => len(a.x - this.puck.x, a.y - this.puck.y) - len(b.x - this.puck.x, b.y - this.puck.y));
@@ -181,8 +196,9 @@ export class Game {
       const [sx, sy] = spots[s.idx] || [-40, 0];
       s.x = s.team === 0 ? sx : -sx; s.y = s.team === 0 ? sy : -sy;
       s.vx = s.vy = 0; s.fx = s.team === 0 ? 1 : -1; s.fy = 0; s.bx = s.fx * SK.reach * 0.75; s.by = 0;
-      s.stun = s.recover = s.lunge = s.pokeT = s.windup = 0; s.pickCd = 0;
+      s.stun = s.recover = s.lunge = s.pokeT = s.windup = 0; s.pickCd = 0; s.down = false;
     }
+    this.prompt = null; this.fight = null;
     for (const g of this.goalies) if (g) { g.x = g.gx + g.out * 10; g.y = 0; g.vx = g.vy = 0; g.hold = 0; }
     if (this.practice) { P.x = -30; P.y = 0; this.phase = 'play'; this.phaseT = 0; return; }
     this.phase = 'faceoff'; this.phaseT = 0;
@@ -197,6 +213,7 @@ export class Game {
       if (this.phaseT > 1.0) { this.phase = 'play'; this.phaseT = 0; P.vx = rnd(-25, 25); P.vy = rnd(-25, 25); this.emit('drop'); }
       else { for (const s of this.skaters) { this.blade(s, s.cmd, dt); } return; }
     }
+    if (this.phase === 'fight') return this.fightStep(dt);
     if (this.phase === 'goal' || this.phase === 'break') {
       // players coast, puck sits in the net
       for (const s of this.skaters) { s.vx *= Math.exp(-2 * dt); s.vy *= Math.exp(-2 * dt); s.x += s.vx * dt; s.y += s.vy * dt; boards(s, SK.r); }
@@ -209,6 +226,8 @@ export class Game {
       this.clock -= dt;
       if (this.clock <= 0) { this.clock = 0; return this.endPeriod(); }
     }
+    for (const s of this.skaters) { s.anger = Math.max(0, s.anger - ANGER.drain * dt); s.cool = Math.max(0, s.cool - dt); }
+    if (this.prompt && this.answer(dt)) return;
     for (const s of this.skaters) if (!s.human) s.cmd = this.think(s, dt);
     for (const s of this.skaters) this.skate(s, s.cmd, dt);
     this.collide();
@@ -218,6 +237,7 @@ export class Game {
   }
 
   endPeriod() {
+    this.prompt = null;
     if (this.ot) { this.over = true; this.emit('end'); return; }
     if (this.period >= this.periods) {
       if (this.score[0] !== this.score[1]) { this.over = true; this.emit('end'); return; }
@@ -351,7 +371,7 @@ export class Game {
   }
 
   collide() {
-    const S = this.skaters, P = this.puck;
+    const S = this.skaters, P = this.puck, landed = [];
     for (let i = 0; i < S.length; i++) for (let j = i + 1; j < S.length; j++) {
       const a = S[i], b = S[j], dx = b.x - a.x, dy = b.y - a.y, d = len(dx, dy), m = SK.r * 2;
       if (d >= m + 1.5 || d === 0) continue;
@@ -361,10 +381,12 @@ export class Game {
         if (hit.lunge > 0 && !hit.hitDone && hit.team !== tgt.team && !tgt.stun) {
           hit.hitDone = true; hit.lunge = 0;
           const pv = len(hit.vx, hit.vy);
+          const impact = ((hit.vx - tgt.vx) * nx + (hit.vy - tgt.vy) * ny) * sgn;
           tgt.stun = 0.85; tgt.vx = nx * sgn * pv * 0.8; tgt.vy = ny * sgn * pv * 0.8; tgt.windup = 0;
           hit.vx *= 0.4; hit.vy *= 0.4;
           if (P.owner === tgt) { P.owner = null; P.vx = tgt.vx + rnd(-70, 70); P.vy = tgt.vy + rnd(-70, 70); tgt.pickCd = 0.6; }
-          this.hits[hit.team]++; this.emit('hit', { by: hit, on: tgt });
+          this.hits[hit.team]++; this.emit('hit', { by: hit, on: tgt, big: impact >= BIG_HIT });
+          landed.push([hit, tgt, impact]);
         }
       }
       if (d < m) {
@@ -373,6 +395,7 @@ export class Game {
         if (rv < 0) { const imp = -rv * 0.6; a.vx -= nx * imp; a.vy -= ny * imp; b.vx += nx * imp; b.vy += ny * imp; }
       }
     }
+    for (const [by, on, impact] of landed) this.landHit(by, on, impact);
   }
 
   /* ---------------- goalies ---------------- */
@@ -475,7 +498,7 @@ export class Game {
           if (P.shot && !P.shot.counted) { this.sog[scorer]++; P.shot.counted = true; }
           const by = P.shot ? P.shot.by : null;
           this.score[scorer]++; this.phase = 'goal'; this.phaseT = 0; P.shot = null;
-          this.msg = 'Goal'; this.lastGoal = { team: scorer, by };
+          this.msg = 'Goal'; this.lastGoal = { team: scorer, by }; this.prompt = null; this.scoredOn(1 - scorer);
           this.emit('goal', { team: scorer, by });
           if (this.ot && !this.practice) { this.over = true; this.emit('end'); }
           return true;
@@ -561,12 +584,142 @@ export class Game {
         const p = skill * (1 - Math.min(0.6, o.handle / 450));
         if (Math.random() < p) {
           P.owner = null; P.vx = s.pokeDx * 170 + o.vx * 0.5 + rnd(-30, 30); P.vy = s.pokeDy * 170 + o.vy * 0.5 + rnd(-30, 30);
-          o.pickCd = 0.45; this.emit('steal', { s, from: o });
+          o.pickCd = 0.45; this.gain(o, ANGER.poked); this.emit('steal', { s, from: o });
         } else { s.recover = 0.25; s.pokeCd = 0.8; this.emit('whiff', { s }); }
       } else {
         P.vx = P.vx * 0.3 + s.pokeDx * 160; P.vy = P.vy * 0.3 + s.pokeDy * 160; P.shot = null; P.passTo = null; P.air = 0; P.z = 0;
       }
     }
+  }
+
+  /* ---------------- anger and fights ---------------- */
+  gain(s, pts) {
+    if (this.fought || this.practice) return;
+    s.anger = Math.min(ANGER.max, s.anger + pts * this.dummies[s.team].p.temper);
+  }
+  scoredOn(team) { for (const s of this.team(team)) this.gain(s, ANGER.scored); }
+  /* a check that landed: a big one makes him angry, and may make him snap */
+  landHit(by, on, impact) {
+    if (impact < BIG_HIT) return;
+    this.gain(on, ANGER.hit);
+    this.snap(on, by);
+  }
+  snap(me, foe) {
+    if (this.noFights || this.fought || this.prompt || this.phase !== 'play' || me.anger <= ANGER.snap) return;
+    if (me.human) { this.ask(me, foe, false); return; }
+    if (me.cool > 0) return;
+    if (this.dummies[me.team].R() >= me.anger / ANGER.max) { me.cool = ANGER.cool; return; }
+    // he wants it. you get asked; another computer skater always accepts
+    if (foe.human) { me.cool = ANGER.cool; this.ask(foe, me, true); } else this.startFight(me, foe);
+  }
+  ask(me, foe, theirs) { this.prompt = { me, foe, theirs, t: ANGER.prompt }; this.emit('prompt', { me, foe, theirs }); }
+  /* squeeze both triggers in time to fight; let it run out to play on */
+  answer(dt) {
+    const q = this.prompt;
+    if (q.me.human && q.me.cmd.squeeze) { q.me.cmd.squeeze = false; this.startFight(q.theirs ? q.foe : q.me, q.theirs ? q.me : q.foe); return true; }
+    q.t -= dt;
+    if (q.t <= 0) { this.prompt = null; this.emit('letgo'); }
+    return false;
+  }
+  startFight(a, b) {
+    this.prompt = null; this.fought = true; this.phase = 'fight'; this.phaseT = 0; this.msg = 'Fight';
+    const P = this.puck; Object.assign(P, { owner: null, vx: 0, vy: 0, z: 0, air: 0, shot: null, passTo: null });
+    if (this.human && (a === this.human || b === this.human)) this.human.cmd = blankCmd();
+    // they square up where it happened, away from the boards, and everyone else gives them room
+    const cx = clamp((a.x + b.x) / 2, -(HX - 150), HX - 150), cy = clamp((a.y + b.y) / 2, -(HY - 100), HY - 100);
+    const left = a.x <= b.x ? a : b;
+    const man = (s) => ({ s, side: s === left ? -1 : 1, hp: 100, punch: null, cd: 0.25 + 0.35 * this.dummies[s.team].R(), rest: 0, lean: 0, leanCd: 0, hurt: 0, read: null, hand: 0 });
+    const others = this.skaters.filter((s) => s !== a && s !== b).sort((u, v) => Math.atan2(u.y - cy, u.x - cx) - Math.atan2(v.y - cy, v.x - cx));
+    const turn = others.length ? Math.atan2(others[0].y - cy, others[0].x - cx) : 0;
+    const ring = others.map((s, i) => {
+      const t = turn + (i / others.length) * Math.PI * 2;
+      return { s, x: clamp(cx + Math.cos(t) * FIGHT.ring * 1.35, -(HX - 20), HX - 20), y: clamp(cy + Math.sin(t) * FIGHT.ring * 0.85, -(HY - 20), HY - 20) };
+    });
+    for (const s of this.skaters) { s.windup = 0; s.lunge = 0; s.pokeT = 0; s.spray = 0; }
+    this.fight = { cx, cy, t: 0, f: [man(a), man(b)], ring, winner: null, overT: 0 };
+    this.emit('fight', { a, b });
+  }
+  /* move toward a spot at skating pace: everyone gets there on their skates, nobody jumps */
+  glide(s, x, y, dt, k = 5) {
+    const dx = (x - s.x) * Math.min(1, k * dt), dy = (y - s.y) * Math.min(1, k * dt), d = len(dx, dy), cap = 260 * dt;
+    const m = d > cap ? cap / d : 1;
+    s.vx = dx * m / dt; s.vy = dy * m / dt; s.x += dx * m; s.y += dy * m;
+  }
+  fightStep(dt) {
+    const F = this.fight; F.t += dt;
+    for (const r of F.ring) {
+      this.glide(r.s, r.x, r.y, dt, 3.5); r.s.stun = 0;
+      const [ux, uy] = norm(F.cx - r.s.x, F.cy - r.s.y); r.s.fx = ux; r.s.fy = uy; this.blade(r.s, blankCmd(), dt);
+    }
+    for (const m of F.f) {
+      const s = m.s, jab = m.punch ? 5 * Math.min(1, m.punch.t / m.punch.dur) : 0;
+      m.hurt = Math.max(0, m.hurt - dt); m.rest = Math.max(0, m.rest - dt); m.leanCd = Math.max(0, m.leanCd - dt); m.lean = Math.max(0, m.lean - dt);
+      s.stun = Math.max(0, s.stun - dt);
+      if (!s.down) {
+        const back = (m.lean > 0 ? 11 : 0) + (m.hurt > 0 ? 4 : 0);
+        this.glide(s, F.cx + m.side * (FIGHT.gap / 2 + back - jab / 2), F.cy + Math.sin(F.t * 3.1 + m.side) * 2, dt, 9);
+      } else { s.vx *= Math.exp(-6 * dt); s.vy *= Math.exp(-6 * dt); s.x += s.vx * dt; s.y += s.vy * dt; }
+      s.fx = -m.side; s.fy = 0; s.bx = -m.side * SK.reach * 0.6; s.by = 0;
+    }
+    if (F.winner) {
+      F.overT += dt;
+      if (F.overT >= FIGHT.after) {
+        for (const m of F.f) m.s.anger = 0;
+        this.msg = ''; this.faceoff();
+      }
+    } else if (F.t >= FIGHT.square) {
+      for (let i = 0; i < 2 && !F.winner; i++) this.brawl(F.f[i], F.f[1 - i], dt);
+      if (!F.winner && F.t >= FIGHT.square + FIGHT.limit) { const [m, o] = F.f; this.knockOut(m.hp >= o.hp ? m : o, m.hp >= o.hp ? o : m); }
+    }
+    for (const s of this.skaters) { s.cmd.punch = null; s.cmd.squeeze = false; }
+  }
+  /* one fighter's moment: throw, lean, or wait */
+  brawl(m, o, dt) {
+    const s = m.s, D = this.dummies[s.team], R = D.R;
+    if (m.punch) {
+      const p = m.punch; p.t += dt;
+      if (p.t >= p.dur) { this.land(m, o, p); m.punch = null; m.rest = 0.16; m.last = p.hand; }
+      return;
+    }
+    let want = null;
+    if (s.human) {
+      if (s.cmd.lean && m.leanCd <= 0) { m.lean = 0.35; m.leanCd = 0.75; this.emit('lean', { s }); }
+      if (s.cmd.punch) m.queued = { ...s.cmd.punch, t: 0.2 };
+      if (m.queued) { m.queued.t -= dt; if (m.rest <= 0 && m.lean <= 0) { want = m.queued; m.queued = null; } else if (m.queued.t <= 0) m.queued = null; }
+    } else {
+      // reads the big ones coming, sometimes
+      if (o.punch && m.read !== o.punch && o.punch.t > o.punch.dur * 0.35) {
+        m.read = o.punch;
+        const odds = this.ais[s.team].think < 0.2 ? 0.4 : this.ais[s.team].think < 0.3 ? 0.28 : 0.15;
+        if (o.punch.power > 0.55 && m.leanCd <= 0 && R() < odds) { m.lean = 0.35; m.leanCd = 0.9; this.emit('lean', { s }); }
+      }
+      m.cd -= dt;
+      if (m.cd <= 0 && m.rest <= 0 && m.lean <= 0) {
+        const power = R() < 0.4 ? D.rand(0.7, 1) : D.rand(0.2, 0.65);
+        want = { hand: R() < 0.65 ? 1 - m.hand : m.hand, power };
+        m.cd = D.rand(0.12, 0.5) + 0.2 * power;
+      }
+    }
+    if (want) {
+      const power = clamp(want.power, 0.15, 1);
+      m.hand = want.hand; m.punch = { hand: want.hand, power, t: 0, dur: 0.1 + 0.26 * power };
+      this.emit('swing', { s, power });
+    }
+  }
+  land(m, o, p) {
+    if (o.lean > 0) { this.emit('dodge', { s: o.s }); return; }
+    const counter = !!o.punch && o.punch.t < o.punch.dur;
+    const dmg = (4.5 + 12 * p.power) * (counter ? 1.3 : 1) * (0.85 + 0.3 * this.dummies[m.s.team].R());
+    if (counter && p.power > 0.55) o.punch = null;
+    o.hp = Math.max(0, o.hp - dmg); o.hurt = 0.12 + 0.1 * p.power;
+    this.emit('punch', { by: m.s, on: o.s, power: p.power, counter });
+    if (o.hp <= 0) this.knockOut(m, o);
+  }
+  knockOut(m, o) {
+    const F = this.fight; F.winner = m.s; F.overT = 0; m.punch = o.punch = null;
+    o.s.down = true; o.s.stun = 9; o.s.vx = o.side * 70; o.s.vy = 0;
+    this.msg = `#${m.s.num} wins the scrap`;
+    this.emit('knockout', { by: m.s, on: o.s });
   }
 
   /* ---------------- computer players ---------------- */
@@ -659,6 +812,11 @@ export class Game {
         ai.chase = false;
       }
       if (decide && len(P.x - s.x, P.y - s.y) < SK.reach * 1.5 && len(P.vx, P.vy) > 240 && R() < 0.3) c.poke = { dx: P.x - s.x, dy: P.y - s.y };
+    }
+    // a chippy game: finish any man who is in reach, puck or not
+    if (A.rough && decide && owner !== s && !c.check && !c.poke) {
+      const o = this.nearest(opps, s.x, s.y), d = o ? len(o.x - s.x, o.y - s.y) : 999;
+      if (o && !o.stun && d < 44 && R() < A.rough * p.hit) { c.check = true; s.fx = (o.x - s.x) / (d || 1); s.fy = (o.y - s.y) / (d || 1); }
     }
     // steer: full speed far away, ease in when close
     const dx = tx - s.x, dy = ty - s.y, d = len(dx, dy);
