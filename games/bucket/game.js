@@ -5,6 +5,7 @@
 import { Input } from '../shared/input.js';
 import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
 import * as look from '../shared/look.js';
+import { dummyLabel } from '../shared/seed.js';
 import { COURT, CPU, SHOTS, createMatch, step, cpuIntent, blankIntent, handler, handOdds } from './sim.js';
 
 const SAVE = 'jay.bucket.v1';
@@ -78,6 +79,14 @@ overlay.addEventListener('click', (e) => { const b = e.target.closest('button[da
 
 let mode = 'menu';          // menu | play | paused | over
 let match = null, me = 0;
+let watching = false, nextT = 0;   // CPU vs CPU: both sides are seeded dummies, the next game starts by itself
+const WATCH_NEXT = 6;
+/* who a player is on screen: "dummy a" (or "dummy a2" in team games), "cpu", "cpu 2" */
+function who(m, p) {
+  const n = m.cfg.size > 1 ? String(p.slot + 1) : '';
+  return m.cfg.watch ? `dummy ${p.team === 0 ? 'a' : 'b'}${n}` : `cpu${n ? ' ' + n : ''}`;
+}
+const seedLines = (m, team) => m.players.filter((p) => team == null || p.team === team).map((p) => dummyLabel(who(m, p), p.bot));
 const OPTS = {
   size: { label: 'Mode', vals: [1, 2, 3], show: (v) => `${v} on ${v}` },
   cpu: { label: 'CPU', vals: Object.keys(CPU), show: (v) => CPU[v].name },
@@ -91,13 +100,14 @@ function mainMenu() {
   show(`<p class="label">Game file / Basketball / half court</p><h1 class="title">Bucket</h1>
     <p class="hint">Street rules, half court. Aim the shot with both sticks. No meter, no green line.</p>
     <div class="menu"><button class="btn btn--solid" data-go="setup">Play</button>
+    <button class="btn" data-go="watch-setup">CPU vs CPU <small>watch two dummies</small></button>
     <button class="btn" data-go="practice">Shoot around <small>no defense</small></button>
     <button class="btn" data-go="shooting">How shooting works</button>
     <button class="btn" data-go="controls">Controls</button></div>
     ${rec ? `<h2 class="label">Record</h2><ul class="blurbs">${rec}</ul>` : ''}`);
 }
 function setup() {
-  mode = 'menu';
+  mode = 'menu'; setup.watch = false;
   const row = (k) => `<button class="btn" data-go="opt" data-arg="${k}">${OPTS[k].label} <small>◀ ${OPTS[k].show(data.opts[k])} ▶</small></button>`;
   show(`<p class="label">Play</p><h1 class="title">Run it</h1>
     <div class="menu">${row('size')}${row('cpu')}${row('to')}<button class="btn btn--solid" data-go="start">Check ball</button><button class="btn" data-go="menu">Back</button></div>
@@ -107,9 +117,19 @@ function setup() {
   const i = setup.focus ? menuItems.findIndex((b) => b.dataset.arg === setup.focus) : -1; if (i >= 0) { menuIndex = i; menuItems[i].focus(); }
   setup.focus = null;
 }
+function watchSetup() {
+  mode = 'menu'; setup.watch = true;
+  const row = (k) => `<button class="btn" data-go="opt" data-arg="${k}">${k === 'cpu' ? 'Level' : OPTS[k].label} <small>◀ ${OPTS[k].show(data.opts[k])} ▶</small></button>`;
+  show(`<p class="label">CPU vs CPU</p><h1 class="title">Watch it</h1>
+    <div class="menu">${row('size')}${row('cpu')}${row('to')}<button class="btn btn--solid" data-go="watch">Check ball</button><button class="btn" data-go="menu">Back</button></div>
+    <ul class="blurbs"><li><b>Seeded dummies:</b> every player is rolled from a fresh seed, so no two play alike. The level is how good they are, the seed is how they play.</li>
+    <li><b>Hands off:</b> it plays itself and the next game starts on its own. Options, P or Esc to pause or quit. Watch games don't count on your record.</li></ul>`);
+  const i = setup.focus ? menuItems.findIndex((b) => b.dataset.arg === setup.focus) : -1; if (i >= 0) { menuIndex = i; menuItems[i].focus(); }
+  setup.focus = null;
+}
 function cycle(k, dir = 1) {
   const o = OPTS[k], i = o.vals.indexOf(data.opts[k]);
-  data.opts[k] = o.vals[(i + dir + o.vals.length) % o.vals.length]; persist(); setup.focus = k; setup();
+  data.opts[k] = o.vals[(i + dir + o.vals.length) % o.vals.length]; persist(); setup.focus = k; setup.watch ? watchSetup() : setup();
 }
 function controls() {
   mode = 'menu';
@@ -151,22 +171,27 @@ function shooting() {
     <div class="menu"><button class="btn btn--solid" data-go="practice">Try it in shoot around</button><button class="btn" data-go="menu">Back</button></div>`);
 }
 
-function newMatch(practice) {
+function newMatch(practice, watch = false) {
   const o = data.opts;
-  match = createMatch(practice ? { practice: true, cpu: o.cpu } : { size: o.size, cpu: o.cpu, to: o.to });
-  me = 0; camBlend = 0; fpHold = 0; lastShot = null; result = null;
+  watching = watch && !practice;
+  match = createMatch(practice ? { practice: true, cpu: o.cpu } : { size: o.size, cpu: o.cpu, to: o.to, watch: watching });
+  me = watching ? -1 : 0; camBlend = 0; fpHold = 0; lastShot = null; result = null;
   mode = 'play'; hide();
 }
+const seedList = (lines) => lines.map((l) => `<li>${l}</li>`).join('');
 function pause() {
   mode = 'paused';
   const pr = match.practice;
   const zones = pr ? Object.entries(pr.zones).map(([z, r]) => `<li><b>${z}:</b> ${r.m} of ${r.a}</li>`).join('') : '';
   show(`<p class="label">Paused</p>
-    ${pr ? `<h2 class="label">Shoot around</h2><ul class="blurbs"><li><b>Made:</b> ${pr.made} of ${pr.att}</li>${zones}</ul>` : `<p class="hint">You ${match.score[0]}, CPU ${match.score[1]}. Game to ${match.cfg.to}.</p>`}
-    <div class="menu"><button class="btn btn--solid" data-go="resume">Resume</button><button class="btn" data-go="again">Restart</button><button class="btn" data-go="controls-pause">Controls</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
+    ${pr ? `<h2 class="label">Shoot around</h2><ul class="blurbs"><li><b>Made:</b> ${pr.made} of ${pr.att}</li>${zones}</ul>`
+      : watching ? `<p class="hint">Dummy A ${match.score[0]}, Dummy B ${match.score[1]}. Game to ${match.cfg.to}, ${CPU[match.cfg.cpu].name} level.</p><ul class="blurbs">${seedList(seedLines(match))}</ul>`
+      : `<p class="hint">You ${match.score[0]}, CPU ${match.score[1]}. Game to ${match.cfg.to}.</p><ul class="blurbs">${seedList(seedLines(match, 1))}</ul>`}
+    <div class="menu"><button class="btn btn--solid" data-go="resume">Resume</button><button class="btn" data-go="again">${watching ? 'New game <small>new seeds</small>' : 'Restart'}</button><button class="btn" data-go="controls-pause">Controls</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
 }
 function gameOver() {
   mode = 'over';
+  if (watching) { watchOver(); return; }
   const won = match.winner === 0, k = recKey(match.cfg);
   const r = data.record[k] || (data.record[k] = { w: 0, l: 0 }); won ? r.w++ : r.l++; persist();
   if (won) SFX.win();
@@ -174,9 +199,20 @@ function gameOver() {
     <p class="hint">${match.score[0]} to ${match.score[1]}. ${match.cfg.size} on ${match.cfg.size}, ${CPU[match.cfg.cpu].name} CPU. You are ${r.w} and ${r.l} at this setting.</p>
     <div class="menu"><button class="btn btn--solid" data-go="again">Run it back</button><button class="btn" data-go="setup">Change it up</button><button class="btn" data-go="menu">Menu</button></div>`);
 }
+function watchOver() {
+  nextT = WATCH_NEXT;
+  const a = match.winner === 0;
+  show(`<p class="label">Final / game to ${match.cfg.to} / CPU vs CPU</p><h1 class="title">Dummy ${a ? 'A' : 'B'} wins</h1>
+    <p class="hint">${match.score[0]} to ${match.score[1]}. ${match.cfg.size} on ${match.cfg.size}, ${CPU[match.cfg.cpu].name} level. <span id="next">Next game in ${WATCH_NEXT}</span>.</p>
+    <ul class="blurbs">${seedList(seedLines(match))}</ul>
+    <div class="menu"><button class="btn btn--solid" data-go="watch">Next game now</button><button class="btn" data-go="watch-setup">Change it up</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
+}
 function go(what, arg) {
   audio();
+  if (what !== 'watch') watching = what === 'resume' || what === 'pause' || what === 'controls-pause' || what === 'again' ? watching : false;
   if (what === 'menu') mainMenu();
+  else if (what === 'watch-setup') watchSetup();
+  else if (what === 'watch') newMatch(false, true);
   else if (what === 'setup') setup();
   else if (what === 'opt') cycle(arg, 1);
   else if (what === 'controls') controls();
@@ -185,7 +221,7 @@ function go(what, arg) {
   else if (what === 'shooting') shooting();
   else if (what === 'start') newMatch(false);
   else if (what === 'practice') newMatch(true);
-  else if (what === 'again') newMatch(!!(match && match.practice));
+  else if (what === 'again') newMatch(!!(match && match.practice), watching);
   else if (what === 'resume') { mode = 'play'; hide(); }
 }
 function menuInput() {
@@ -199,7 +235,7 @@ function menuInput() {
   if (input.pressed('A') || input.pressed('X')) { const b = menuItems[menuIndex]; if (b) b.click(); return; }
   if (input.pressed('B') || input.pressed('START')) {
     if (mode === 'paused') { const back = menuItems.find((b) => b.dataset.go === 'pause'); back ? back.click() : go('resume'); }
-    else { const back = menuItems.find((b) => b.dataset.go === 'menu' && b.textContent === 'Back'); if (back) back.click(); }
+    else if (mode !== 'over') { const back = menuItems.find((b) => b.dataset.go === 'menu' && b.textContent === 'Back'); if (back) back.click(); }
   }
 }
 
@@ -486,7 +522,7 @@ function figure(m, p, pal, fp) {
     look.ball(ctx, hd[0], hd[1], r, T, T.skin);
     // labels: YOU over yours, numbers in team games
     if (!fp) {
-      const label = isMe ? 'YOU' : m.cfg.size > 1 || m.practice ? '' : 'CPU';
+      const label = isMe ? 'YOU' : m.cfg.watch ? (p.team === 0 ? 'A' : 'B') + (m.cfg.size > 1 ? p.slot + 1 : '') : m.cfg.size > 1 || m.practice ? '' : 'CPU';
       const ty = hd[1] - r - 13;
       if (label) look.tag(ctx, hd[0], ty, label, { size: 10, pad: 4 });
       else if (m.cfg.size > 1) look.tag(ctx, hd[0], ty, String(p.slot + 1), { size: 10, pad: 4 });
@@ -503,23 +539,30 @@ function board(m) {
     HUD.board({ a: { name: 'shoot around', sub: 'made', score: m.practice.made }, b: { name: 'no defense', sub: 'shots', score: m.practice.att }, clock: '--' });
     return;
   }
-  const live = m.phase !== 'dead';
+  const live = m.phase !== 'dead', w = m.cfg.watch;
   HUD.board({
-    a: { name: 'you', sub: `${look.bandWord(0)} · to ${m.cfg.to}`, score: m.score[0], has: live && m.poss === 0 },
-    b: { name: 'cpu', sub: `${look.bandWord(1)} · ${CPU[m.cfg.cpu].name}`, score: m.score[1], has: live && m.poss === 1 },
+    a: { name: w ? 'dummy a' : 'you', sub: `${look.bandWord(0)} · to ${m.cfg.to}`, score: m.score[0], has: live && m.poss === 0 },
+    b: { name: w ? 'dummy b' : 'cpu', sub: `${look.bandWord(1)} · ${CPU[m.cfg.cpu].name}`, score: m.score[1], has: live && m.poss === 1 },
     clock: Math.max(0, Math.ceil(m.clock)), low: m.clock < 5
   });
 }
+/* the seeds, bottom left of the stage: every dummy in CPU vs CPU, the CPU side in a normal game */
+function seeds(m) {
+  if (m.practice || W < 520) return;
+  seedLines(m, m.cfg.watch ? null : 1).reverse().forEach((l, i) => look.tag(ctx, 14, H - 22 - i * 22, l, { size: 10, align: 'left', pad: 4 }));
+}
 function hud(m, pal) {
   board(m);
+  seeds(m);
   // the big call, stamped in when it changes
   if (m.msg && m.msgT > 0 && (m.msg !== shownMsg || m.msgT > shownT + 0.05)) HUD.call(m.msg);
   shownMsg = m.msgT > 0 ? m.msg : ''; shownT = m.msgT;
-  HUD.msg(!m.cleared && m.poss === 0 && m.phase === 'live' && handler(m)?.team === 0 ? 'take it back past the arc' : '');
+  HUD.msg(!m.cfg.watch && !m.cleared && m.poss === 0 && m.phase === 'live' && handler(m)?.team === 0 ? 'take it back past the arc' : '');
   // what the buttons do right now
   const pad = input.lastDevice === 'controller', h = handler(m);
   const c = (k, t, open) => ({ k, t, open });
-  if (m.practice) HUD.bar('shoot around', pad ? [c('□', 'hold to rise, let go to shoot', true), c('L', 'guide hand'), c('R', 'shooting hand')] : [c('space', 'hold to rise, let go to shoot', true), c('wasd', 'guide hand'), c('arrows', 'shooting hand')], 'no defense. aim with both hands');
+  if (m.cfg.watch) HUD.bar('watching', [c(pad ? 'options' : 'P / esc', 'pause', true)], 'two seeded dummies. the next game starts by itself');
+  else if (m.practice) HUD.bar('shoot around', pad ? [c('□', 'hold to rise, let go to shoot', true), c('L', 'guide hand'), c('R', 'shooting hand')] : [c('space', 'hold to rise, let go to shoot', true), c('wasd', 'guide hand'), c('arrows', 'shooting hand')], 'no defense. aim with both hands');
   else if (h && h.id === me) HUD.bar('on the ball', pad ? [c('□', 'shoot', true), c('R', 'flick: moves'), c('R1', 'pass'), c('L1', 'screen')] : [c('space', 'shoot', true), c('arrows', 'moves'), c('E', 'pass'), c('Q', 'screen')], m.cleared ? 'twos inside, threes outside' : 'take it back past the arc first');
   else if (m.poss !== 0 && m.ball.mode === 'held') HUD.bar('defense', pad ? [c('R↑', 'hands up'), c('□', 'jump'), c('R1', 'steal'), c('L1', 'switch')] : [c('↑', 'hands up'), c('space', 'jump'), c('E', 'steal'), c('Q', 'switch')], 'hands up slows you down');
   else HUD.bar('loose ball', pad ? [c('□', 'jump for the board', true), c('R1', 'call for it')] : [c('space', 'jump for the board', true), c('E', 'call for it')]);
@@ -565,11 +608,16 @@ function idle() {
 let last = performance.now(), dribbleT = 0;
 function update(dt) {
   input.poll();
+  if (mode === 'over' && watching) {
+    nextT -= dt; const el = overlay.querySelector('#next');
+    if (el) el.textContent = `Next game in ${Math.max(1, Math.ceil(nextT))}`;
+    if (nextT <= 0) { newMatch(false, true); return; }
+  }
   if (mode !== 'play') { menuInput(); return; }
   if (input.pressed('START') || input.pressed('B')) { pause(); return; }
   const m = match;
-  const hit = humanIntent(m);
-  pickControl(m, hit);
+  const hit = watching ? null : humanIntent(m);   // in CPU vs CPU the pad only pauses
+  if (!watching) pickControl(m, hit);
   for (const p of m.players) p.human = p.id === me;
   const intents = {};
   const wdt = dt * m.timeScale;
@@ -579,7 +627,7 @@ function update(dt) {
   if (fpHold > 0) fpHold -= dt;
   // dribble sound while someone has it on the move
   const h = handler(m);
-  if (h && !m.shot && m.phase === 'live' && Math.hypot(h.vx, h.vy) > 1) { dribbleT -= dt; if (dribbleT <= 0) { dribbleT = 0.48; if (h.team === 0) SFX.dribble(); } }
+  if (h && !m.shot && m.phase === 'live' && Math.hypot(h.vx, h.vy) > 1) { dribbleT -= dt; if (dribbleT <= 0) { dribbleT = 0.48; if (h.team === 0 || watching) SFX.dribble(); } }
   if (m.phase === 'over' && mode === 'play') gameOver();
 }
 function humanIntent2(it, m) { return it.call === 'switch' ? { ...it, call: false } : it; }
