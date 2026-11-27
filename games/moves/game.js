@@ -5,9 +5,10 @@
 
 import { Input } from '../shared/input.js';
 import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
+import { makeDummy, newSeed, dummyLabel } from '../shared/seed.js';
 import {
-  FLOOR, VMAX, HURDLE, WINDOW, REBOUND, TAU, STEP_AT, clamp, classifyFlick, punchQuality,
-  Flight, touchdown, Balance, judgeSkill, landingDeductions, scoreRoutine, REQUIREMENTS, fmt
+  FLOOR, VMAX, HURDLE, TAU, STEP_AT, clamp, scoreRoutine, REQUIREMENTS, fmt, NO_INPUT,
+  Performer, CpuGymnast, DUMMY_RANGES, DUMMY_STYLES, DUMMY_FALLBACK
 } from './sim.js';
 
 const SAVE = 'jay.moves.v1';
@@ -51,21 +52,6 @@ function legsStick() {
   if (kx || ky) { const m = Math.hypot(kx, ky); return { x: kx / m, y: ky / m }; }
   return { x: s.rx, y: s.ry };
 }
-/* A flick: the stick goes from near the middle to well out. The direction is read over the next
-   50 ms so two arrow keys pressed a hair apart still make a diagonal. */
-const flick = { armed: true, at: null, best: null };
-function readFlick(now) {
-  const l = legsStick(), m = Math.hypot(l.x, l.y);
-  if (m < 0.35) { flick.armed = true; if (flick.at == null) return null; }
-  if (flick.at == null && flick.armed && m > 0.7) { flick.at = now; flick.best = { ...l, m }; flick.armed = false; }
-  if (flick.at != null) {
-    if (m >= flick.best.m - 0.01) flick.best = { ...l, m };
-    if (now - flick.at >= 0.05) { const out = { at: flick.at, x: flick.best.x, y: flick.best.y }; flick.at = null; return out; }
-  }
-  return null;
-}
-const resetFlick = () => { const l = legsStick(); flick.armed = Math.hypot(l.x, l.y) < 0.35; flick.at = null; };
-
 /* ---------------- screens (DOM overlay, driven by controller or keyboard) ---------------- */
 const $ = (sel) => document.querySelector(sel);
 const overlay = $('#overlay');
@@ -82,6 +68,7 @@ function hide() { overlay.hidden = true; overlay.innerHTML = ''; menuItems = [];
 overlay.addEventListener('click', (e) => { const b = e.target.closest('button[data-go]'); if (b) go(b.dataset.go, b.dataset.arg); });
 
 let mode = 'menu';          // menu | play | paused | results
+const WATCH_RESULT = 6;     // seconds a CPU vs CPU result stays up before the next match starts
 let game = null;
 
 function mainMenu() {
@@ -92,11 +79,12 @@ function mainMenu() {
       <button class="btn btn--solid" data-go="play" data-arg="routine">Routine${best}</button>
       <button class="btn" data-go="play" data-arg="free">Free floor <small>practice</small></button>
       <button class="btn" data-go="play" data-arg="slow">Free floor <small>half speed</small></button>
+      <button class="btn" data-go="play" data-arg="watch">CPU vs CPU <small>watch</small></button>
       <button class="btn" data-go="skills">Move list</button>
       <button class="btn" data-go="controls">Controls</button>
       <button class="btn" data-go="home">All games</button>
     </div>
-    <p class="hint">A routine is ${PASSES} passes across the floor. Judges score difficulty (D) for what you throw and execution (E) from 10 for how clean it is. Every skill is open from the start.</p>`);
+    <p class="hint">A routine is ${PASSES} passes across the floor. Judges score difficulty (D) for what you throw and execution (E) from 10 for how clean it is. Every skill is open from the start. CPU vs CPU: two seeded dummies take turns, ${PASSES} passes each, best score wins.</p>`);
 }
 
 function controls(back = 'menu') {
@@ -155,10 +143,11 @@ function skills(back = 'menu') {
 
 function pause() {
   mode = 'paused';
-  show(`<p class="label">Paused</p><div class="menu">
+  const seeds = game.dummies ? `<ul class="blurbs">${game.dummies.map((d, i) => `<li>${dummyLabel(NAMES[i], d)}</li>`).join('')}</ul>` : '';
+  show(`<p class="label">Paused${game.kind === 'watch' ? ' / CPU vs CPU' : ''}</p>${seeds}<div class="menu">
     <button class="btn btn--solid" data-go="resume">Resume</button>
-    ${game.kind === 'routine' ? '' : '<button class="btn" data-go="endfree">End practice</button>'}
-    <button class="btn" data-go="restart">Restart</button>
+    ${game.kind === 'free' || game.kind === 'slow' ? '<button class="btn" data-go="endfree">End practice</button>' : ''}
+    <button class="btn" data-go="restart">${game.kind === 'watch' ? 'New match <small>new seeds</small>' : 'Restart'}</button>
     <button class="btn" data-go="pcontrols">Controls</button>
     <button class="btn" data-go="pskills">Move list</button>
     <button class="btn" data-go="menu">Quit to menu</button></div>`);
@@ -179,162 +168,65 @@ function go(what, arg) {
   else if (what === 'endfree') results();
 }
 
-/* ---------------- game state ---------------- */
-function newGame(kind) {
-  game = {
-    kind, slow: kind === 'slow', passes: [], pass: null, phase: 'ready', t: 0,
-    g: { x: 0.6, face: 1, travel: 1, v: 0, runPhase: 0 }, flight: null, td: null, bal: null,
-    hurdleT: 0, armsWasUp: true, legsWasOut: true, callout: null, msg: '', rebound: null, stepCool: 0,
-    stepShift: 0, landT: 0, walkTo: null, presented: 0
+/* ---------------- game state ----------------
+   The body and the pass logic live in sim.js (Performer). A person drives it from the pad here;
+   in CPU vs CPU two seeded dummies (CpuGymnast) drive their own and take turns, pass by pass. */
+const NAMES = ['dummy a', 'dummy b'];
+function sounds(perf) {
+  perf.on = (ev, v) => {
+    if (ev === 'hurdle') tone(330, 0.05, 'triangle', 0.08);
+    else if (ev === 'punch') tone(220 + 300 * v, 0.06, 'triangle', 0.12);
+    else if (ev === 'thud') thud(v);
+    else if (ev === 'finish') tone(520, 0.2, 'sine', 0.08);
   };
-  newPass();
+  return perf;
+}
+function newGame(kind) {
+  const skipWalk = reducedMotion();
+  game = { kind, slow: kind === 'slow', turn: 0, turnStart: 0, resultT: 0, dummies: null, cpus: null };
+  if (kind === 'watch') {
+    // fresh seeds every match, so no two matches tumble alike
+    game.dummies = [0, 1].map(() => makeDummy(newSeed(), DUMMY_RANGES, DUMMY_STYLES, DUMMY_FALLBACK));
+    game.cpus = game.dummies.map((d) => new CpuGymnast(d, PASSES));
+    game.perfs = [0, 1].map(() => sounds(new Performer({ passes: PASSES, skipWalk, maxTries: 3 })));
+  } else game.perfs = [sounds(new Performer({ passes: kind === 'routine' ? PASSES : null, skipWalk }))];
   mode = 'play'; hide();
 }
-function newPass() { game.linkNext = false; game.pass = { skills: [], connections: 0 }; game.phase = 'ready'; game.g.v = 0; resetFlick(); }
-const passNo = () => game.passes.length + 1;
+const active = () => game.perfs[game.turn];
 
 function update(dt) {
   input.poll();
+  if (mode === 'results' && game && game.kind === 'watch') {
+    game.resultT += dt;
+    if (game.resultT >= WATCH_RESULT) return newGame('watch');
+  }
   if (mode !== 'play') return menuInput();
   if (input.pressed('START') || input.pressed('B')) return pause();
+  if (game.kind === 'watch') return watchStep(dt);
   if (game.slow) dt *= 0.5;
-  const G_ = game, g = G_.g, s = input.state, legs = legsStick();
-  G_.t += dt;
-  const armsUp = s.ly < -0.6, armsUpEdge = armsUp && !G_.armsWasUp;
-  G_.armsWasUp = armsUp;
-  const toward = legs.x * g.travel;                      // how hard the legs push toward the far side
-  G_.stepCool = Math.max(0, G_.stepCool - dt);
+  const s = input.state, perf = game.perfs[0];
+  perf.step(dt, { legs: legsStick(), lx: s.lx, ly: s.ly, lt: s.lt, rt: s.rt });
+  if (perf.done) results();
+}
 
-  if (G_.phase === 'ready' || G_.phase === 'run') {
-    if (toward > 0.3 && G_.phase === 'ready') { G_.phase = 'run'; G_.callout = G_.callout && { ...G_.callout, old: true }; }
-    if (G_.phase === 'run') {
-      if (toward > 0.3) g.v += 8.5 * (1 - g.v / VMAX) * Math.min(1, toward) * dt;
-      else g.v = Math.max(0, g.v - 3 * dt);
-      g.x += g.travel * g.v * dt; g.runPhase += g.v * dt * 1.9;
-      const far = g.travel > 0 ? g.x > FLOOR - 0.5 : g.x < 0.5;
-      if (far) return ranOut('Ran out of floor. Hurdle before the far corner.');
-    }
-    if (armsUpEdge) { G_.phase = 'hurdle'; G_.hurdleT = 0; resetFlick(); tone(330, 0.05, 'triangle', 0.08); }
-    return;
+/* CPU vs CPU: the dummy whose turn it is throws one pass, walks back, then the other goes */
+function watchStep(dt) {
+  const i = game.turn, perf = game.perfs[i];
+  perf.step(dt, game.cpus[i].controls(perf, dt));
+  if (perf.passes.length > game.turnStart && (perf.phase === 'ready' || perf.done)) {
+    if (game.perfs.every((p) => p.done)) return results();
+    const o = 1 - i;
+    if (!game.perfs[o].done) game.turn = o;
+    game.turnStart = game.perfs[game.turn].passes.length;
   }
-  if (G_.phase === 'hurdle') {
-    G_.hurdleT += dt;
-    g.x += g.travel * g.v * 0.6 * dt;
-    const f = readFlick(G_.hurdleT);
-    if (f) {
-      const c = classifyFlick(f.x * g.travel, -f.y);
-      if (!c) return ranOut('That flick was straight down. Flick back, forward or up.');
-      return takeoff(c, g.v, punchQuality(f.at - HURDLE));
-    }
-    if (G_.hurdleT > HURDLE + WINDOW + 0.12) return ranOut(G_.legsHeldMsg || 'No takeoff. Let the legs stick go, then flick it as the rings meet.');
-    if (G_.hurdleT < 0.05 && Math.hypot(legs.x, legs.y) > 0.35) G_.legsHeldMsg = 'No takeoff. Let go of the legs stick during the hurdle, then flick it.';
-    return;
-  }
-  if (G_.phase === 'air') {
-    const f = G_.flight;
-    const tuck = s.lt, pike = s.rt, armsIn = Math.max(0, s.ly);
-    const done = f.step(dt, { tuck, pike, armsIn, legs: Math.hypot(legs.x, legs.y), split: legs.x });
-    g.x = f.x;
-    if (done) land();
-    return;
-  }
-  if (G_.phase === 'land') {
-    G_.landT += dt;
-    // connection: flick again right after a salto lands
-    if (G_.rebound && G_.landT < REBOUND.open) {
-      const fl = readFlick(G_.landT);
-      if (fl) {
-        const c = classifyFlick(fl.x * g.travel, -fl.y);
-        const same = c && (c.kind === 'jump' || c.dir === G_.flight.dir);
-        if (same) {
-          const q = punchQuality(fl.at - REBOUND.at, REBOUND.window);
-          const carry = clamp(G_.flight.speed * 0.55 + 3.4 * (1 - Math.min(1, Math.abs(G_.td.e) / 0.35)), 0, VMAX);
-          finishSkill(true);
-          G_.linkNext = true;
-          return takeoff(c, carry, q, true);
-        }
-      }
-    } else if (G_.rebound) { G_.rebound = null; }
-    const u = s.lx;
-    const legsOut = Math.hypot(legs.x, legs.y) > 0.5;
-    const stepped = !G_.rebound && legsOut && !G_.legsWasOut && G_.stepCool <= 0;
-    G_.legsWasOut = legsOut;
-    if (stepped) G_.stepCool = 0.4;
-    const ev = G_.bal.step(dt, u, armsUp, stepped);
-    if (ev === 'step') { G_.stepShift += Math.sign(G_.bal.lam || g.face) * 0.25; g.x += Math.sign(G_.bal.lam || g.face) * 0.25; thud(0.2); }
-    if (ev === 'fall') thud(1);
-    if (G_.bal.done) { finishSkill(false); endPass(); }
-    return;
-  }
-  if (G_.phase === 'walk') {
-    const dir = Math.sign(G_.walkTo - g.x);
-    g.face = dir || g.face; g.v = 2.6;
-    g.x += dir * 2.6 * dt; g.runPhase += 2.6 * dt * 1.9;
-    if (Math.sign(G_.walkTo - g.x) !== dir || reducedMotion()) arrive();
-  }
-}
-
-function ranOut(msg) {
-  const G_ = game; G_.msg = msg; G_.legsHeldMsg = null;
-  walkTo(G_.g.travel > 0 ? 0.6 : FLOOR - 0.6);
-}
-function walkTo(x) { game.phase = 'walk'; game.walkTo = x; game.g.v = 0; }
-function arrive() {
-  const G_ = game, g = G_.g;
-  g.x = G_.walkTo; g.travel = g.x < FLOOR / 2 ? 1 : -1; g.face = g.travel; g.v = 0;
-  if (G_.kind === 'routine' && G_.passes.length >= PASSES) return results();
-  newPass();
-}
-
-function takeoff(c, speed, q, rebound = false) {
-  const G_ = game, g = G_.g;
-  G_.flight = new Flight({ kind: c.kind, dir: c.dir, twist: c.twist, speed, q, travel: g.travel, x: g.x });
-  g.face = c.dir === 'back' ? -g.travel : g.travel;     // a round-off turns you around for back skills
-  G_.phase = 'air'; G_.q = q; G_.msg = ''; G_.legsHeldMsg = null; G_.rebound = null;
-  tone(220 + 300 * q, 0.06, 'triangle', 0.12);
-  if (!rebound) G_.callout = null;
-}
-
-function land() {
-  const G_ = game, f = G_.flight, g = G_.g;
-  const td = touchdown(f);
-  G_.td = td; G_.phase = 'land'; G_.landT = 0; G_.legsWasOut = true; G_.stepShift = 0; G_.landX = g.x;
-  const lamScreen = td.lean * g.face, velScreen = td.leanVel * g.face;
-  G_.bal = new Balance(td.fall ? Math.sign(lamScreen || 1) * 0.9 : lamScreen, velScreen);
-  if (td.fall) { G_.bal.done = true; G_.bal.fell = true; }
-  G_.rebound = f.kind === 'salto' && !td.fall && !td.squat && Math.abs(td.e) < 0.35 ? { open: true } : null;
-  resetFlick();
-  thud(clamp(Math.abs(td.e), 0, 1));
-}
-
-function finishSkill(connected) {
-  const G_ = game, f = G_.flight, td = G_.td;
-  const sk = judgeSkill(f, td);
-  const out = G_.landX < -0.05 || G_.landX > FLOOR + 0.05;
-  const landDed = connected ? landingDeductions({ ...td, squat: false }, null, out).filter(([w]) => w !== 'No finish')
-    : landingDeductions(td, G_.bal, out);
-  sk.ded = [...sk.air, ...landDed];
-  sk.connected = connected; sk.q = G_.q;
-  sk.linked = !!G_.linkNext; G_.linkNext = false;              // rebounded into from the skill before
-  if (sk.linked && sk.recognized) G_.pass.connections++;      // a connection only counts if the second skill does
-  G_.pass.skills.push(sk);
-  G_.callout = { skills: G_.pass.skills.slice(), connections: G_.pass.connections };
-}
-
-function endPass() {
-  const G_ = game, g = G_.g;
-  G_.passes.push(G_.pass);
-  if (G_.bal && G_.bal.shown) tone(520, 0.2, 'sine', 0.08);
-  G_.phase = 'settle'; G_.settleT = 0;
-  setTimeout(() => {
-    if (!game || game !== G_) return;
-    walkTo(g.x > FLOOR / 2 ? FLOOR - 0.6 : 0.6);
-  }, reducedMotion() ? 300 : 700);
 }
 
 function results() {
   const G_ = game;
   mode = 'results';
+  if (G_.kind === 'watch') return watchResults();
+  const perf = G_.perfs[0];
+  G_.passes = perf.passes;
   const sc = scoreRoutine(G_.passes, { requirements: G_.kind === 'routine' });
   let note = '';
   if (G_.kind === 'routine') {
@@ -351,6 +243,20 @@ function results() {
     ${rows ? `<table class="board"><thead><tr><td>Pass</td><td>Skill</td><td>D</td><td>Deductions</td></tr></thead><tbody>${rows}</tbody></table>` : '<p class="hint">No passes thrown.</p>'}
     ${req}
     <div class="menu"><button class="btn btn--solid" data-go="again">Go again</button><button class="btn" data-go="skills">Move list</button><button class="btn" data-go="menu">Menu</button></div>`);
+}
+
+/* a watch result: both scores, the winner, then the next match starts by itself. Nothing is saved. */
+function watchResults() {
+  const G_ = game; G_.resultT = 0;
+  const sc = G_.perfs.map((p) => scoreRoutine(p.passes));
+  const win = sc[0].total === sc[1].total ? -1 : sc[0].total > sc[1].total ? 0 : 1;
+  const rows = G_.perfs.map((p, i) => p.passes.map((ps, k) => ps.skills.map((s, j) => `<tr><td>${j || k ? '' : NAMES[i].slice(-1).toUpperCase()}</td><td>${k + 1}</td><td>${j ? '+ ' : ''}${s.name}${s.recognized ? '' : ' <small>(not counted)</small>'}</td><td>${fmt(s.d)}</td><td>${s.ded.length ? s.ded.map(([w, v]) => `−${fmt(v)} ${w.toLowerCase()}`).join(', ') : 'clean'}</td></tr>`).join('')).join('')).join('');
+  show(`<p class="label">Floor / CPU vs CPU</p>
+    <h1 class="title">${win < 0 ? 'Tie' : `Dummy ${NAMES[win].slice(-1).toUpperCase()} wins`}</h1>
+    <ul class="blurbs">${G_.dummies.map((d, i) => `<li><b>${sc[i].total.toFixed(2)}</b> <small>D ${sc[i].D.toFixed(1)} · E ${sc[i].E.toFixed(2)}</small> ${dummyLabel(NAMES[i], d)}</li>`).join('')}</ul>
+    <p class="hint">Next match with new seeds in a few seconds. Watch games aren't saved.</p>
+    <table class="board"><thead><tr><td></td><td>Pass</td><td>Skill</td><td>D</td><td>Deductions</td></tr></thead><tbody>${rows}</tbody></table>
+    <div class="menu"><button class="btn btn--solid" data-go="again">Next match</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
 }
 
 function menuInput() {
@@ -389,7 +295,17 @@ function draw() {
   drawFloor(v);
   if (!game || mode === 'menu') return;
   const pal = palette();
-  drawGymnast(v, pose(), pal.mark);
+  if (game.kind === 'watch') {
+    // the one waiting stands just off the floor by its corner; letters above the heads, so colour is never the only cue
+    const cols = [pal.home, pal.away];
+    game.perfs.forEach((perf, i) => {
+      if (i === game.turn) return;
+      const p = pose(perf, NO_INPUT); p.x = perf.g.x < FLOOR / 2 ? -0.7 : FLOOR + 0.7; p.face = perf.g.x < FLOOR / 2 ? 1 : -1;
+      drawGymnast(v, p, cols[i], NAMES[i].slice(-1).toUpperCase(), true);
+    });
+    const perf = active();
+    drawGymnast(v, pose(perf, perf.ctl), cols[game.turn], NAMES[game.turn].slice(-1).toUpperCase());
+  } else { const perf = active(); drawGymnast(v, pose(perf, perf.ctl), pal.mark); }
   hud(v, pal);
 }
 
@@ -408,10 +324,10 @@ function drawFloor(v) {
 // body frame: metres, hip at the origin, facing +x, y up
 const THIGH = 0.45, SHIN = 0.45, TORSO = 0.55, UPPER = 0.3, FORE = 0.28, HEAD = 0.11;
 
-function pose() {
-  const G_ = game, g = G_.g, p = { x: g.x, z: 0, ang: 0, face: g.face, sx: 1, tuck: 0, pike: 0, knee: 0.08,
+function pose(G_, ctl) {
+  const g = G_.g, p = { x: g.x, z: 0, ang: 0, face: g.face, sx: 1, tuck: 0, pike: 0, knee: 0.08,
     arm: 0.15, armB: null, elbow: 0.1, legA: 0, legB: 0, grounded: true };
-  if (G_.phase === 'ready' || (G_.phase === 'settle' && !G_.bal) ) return p;
+  if (G_.phase === 'ready' || G_.phase === 'done' || (G_.phase === 'settle' && !G_.bal)) return p;
   if (G_.phase === 'run' || G_.phase === 'walk') {
     const amp = Math.min(1, g.v / 4) * (G_.phase === 'walk' ? 0.4 : 0.85) + 0.05;
     const sw = Math.sin(g.runPhase) * amp;
@@ -442,9 +358,9 @@ function pose() {
     const b = G_.bal, lamFace = b ? b.lam * g.face : 0;
     const fell = b && b.fell;
     const soak = clamp(0.6 - G_.landT * 1.8, 0.08, 0.6);
-    const up = input.state.ly < -0.6 || (b && b.shown);
+    const up = ctl.ly < -0.6 || (b && b.shown);
     Object.assign(p, { ang: fell ? -Math.sign(lamFace || 1) * 1.35 : -lamFace, knee: fell ? 1.6 : soak + Math.abs(lamFace) * 0.8,
-      tuck: G_.td && G_.td.squat && G_.landT < 0.4 ? 0.7 : 0, arm: up ? Math.PI * 0.92 : 1.45 + input.state.lx * g.face * 0.4,
+      tuck: G_.td && G_.td.squat && G_.landT < 0.4 ? 0.7 : 0, arm: up ? Math.PI * 0.92 : 1.45 + ctl.lx * g.face * 0.4,
       elbow: 0.1, legA: fell ? 0.9 : 0.05, legB: fell ? 0.6 : -0.05 });
     if (fell) p.tuck = 0.4;
     return p;
@@ -465,7 +381,7 @@ function skeleton(p) {
   return { O, S, Hd, KA, FA, KB, FB, E, Hn, E2, Hn2 };
 }
 
-function drawGymnast(v, p, color) {
+function drawGymnast(v, p, color, letter = '', waiting = false) {
   const sk = skeleton(p);
   const c = Math.cos(p.ang), s = Math.sin(p.ang), fx = p.face * p.sx;
   const tf = ([x, y]) => [(x * c - y * s) * fx, x * s + y * c];
@@ -481,31 +397,46 @@ function drawGymnast(v, p, color) {
   ctx.lineWidth = Math.max(2.5, v.ppm * 0.055);
   const line = (...ks) => { ctx.beginPath(); ks.forEach((k, i) => { const [x, y] = P(pts[k]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); };
   line('FB', 'KB', 'O'); line('FA', 'KA', 'O'); line('O', 'S'); line('S', 'E2', 'Hn2'); line('S', 'E', 'Hn');
-  const [hx, hy] = P(pts.Hd); ctx.beginPath(); ctx.arc(hx, hy, HEAD * v.ppm, 0, TAU); ctx.fill();
+  const [hx, hy] = P(pts.Hd); ctx.beginPath(); ctx.arc(hx, hy, HEAD * v.ppm, 0, TAU);
+  if (waiting) ctx.stroke(); else ctx.fill();          // the one waiting has a hollow head
+  if (letter) { ctx.font = mono(13, 600); ctx.textAlign = 'center'; ctx.fillText(letter, hx, hy - HEAD * v.ppm - 10); }
   ctx.restore();
 }
 
 /* ---------------- heads-up display ---------------- */
 function hud(v, pal) {
-  const G_ = game, g = G_.g, s = input.state, pad = input.lastDevice === 'controller';
+  const G_ = active(), g = G_.g, watch = game.kind === 'watch', s = watch ? G_.ctl : input.state;
+  const pad = input.lastDevice === 'controller';
   const fwd = g.travel > 0 ? '→' : '←', bwd = g.travel > 0 ? '←' : '→';
   // top left: where you are in the routine and the running score
   ctx.textAlign = 'left'; ctx.font = mono(12); ctx.fillStyle = MUTED;
-  const title = G_.kind === 'routine' ? `ROUTINE · PASS ${Math.min(PASSES, passNo())} OF ${PASSES}` : `FREE FLOOR${G_.slow ? ' · HALF SPEED' : ''} · PASS ${passNo()}`;
-  ctx.fillText(title, 20, 28);
-  const sc = scoreRoutine(G_.passes, { requirements: false });
-  ctx.font = mono(30, 600); ctx.fillStyle = FG;
-  ctx.fillText(`D ${sc.D.toFixed(1)}  E ${sc.E.toFixed(2)}`, 20, 64);
+  if (watch) {
+    ctx.fillText(`CPU VS CPU · PASS ${Math.min(PASSES, G_.passNo)} OF ${PASSES} · ${NAMES[game.turn].toUpperCase()} UP`, 20, 28);
+    // one chip per side: who it is, its style and seed, its running score
+    game.perfs.forEach((p, i) => {
+      const sc = scoreRoutine(p.passes), y = 42 + i * 40, on = i === game.turn;
+      ctx.strokeStyle = on ? [pal.home, pal.away][i] : LINE; ctx.lineWidth = on ? 2 : 1; ctx.strokeRect(20, y, 320, 32);
+      ctx.fillStyle = on ? FG : MUTED; ctx.font = mono(12, 600); ctx.textAlign = 'left';
+      ctx.fillText(dummyLabel(NAMES[i], game.dummies[i]), 30, y + 20);
+      ctx.textAlign = 'right'; ctx.fillText(sc.total.toFixed(2), 330, y + 20); ctx.textAlign = 'left';
+    });
+  } else {
+    const title = game.kind === 'routine' ? `ROUTINE · PASS ${Math.min(PASSES, G_.passNo)} OF ${PASSES}` : `FREE FLOOR${game.slow ? ' · HALF SPEED' : ''} · PASS ${G_.passNo}`;
+    ctx.fillText(title, 20, 28);
+    const sc = scoreRoutine(G_.passes, { requirements: false });
+    ctx.font = mono(30, 600); ctx.fillStyle = FG;
+    ctx.fillText(`D ${sc.D.toFixed(1)}  E ${sc.E.toFixed(2)}`, 20, 64);
+  }
 
   // top right: speed, then the spin dial
-  dial(W - 90, 84, pal);
+  dial(G_, W - 90, 84, pal);
 
   // centre: what you just did, or a message
-  if (G_.callout && !G_.callout.old) calloutBox(G_.callout);
-  else if (G_.msg) { ctx.textAlign = 'center'; ctx.font = mono(15); ctx.fillStyle = FG; ctx.fillText(G_.msg, W / 2, 120); }
+  if (G_.callout && !G_.callout.old) calloutBox(G_.callout, watch ? 150 : 112);
+  else if (G_.msg && !watch) { ctx.textAlign = 'center'; ctx.font = mono(15); ctx.fillStyle = FG; ctx.fillText(G_.msg, W / 2, 120); }
 
   // hurdle rings around the feet: the moving ring closes on the fixed one at the sweet spot
-  if (G_.phase === 'hurdle') {
+  if (G_.phase === 'hurdle' && !watch) {
     const k = HURDLE - G_.hurdleT, fx = v.sx(g.x), fy = v.floorY;
     ctx.strokeStyle = LINE2; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fx, fy, 16, 0, TAU); ctx.stroke();
     ctx.strokeStyle = pal.mark; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fx, fy, 16 + Math.max(0, k) * 260, 0, TAU); ctx.stroke();
@@ -514,16 +445,22 @@ function hud(v, pal) {
   // bottom: shape gauges, balance, the hint for right now
   const y0 = H - 112;
   const air = G_.phase === 'air' ? G_.flight : null;
-  gauge(20, y0, pad ? 'L2 TUCK' : 'F TUCK', air ? air.tuck : s.lt, pal);
-  gauge(130, y0, pad ? 'R2 PIKE' : 'J PIKE', air ? air.pike : s.rt, pal);
+  gauge(20, y0, watch ? 'TUCK' : pad ? 'L2 TUCK' : 'F TUCK', air ? air.tuck : s.lt, pal);
+  gauge(130, y0, watch ? 'PIKE' : pad ? 'R2 PIKE' : 'J PIKE', air ? air.pike : s.rt, pal);
   if (W > 520) speedBox(240, y0, g.v);
   if (G_.phase === 'land' && G_.bal && W > 700) balanceBar(380, y0, G_.bal, pal);
   ctx.textAlign = 'left'; ctx.font = mono(13); ctx.fillStyle = FG;
-  ctx.fillText(hint(pad, fwd, bwd), 20, H - 2 - 8);
+  ctx.fillText(watch ? watchHint(G_) : hint(G_, pad, fwd, bwd), 20, H - 2 - 8);
 }
 
-function hint(pad, fwd, bwd) {
-  const ph = game.phase;
+function watchHint(G_) {
+  const who = `Dummy ${NAMES[game.turn].slice(-1).toUpperCase()}`;
+  const what = { ready: 'chalking up', run: 'running', hurdle: 'hurdle', air: 'in the air', land: 'landing', settle: 'landing', walk: 'walking back' }[G_.phase] || '';
+  return `${who} ${what} · ${input.lastDevice === 'controller' ? 'Options' : 'P or Esc'} to pause`;
+}
+
+function hint(G_, pad, fwd, bwd) {
+  const ph = G_.phase;
   if (ph === 'ready') return pad ? `Push the right stick ${fwd} to run` : `Hold ${fwd} to run`;
   if (ph === 'run') return pad ? 'Left stick up to hurdle' : 'W to hurdle';
   if (ph === 'hurdle') return pad ? `Let go, then flick the right stick as the rings meet: ${bwd} back, ${fwd} front, ↑ jump, diagonal to twist`
@@ -535,9 +472,9 @@ function hint(pad, fwd, bwd) {
   return '';
 }
 
-function calloutBox(c) {
+function calloutBox(c, top = 112) {
   ctx.textAlign = 'center';
-  let y = 112;
+  let y = top;
   c.skills.forEach((sk, i) => {
     ctx.font = mono(Math.min(26, W / 30), 600); ctx.fillStyle = FG;
     ctx.fillText(`${i ? '+ ' : ''}${sk.name}${sk.recognized ? '' : ' (not counted)'}   D ${fmt(sk.d)}`, W / 2, y);
@@ -574,18 +511,18 @@ function balanceBar(x, y, b, pal) {
 
 /* The spin dial: the line is where your head points, the notch at the top is feet down.
    Under it: turns and twists so far. */
-function dial(cx, cy, pal) {
-  const G_ = game, f = G_.phase === 'air' || G_.phase === 'land' ? G_.flight : null, r = 46;
+function dial(G_, cx, cy, pal) {
+  const f = G_.phase === 'air' || G_.phase === 'land' ? G_.flight : null, r = 46;
   ctx.strokeStyle = LINE2; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
   ctx.fillStyle = FG; ctx.fillRect(cx - 1.5, cy - r - 8, 3, 14);
   const theta = f && f.kind === 'salto' ? f.theta : 0, sign = f && f.dir === 'back' ? 1 : -1;
-  const a = sign * theta * game.g.face;
+  const a = sign * theta * G_.g.face;
   ctx.strokeStyle = pal.mark; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx, cy);
   ctx.lineTo(cx - Math.sin(a) * r * 0.9, cy - Math.cos(a) * r * 0.9); ctx.stroke();
   ctx.beginPath(); ctx.arc(cx - Math.sin(a) * r * 0.9, cy - Math.cos(a) * r * 0.9, 5, 0, TAU); ctx.fillStyle = pal.mark; ctx.fill();
   // hollow ring: where your head ends up if you open now. Open when it reaches the top notch.
-  if (f && f.kind === 'salto' && game.phase === 'air') {
-    const b = sign * f.predicted * game.g.face;
+  if (f && f.kind === 'salto' && G_.phase === 'air') {
+    const b = sign * f.predicted * G_.g.face;
     ctx.strokeStyle = FG; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx - Math.sin(b) * r, cy - Math.cos(b) * r, 8, 0, TAU); ctx.stroke();
   }
   ctx.textAlign = 'center'; ctx.font = mono(12, 600); ctx.fillStyle = FG;
