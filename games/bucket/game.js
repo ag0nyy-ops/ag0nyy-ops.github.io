@@ -466,7 +466,7 @@ function figure(m, p, pal, fp) {
     ctx.beginPath(); poly(arc(p.x, p.y, 0.02, 1.6, 0, Math.PI * 2, 24)); ctx.stroke();
   }
   // legs and arms: light suit for your side, dark suit with a light rim for theirs
-  const limbW = Math.max(1.5, 0.34 * k), skinW = Math.max(1.5, 0.28 * k);
+  const limbW = Math.max(2.5, 0.6 * k), skinW = Math.max(2, 0.45 * k);
   look.strokeLimb(ctx, () => { seg(hip, footL); seg(hip, footR); }, limbW, T, T.suit);
   look.strokeLimb(ctx, () => { seg(shL, handL); seg(shR, handR); }, skinW, T, T.skin);
   // ankle bands: the only colour on the court
