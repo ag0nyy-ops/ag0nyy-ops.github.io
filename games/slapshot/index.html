@@ -5,19 +5,96 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Slapshot · jay.</title>
+  <title>Slapshot — jay.</title>
   <meta name="description" content="Slapshot: 3-on-3 arcade hockey in the browser. The right stick is your hockey stick.">
+  <link rel="canonical" href="https://ag0nyy-ops.github.io/games/slapshot/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="jay.">
+  <meta property="og:title" content="Slapshot">
+  <meta property="og:description" content="Slapshot: 3-on-3 arcade hockey in the browser. The right stick is your hockey stick.">
+  <meta property="og:url" content="https://ag0nyy-ops.github.io/games/slapshot/">
+  <meta property="og:image" content="https://ag0nyy-ops.github.io/games/slapshot/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Three on three hockey from above in Slapshot, your skater marked YOU at centre ice after the faceoff">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#060606">
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="../games.css?v=2">
-  <link rel="stylesheet" href="../shared/game.css?v=3">
+  <link rel="preload" href="../../assets/fonts/ibm-plex-mono-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../../assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../shared/look.css?v=2">
 </head>
 <body>
-  <canvas id="c" aria-label="The rink from above. You attack the net on the right. Your team are circles, the other team are diamonds, and your skater has a ring and a YOU marker."></canvas>
-  <div class="overlay" id="overlay" role="dialog" aria-label="Slapshot menu"></div>
-  <a class="btn back" href="../">All games</a>
-  <noscript><p class="overlay">Slapshot needs JavaScript to run.</p></noscript>
-  <script type="module" src="game.js?v=1"></script>
+  <a class="skip" href="#rink">Skip to the rink</a>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <p class="label"><a href="../../">jay.</a> / the rink</p>
+        <h1>Slapshot</h1>
+      </div>
+      <nav aria-label="Pages"><a class="btn" href="../">All games</a></nav>
+    </header>
+
+    <div id="board" role="group" aria-label="Scoreboard">
+      <span class="l"><b id="nm0">you</b><small id="sb0">green</small></span>
+      <strong id="sc0">0</strong>
+      <span id="clock" role="timer" aria-label="Period and game clock">--</span>
+      <strong id="sc1">0</strong>
+      <span><b id="nm1">cpu</b><small id="sb1">red</small></span>
+    </div>
+
+    <main class="stage" id="rink">
+      <canvas id="c" aria-label="The rink from above. You attack the net on the right. Your team are circles, the other team are diamonds, and your skater has a ring and a YOU marker."></canvas>
+      <div class="atmosphere" aria-hidden="true"></div>
+      <p id="msg" role="status"></p>
+      <div id="call" hidden aria-live="polite"></div>
+      <div class="overlay" id="overlay" role="dialog" aria-label="Slapshot menu"></div>
+      <noscript><p class="overlay">Slapshot needs JavaScript to run.</p></noscript>
+    </main>
+
+    <div id="moves" aria-label="What your buttons do right now" aria-live="off"><em>menu</em><small>arrows or the left stick to pick, enter or cross to choose</small></div>
+    <p id="pad" role="status">no controller seen. press a button, or use the keyboard</p>
+
+    <section aria-labelledby="how">
+      <p class="label">file 04 / how it plays</p>
+      <h2 id="how">The right stick is your hockey stick.</h2>
+      <figure class="shot">
+        <img src="og-image.jpg" width="1200" height="630" alt="Three on three hockey from above in Slapshot, your skater marked YOU at centre ice after the faceoff" loading="lazy">
+        <figcaption>3 on 3 at centre ice after the opening faceoff</figcaption>
+      </figure>
+      <ul class="rules">
+        <li><b>Hold back, flick forward.</b> Pull the right stick back to wind up and flick it forward to shoot. The puck goes the way you flick, and a dashed line shows the aim while you hold.</li>
+        <li><b>Wrist or slap.</b> A wind-up under 0.4 s is a wrist shot that the goalie reads late. Keep holding for a slapshot: harder up to 1 s, but you slow down and the goalie sees it coming.</li>
+        <li><b>One-timers.</b> Wind up before a pass reaches you and flick as it lands. Pass across the crease and shoot before the goalie slides over.</li>
+        <li><b>Hands and hits.</b> Keep the blade moving and poke checks miss more. Land a check and they drop the puck. Miss a check or a poke and you stumble for a moment.</li>
+      </ul>
+      <details open>
+        <summary>Controls</summary>
+        <div class="tw"><table>
+          <thead><tr><th></th><th>Controller</th><th>Keyboard</th></tr></thead>
+          <tbody>
+            <tr><td>Skate</td><td>Left stick</td><td>W A S D</td></tr>
+            <tr><td>Hard stop</td><td>L2</td><td>Shift</td></tr>
+            <tr><td>Stickhandle</td><td>Right stick: move the blade around you</td><td>Arrow keys, or the mouse</td></tr>
+            <tr><td>Shoot</td><td>Right stick: hold it back, then flick it forward</td><td>Hold an arrow, then tap the opposite one. Mouse: hold the button, let go</td></tr>
+            <tr><td>Pass</td><td>R1, toward where you push the left stick</td><td>E</td></tr>
+            <tr><td>Saucer pass</td><td>R2, lifts over sticks</td><td>R</td></tr>
+            <tr><td>Body check</td><td>L1</td><td>Q</td></tr>
+            <tr><td>Poke check</td><td>Right stick: a quick push at the puck</td><td>Tap an arrow toward the puck, or click</td></tr>
+            <tr><td>Switch player</td><td>Cross / A</td><td>Space</td></tr>
+            <tr><td>Pause</td><td>Options / Start</td><td>P or Esc</td></tr>
+          </tbody>
+        </table></div>
+      </details>
+      <p class="fine">Stick drifting? Raise the deadzone in the settings on the <a href="../">games page</a>.</p>
+    </section>
+
+    <footer>
+      <span>© 2026 Jaymz</span>
+      <span>source viewable, not reusable (<a href="https://github.com/ag0nyy-ops/ag0nyy-ops.github.io">code and licence</a>)</span>
+    </footer>
+  </div>
+  <script type="module" src="game.js?v=3"></script>
 </body>
 </html>
