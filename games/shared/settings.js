@@ -13,13 +13,15 @@ export const DEFAULTS = Object.freeze({
 });
 
 /* Two-team colour pairs plus a highlight, picked to stay apart for each kind of colour blindness.
-   Every game also marks teams with shape or text, so colour is never the only cue. */
+   Every game also marks teams with shape or text, so colour is never the only cue.
+   bandA / bandB are the Folkstyle ankle bands (look.js): the only colour on the screen. The bodies
+   themselves are light for side A and dark for side B, so the bands are never needed to tell them apart. */
 export const PALETTES = Object.freeze({
-  standard:     { name: 'Standard',              home: '#ececec', away: '#e0a030', mark: '#ececec' },
-  deuteranopia: { name: 'Deuteranopia (red-green)', home: '#ececec', away: '#3b8fe0', mark: '#f2c14e' },
-  protanopia:   { name: 'Protanopia (red-green)',   home: '#ececec', away: '#3b8fe0', mark: '#f2c14e' },
-  tritanopia:   { name: 'Tritanopia (blue-yellow)', home: '#ececec', away: '#e05a6a', mark: '#4fd1c5' },
-  mono:         { name: 'Black and white only',     home: '#ececec', away: '#7a7a7a', mark: '#ececec' }
+  standard:     { name: 'Standard',              home: '#ececec', away: '#e0a030', mark: '#ececec', bandA: '#1fb85a', bandB: '#e0242f' },
+  deuteranopia: { name: 'Deuteranopia (red-green)', home: '#ececec', away: '#3b8fe0', mark: '#f2c14e', bandA: '#f2c14e', bandB: '#3b8fe0' },
+  protanopia:   { name: 'Protanopia (red-green)',   home: '#ececec', away: '#3b8fe0', mark: '#f2c14e', bandA: '#f2c14e', bandB: '#3b8fe0' },
+  tritanopia:   { name: 'Tritanopia (blue-yellow)', home: '#ececec', away: '#e05a6a', mark: '#4fd1c5', bandA: '#4fd1c5', bandB: '#e05a6a' },
+  mono:         { name: 'Black and white only',     home: '#ececec', away: '#7a7a7a', mark: '#ececec', bandA: '#ececec', bandB: '#6a6a6a' }
 });
 
 export function loadSettings() {
