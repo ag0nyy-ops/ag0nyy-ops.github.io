@@ -8,7 +8,7 @@ import { Input } from '../shared/input.js';
 import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
 import * as look from '../shared/look.js';
 import { dummyLabel } from '../shared/seed.js';
-import { Bout, STYLES, SPARRING, PUNCHES, RING, COUNT_STEP } from './sim.js';
+import { Bout, STYLES, SPARRING, PUNCHES, RING, COUNT_STEP } from './sim.js?v=2';
 
 const SAVE = 'jay.southpaw.v1';
 const ROUNDS = 3, ROUND_LEN = 75;
@@ -622,8 +622,9 @@ function sideNames(f) { return f.watch ? ['dummy a', 'dummy b'] : ['you', f.styl
 function drawFighter(p, o, side, f) {
   const T = look.team(side), D = { ...T, ...FAR[side] }, isMe = side === 0 && !f.watch;
   const w = Math.max(4, 0.11 * ppm), gr = Math.max(4, 0.1 * ppm), br = Math.max(2, 0.035 * ppm);
+  const up = p.down() ? rising(f, p) : 0;
   if (isMe) look.ring(ctx, X(p.x), Y(0), 0.45 * ppm, MAT * 0.55 * ppm);
-  if (p.down()) return drawDown(p, T, w, gr, br);
+  if (p.down()) return up ? drawRise(p, T, D, w, gr, br, up, isMe ? 'you' : sideNames(f)[side]) : drawDown(p, T, w, gr, br);
   const P = pose(p, o);
   // trails show the punch's shape: straight line, wide arc for a hook, rising arc for an uppercut
   if (!look.calm()) for (const role of ['lead', 'rear']) {
@@ -680,6 +681,58 @@ function drawDown(p, T, w, gr, br) {
   look.strokeLimb(ctx, path(pts.hip, { x: x - d * 0.2, y: 0.1 }), w * 1.55, T, T.suit);
   look.ball(ctx, X(pts.head.x), Y(pts.head.y), Math.max(5, 0.13 * ppm), T, T.skin);
   look.ball(ctx, X(pts.sh.x - d * 0.1), Y(0.3), gr, T, T.suit);
+}
+
+/* getting up: the last stretch of a beaten count. Roll up onto a hand, get a knee under you, stand.
+   Drawing only: the fight still puts you back on your feet on the same count. */
+const RISE = 1.1;   // seconds
+/* [how far through, joints as [metres toward the opponent, height]] */
+const RISE_KEYS = [
+  [0,    { head: [-0.72, 0.13], sh: [-0.5, 0.14], hip: [0, 0.12], kl: [0.38, 0.09], fl: [0.75, 0.05], kr: [0.34, 0.08], fr: [0.68, 0.04], gl: [-0.4, 0.3], gr: [-0.44, 0.12] }],
+  [0.3,  { head: [-0.4, 0.66], sh: [-0.28, 0.47], hip: [-0.02, 0.15], kl: [0.32, 0.36], fl: [0.52, 0.03], kr: [0.3, 0.09], fr: [0.08, 0.04], gl: [-0.02, 0.4], gr: [-0.54, 0.09] }],
+  [0.56, { head: [0.16, 1.1], sh: [0.06, 0.9], hip: [-0.08, 0.5], kl: [0.34, 0.5], fl: [0.32, 0], kr: [-0.08, 0.09], fr: [-0.48, 0.05], gl: [0.38, 0.6], gr: [0.2, 0.2] }],
+  [0.68, { head: [0.18, 1.14], sh: [0.08, 0.94], hip: [-0.07, 0.52], kl: [0.34, 0.5], fl: [0.32, 0], kr: [-0.09, 0.1], fr: [-0.46, 0.04], gl: [0.36, 0.62], gr: [0.22, 0.6] }],
+  [1,    { head: [0.09, 1.63], sh: [0.05, 1.42], hip: [0, 0.98], kl: [0.18, 0.51], fl: [0.24, 0], kr: [-0.06, 0.51], fr: [-0.24, 0], gl: [0.34, 1.42], gr: [0.2, 1.5] }]
+];
+const smooth = (k) => { const c = Math.max(0, Math.min(1, k)); return c * c * (3 - 2 * c); };
+function rising(f, p) {
+  const c = f.bout.downed;
+  if (!c || c.who !== p || c.out) return 0;   // a stoppage means nobody gets up
+  return unit((c.t - (c.getUp * COUNT_STEP - RISE)) / RISE);
+}
+function drawRise(p, T, D, w, gr, br, k, name) {
+  let i = 1; while (i < RISE_KEYS.length - 1 && k > RISE_KEYS[i][0]) i++;
+  const [t0, A] = RISE_KEYS[i - 1], [t1, B] = RISE_KEYS[i], m = smooth((k - t0) / (t1 - t0));
+  const x = p.x, dir = p.face;
+  const at = (j) => ({ x: x + dir * lerp(A[j][0], B[j][0], m), y: lerp(A[j][1], B[j][1], m) });
+  const hip = at('hip'), sh = at('sh'), head = at('head');
+  const len = Math.hypot(sh.x - hip.x, sh.y - hip.y), sx = (sh.x - hip.x) / len, sy = (sh.y - hip.y) / len;
+  const leg = (K, F, tt) => {
+    look.strokeLimb(ctx, path(hip, K, F), w * 1.1, tt, tt.skin);
+    look.strokeLimb(ctx, path({ x: F.x - dir * 0.02, y: F.y + 0.03 }, { x: F.x + dir * 0.09, y: F.y + 0.03 }), w * 0.95, tt, look.TONE.shoe);
+    const ankle = lp(F, K, 0.18);
+    look.band(ctx, X(ankle.x), Y(ankle.y), br, T);
+    look.strokeLimb(ctx, path(hip, lp(hip, K, 0.75)), w * 1.55, tt, tt.suit);
+  };
+  const arm = (side, G, tt) => {
+    const S = { x: sh.x + dir * 0.07 * side, y: sh.y }, a = elbow(S, G, false);
+    a.E.y = Math.max(a.E.y, 0.05);
+    look.strokeLimb(ctx, path(S, a.E, a.G), w * 0.9, tt, tt.skin);
+    look.ball(ctx, X(a.G.x), Y(a.G.y), gr, tt, tt.suit);
+  };
+  leg(at('kr'), at('fr'), D);
+  arm(-1, at('gr'), D);
+  leg(at('kl'), at('fl'), T);
+  // the torso follows the spine from flat to upright
+  const n = { x: sy, y: -sx }, top = { x: sh.x + sx * 0.02, y: sh.y + sy * 0.02 };
+  const side = (P, d) => ({ x: P.x + n.x * d, y: P.y + n.y * d });
+  const torso = [side(hip, -0.1), side(hip, 0.1), side(top, 0.13), side(top, -0.13)];
+  look.fillBody(ctx, () => { path(...torso)(); ctx.closePath(); }, T, T.skin, [X(torso[3].x), Y(torso[3].y), X(torso[1].x), Y(torso[1].y)]);
+  const waist = { x: hip.x + sx * 0.02, y: hip.y + sy * 0.02 };
+  look.strokeLimb(ctx, path(side(waist, -0.1), side(waist, 0.1)), w * 0.7, T, T.suit);
+  look.ball(ctx, X(head.x), Y(head.y), Math.max(5, 0.13 * ppm), T, T.skin);
+  arm(1, at('gl'), T);
+  if (k > 0.56) look.tag(ctx, X(lerp(head.x, x, (k - 0.56) / 0.44)), Y(head.y + 0.13) - 16, name, { size: 10, pad: 4 });
 }
 
 /* impact rings and the word for what happened, in a label box */

@@ -9,6 +9,7 @@ import { makeDummy, newSeed } from '../shared/seed.js';
 export const RING = 2.9;      // ropes sit this many metres either side of the centre
 export const MIN_GAP = 0.5;   // chest to chest, fighters can't get closer than this
 export const COUNT_STEP = 0.7; // seconds per number of the referee's count
+const CLEAR = 2.0;             // how far the standing fighter backs off from the one on the canvas
 
 /* role-kind: timings in seconds, reach in metres (chest to target), damage out of 100 health */
 export const PUNCHES = {
@@ -236,12 +237,17 @@ export class Bout {
   stepCount(dt) {
     const c = this.downed, att = c.by;
     c.t += dt;
-    // the standing fighter walks to a neutral spot
-    const want = att === this.me ? -1.4 : 1.4;
+    // the standing fighter walks to a neutral spot, well clear of the one on the canvas
+    const want = clamp(c.who.x - att.face * CLEAR, -RING, RING);
     att.act = null; att.guard = 'none';
     att.x += clamp(want - att.x, -1.2 * dt, 1.2 * dt);
     att.stam = Math.min(100, att.stam + 10 * dt);
     const n = Math.floor(c.t / COUNT_STEP);
+    // he gets up where he fell; if that leaves no room on the other side, he edges in off the ropes
+    if (!c.out && n >= c.getUp - 2) {
+      const room = att.face > 0 ? clamp(c.who.x, -RING + 1.6, RING) : clamp(c.who.x, -RING, RING - 1.6);
+      c.who.x += clamp(room - c.who.x, -1.2 * dt, 1.2 * dt);
+    }
     if (n > c.count) { c.count = n; this.events.push({ type: 'count', n }); }
     if (c.out && c.count >= 10) {
       this.over = { winner: c.who === this.me ? 'foe' : 'me', how: 'TKO' };
@@ -250,7 +256,7 @@ export class Bout {
     }
     if (!c.out && c.count >= c.getUp) {
       c.who.act = null; c.who.hp = this.practice ? 100 : GET_UP_HP[Math.min(3, c.who.kd)];
-      c.who.stam = Math.max(c.who.stam, 50); c.who.x = c.who === this.me ? -1.1 : 1.1;
+      c.who.stam = Math.max(c.who.stam, 50); c.who.vx = 0;
       this.downed = null;
       this.events.push({ type: 'up', who: c.who });
     }
