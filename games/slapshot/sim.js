@@ -3,6 +3,8 @@
    whole game can run without a page. Units are rink units (about a quarter foot); time is seconds.
    Home (team 0) defends the left net and attacks right. */
 
+import { makeDummy, newSeed } from '../shared/seed.js';
+
 export const RINK = Object.freeze({ HX: 400, HY: 170, CR: 72, GX: 352, GW: 26, GD: 18, BLUE: 100, CREASE: 34 });
 const { HX, HY, CR, GX, GW, GD, BLUE } = RINK;
 
@@ -19,6 +21,35 @@ export const LEVELS = [
   { id: 'allstar', name: 'All-Star', ai: { speed: 1.02, think: 0.16, poke: 0.6, check: 0.16, aim: 4, pass: 0.75 }, goalie: { react: 0.12, speed: 180, slide: 115, size: 11.5 } }
 ];
 const TEAMMATE_AI = LEVELS[1].ai;
+
+/* Seeded dummies: each computer team is rolled from a seed (shared/seed.js), so no two teams play
+   alike. The level stays the skill; the seed only changes how the team plays, and every number is a
+   trade-off (shoot more but from worse ice, hit more but stumble on misses), never raw strength.
+   Drawn in this order, so a seed always makes the same team. */
+export const RANGES = {
+  think: [0.8, 1.25],     // decision delay, times the level's think time
+  shoot: [0.4, 0.8],      // chance to shoot on a look from good ice
+  range: [190, 275],      // farthest it shoots from
+  slap: [0.2, 0.7],       // love of the big slapshot over a quick wrister
+  snipe: [0, 1],          // aims tight to the post: harder to save, misses more
+  pass: [0.7, 1.3],       // pass first under pressure, times the level's pass rate
+  drive: [0.75, 1.2],     // where the carrier sets up: low drives deep, high stays at the point
+  dangle: [0.5, 1.5],     // stickhandles through pressure (high) or skates around it (low)
+  width: [0.75, 1.3],     // spacing: how wide the support players spread
+  poke: [0.35, 0.8],      // how often the pressuring defender pokes
+  hit: [0.4, 1.6],        // how often it throws body checks, times the level's rate
+  forecheck: [0, 1],      // how high the third man sits: high pressures, low guards the slot
+  chase: [80, 150],       // how close a second skater has to be to join a loose-puck chase
+  depth: [0.8, 1.2]       // how far its goalie plays out of the net
+};
+export const STYLES = [
+  ['enforcer', (p) => p.hit > 1.32],
+  ['cannon', (p) => p.slap > 0.58],
+  ['playmaker', (p) => p.pass > 1.15],
+  ['dangler', (p) => p.dangle > 1.25]
+];
+export const FALLBACK_STYLE = 'two way';
+export const rollTeam = (seed = newSeed()) => makeDummy(seed, RANGES, STYLES, FALLBACK_STYLE);
 const HUMAN_POKE = 0.72;
 export const WRIST_MAX = 0.4;   // a wind-up shorter than this is a wrist shot, longer is a slapshot
 export const SLAP_FULL = 1.0;
@@ -87,8 +118,8 @@ export class Skater {
 export function blankCmd() { return { mx: 0, my: 0, stop: 0, sx: 0, sy: 0, windup: 0, wdx: 0, wdy: 0, shoot: null, poke: null, pass: null, check: false }; }
 
 class Goalie {
-  constructor(team, lv) {
-    this.team = team; this.side = team === 0 ? -1 : 1; this.gx = this.side * GX;
+  constructor(team, lv, depth = 1) {
+    this.team = team; this.side = team === 0 ? -1 : 1; this.gx = this.side * GX; this.depth = depth;
     this.out = -this.side; // direction out of the net
     this.x = this.gx + this.out * 10; this.y = 0; this.vy = 0; this.vx = 0;
     this.react = lv.react; this.speed = lv.speed; this.slide = lv.slide; this.size = lv.size; this.hold = 0;
@@ -96,10 +127,16 @@ class Goalie {
 }
 
 export class Game {
-  /* opts: level id, periodLen (s), periods, practice (bool), humanIdx (-1 = computer plays both) */
+  /* opts: level id, periodLen (s), periods, practice (bool), humanIdx (-1 = computer plays both),
+     watch (bool: CPU vs CPU, both teams at the level), seeds ([a, b], fresh ones if left out) */
   constructor(opts = {}) {
     this.level = LEVELS.find((l) => l.id === opts.level) || LEVELS[1];
     this.practice = !!opts.practice;
+    this.watch = !!opts.watch && !this.practice;
+    const seeds = opts.seeds || [newSeed(), newSeed()];
+    this.dummies = [rollTeam(seeds[0]), rollTeam(seeds[1])];
+    // in CPU vs CPU both teams play at the chosen level; otherwise your teammates play at Pro
+    this.ais = [this.watch ? this.level.ai : TEAMMATE_AI, this.level.ai];
     this.periodLen = opts.periodLen || 120; this.periods = opts.periods || 3;
     this.period = 1; this.clock = this.periodLen; this.ot = false;
     this.score = [0, 0]; this.sog = [0, 0]; this.hits = [0, 0];
@@ -110,8 +147,10 @@ export class Game {
       const n = this.practice ? (team === 0 ? 1 : 0) : 3;
       for (let i = 0; i < n; i++) this.skaters.push(new Skater(team, i, nums[team][i]));
     }
-    this.goalies = [this.practice ? null : new Goalie(0, LEVELS[1].goalie), new Goalie(1, this.level.goalie)];
-    this.humanIdx = opts.humanIdx === undefined ? 0 : opts.humanIdx;
+    for (const s of this.skaters) { const d = this.dummies[s.team]; s.ai.next = d.rand(0, 0.2); s.ai.phase = d.rand(0, 6); }
+    const D = this.dummies;
+    this.goalies = [this.practice ? null : new Goalie(0, (this.watch ? this.level : LEVELS[1]).goalie, D[0].p.depth), new Goalie(1, this.level.goalie, D[1].p.depth)];
+    this.humanIdx = this.watch ? -1 : opts.humanIdx === undefined ? 0 : opts.humanIdx;
     if (this.humanIdx >= 0) this.skaters[this.humanIdx].human = true;
     this.puck = { x: 0, y: 0, vx: 0, vy: 0, z: 0, air: 0, airT: 0, owner: null, shot: null, passTo: null, lastTeam: -1, hist: [], ghost: null };
     this.faceoff();
@@ -202,7 +241,7 @@ export class Game {
     s.stun = Math.max(0, s.stun - dt); s.recover = Math.max(0, s.recover - dt);
     s.checkCd = Math.max(0, s.checkCd - dt); s.pokeCd = Math.max(0, s.pokeCd - dt); s.pickCd = Math.max(0, s.pickCd - dt);
     s.windup = s.stun ? 0 : c.windup || 0; s.wdx = c.wdx; s.wdy = c.wdy;
-    const aiSpeed = s.human ? 1 : (s.team === 0 ? TEAMMATE_AI : this.level.ai).speed;
+    const aiSpeed = s.human ? 1 : this.ais[s.team].speed;
     let mx = c.mx, my = c.my; const mm = len(mx, my); if (mm > 1) { mx /= mm; my /= mm; }
     if (s.stun) { mx = my = 0; }
     const ctrl = s.stun ? 0 : s.recover ? 0.35 : 1;
@@ -352,7 +391,7 @@ export class Game {
     if (behind) { tx = g.gx + g.out * 5; ty = Math.sign(seen.y || 1) * (GW - 7); }
     else {
       const dx = seen.x - g.gx, dy = seen.y, d = len(dx, dy) || 1;
-      const out = clamp(4 + (d - 60) * 0.04, 4, 12);
+      const out = clamp(4 + (d - 60) * 0.04, 4, 12) * g.depth;
       tx = g.gx + dx / d * out; ty = clamp(dy / d * out, -(GW + 2), GW + 2);
       // once they have read a shot, they slide to where it crosses their line
       const toward = (P.vx * -g.out) > 60;
@@ -518,7 +557,7 @@ export class Game {
       if (P.owner && P.owner.team === s.team) continue;
       s.poked = true;
       if (P.owner) {
-        const o = P.owner, skill = s.human ? HUMAN_POKE : (s.team === 0 ? TEAMMATE_AI : this.level.ai).poke;
+        const o = P.owner, skill = s.human ? HUMAN_POKE : this.ais[s.team].poke;
         const p = skill * (1 - Math.min(0.6, o.handle / 450));
         if (Math.random() < p) {
           P.owner = null; P.vx = s.pokeDx * 170 + o.vx * 0.5 + rnd(-30, 30); P.vy = s.pokeDy * 170 + o.vy * 0.5 + rnd(-30, 30);
@@ -532,7 +571,9 @@ export class Game {
 
   /* ---------------- computer players ---------------- */
   think(s, dt) {
-    const c = blankCmd(), P = this.puck, A = s.team === 0 ? TEAMMATE_AI : this.level.ai;
+    const c = blankCmd(), P = this.puck, A = this.ais[s.team];
+    // the team's seeded personality, and its own random for every choice it makes
+    const D = this.dummies[s.team], p = D.p, R = D.R, rand = D.rand;
     const dir = s.team === 0 ? 1 : -1, attackX = dir * GX, ownX = -attackX;
     const ai = s.ai; ai.phase += dt * 9;
     const mates = this.team(s.team), opps = this.team(1 - s.team);
@@ -540,7 +581,7 @@ export class Game {
     const ownerTeam = owner ? owner.team : gHold ? gHold.team : -1;
     let tx = s.x, ty = s.y, stickX = s.fx * 0.6, stickY = s.fy * 0.6;
     ai.next -= dt;
-    const decide = ai.next <= 0; if (decide) ai.next = A.think * rnd(0.7, 1.3);
+    const decide = ai.next <= 0; if (decide) ai.next = A.think * p.think * rand(0.7, 1.3);
 
     // charging a slapshot
     if (ai.wind > 0) {
@@ -549,7 +590,7 @@ export class Game {
       if (owner !== s) { ai.wind = 0; ai.power = 0; }
       else if (ai.wind <= 0) {
         const [dx, dy] = this.aimAt(s, attackX);
-        c.shoot = { dx, dy, power: ai.power, spread: A.aim * 0.8 }; ai.power = 0;
+        c.shoot = { dx, dy, power: ai.power, spread: A.aim * 0.8 * (0.8 + 0.4 * p.snipe) }; ai.power = 0;
       }
       s.cmd = c; return c;
     }
@@ -558,62 +599,66 @@ export class Game {
       // carry it up ice, shoot from good ice, pass under pressure
       const near = this.nearest(opps, s.x, s.y), nd = near ? len(near.x - s.x, near.y - s.y) : 999;
       const dGoal = len(attackX - s.x, -s.y), deep = (attackX - s.x) * dir;
-      tx = attackX - dir * 85; ty = clamp(s.y * 0.6, -70, 70);
-      if (deep < 110) { tx = attackX - dir * 55; ty = s.y > 0 ? 35 : -35; }
-      if (near && nd < 75) { // sidestep whoever is in front
-        const [ux, uy] = norm(tx - s.x, ty - s.y), ox = near.x - s.x, oy = near.y - s.y;
-        if (ox * ux + oy * uy > 0) { const side = (ox * uy - oy * ux) > 0 ? 1 : -1; tx += -uy * side * 70; ty += ux * side * 70; }
+      tx = attackX - dir * 85 * p.drive; ty = clamp(s.y * 0.6 * p.width, -70, 70);
+      if (deep < 110 * p.drive) { tx = attackX - dir * 55 * p.drive; ty = (s.y > 0 ? 35 : -35) * p.width; }
+      if (near && nd < 75) { // sidestep whoever is in front; a dangler sidesteps less and handles through it
+        const [ux, uy] = norm(tx - s.x, ty - s.y), ox = near.x - s.x, oy = near.y - s.y, step = 70 * (1.5 - 0.5 * p.dangle);
+        if (ox * ux + oy * uy > 0) { const side = (ox * uy - oy * ux) > 0 ? 1 : -1; tx += -uy * side * step; ty += ux * side * step; }
       }
-      const pressured = nd < 48;
-      if (pressured) { const sw = Math.sin(ai.phase) * 0.95; [stickX, stickY] = rot(s.fx, s.fy, sw); }
+      const pressured = nd < 48 * (0.75 + 0.35 * p.dangle);
+      if (pressured) { const sw = Math.sin(ai.phase) * Math.min(1.3, 0.95 * p.dangle); [stickX, stickY] = rot(s.fx, s.fy, sw); }
       if (decide) {
         const angleOk = Math.abs(s.y) < 115 && deep > 18;
-        if (angleOk && dGoal < 235 && Math.random() < 0.6) {
+        if (angleOk && dGoal < p.range && R() < p.shoot) {
           const [dx, dy] = this.aimAt(s, attackX);
-          if (dGoal > 150 && nd > 70 && Math.random() < 0.45) { ai.wind = rnd(0.45, 0.8); ai.power = 0; ai.sdx = dx; ai.sdy = dy; }
-          else c.shoot = { dx, dy, power: rnd(0.1, 0.35), spread: A.aim };
-        } else if (pressured && Math.random() < A.pass) this.aiPass(s, c, opps);
-        else if (deep < 40 && Math.random() < 0.5) this.aiPass(s, c, opps);
+          if (dGoal > 150 && nd > 70 && R() < p.slap) { ai.wind = rand(0.45, 0.8); ai.power = 0; ai.sdx = dx; ai.sdy = dy; }
+          else c.shoot = { dx, dy, power: rand(0.1, 0.35), spread: A.aim * (0.8 + 0.4 * p.snipe) };
+        } else if (pressured && R() < clamp(A.pass * p.pass, 0.1, 0.95)) this.aiPass(s, c, opps);
+        else if (deep < 40 && R() < 0.5 * p.pass) this.aiPass(s, c, opps);
       }
     } else if (ownerTeam === s.team) {
       // support the carrier: one goes wide and ahead, one trails
       const car = owner || gHold, others = mates.filter((m) => m !== owner && !m.human);
       const k = others.indexOf(s), side = Math.sign(car.y) || 1, inZone = car.x * dir > BLUE;
-      if (inZone) { if (k === 0) { tx = attackX - dir * 70; ty = -side * 40; } else { tx = dir * (BLUE + 35); ty = side * 60; } }
-      else if (k === 0) { tx = car.x + dir * 100; ty = -side * 70; } else { tx = car.x - dir * 60; ty = side * 25; }
+      const w = p.width;
+      if (inZone) { if (k === 0) { tx = attackX - dir * 70; ty = -side * 40 * w; } else { tx = dir * (BLUE + 35); ty = side * 60 * w; } }
+      else if (k === 0) { tx = car.x + dir * 100; ty = -side * 70 * w; } else { tx = car.x - dir * 60; ty = side * 25 * w; }
+      ty = clamp(ty, -HY + 25, HY - 25);
       tx = clamp(tx, -HX + 40, HX - 40); if ((attackX - tx) * dir < 45) tx = attackX - dir * 45;
       [stickX, stickY] = norm(car.x - s.x, car.y - s.y);
     } else if (gHold) {
       // their goalie has it: back off to the middle and pick men up
-      tx = ownX * 0.3 + (P.x - ownX) * 0.2; ty = (s.idx - 1) * 70;
+      tx = ownX * 0.3 + (P.x - ownX) * 0.2; ty = (s.idx - 1) * 70 * p.width;
     } else if (owner) {
       // defend: closest one pressures goal-side, the next covers the most dangerous man, the last holds the slot
       const order = mates.slice().sort((a, b) => len(a.x - owner.x, a.y - owner.y) - len(b.x - owner.x, b.y - owner.y));
       const role = order.indexOf(s);
       const [gx, gy] = norm(ownX - owner.x, -owner.y);
       if (role === 0) {
-        tx = owner.x + gx * 14; ty = owner.y + gy * 14;
+        const gap = 11 + 8 * (1 - p.forecheck); // a forechecking team plays tighter
+        tx = owner.x + gx * gap; ty = owner.y + gy * gap;
         const d = len(owner.x - s.x, owner.y - s.y);
         [stickX, stickY] = norm(P.x - s.x, P.y - s.y);
-        if (decide && d < SK.reach * 1.6 + SK.r && Math.random() < 0.6) c.poke = { dx: P.x - s.x, dy: P.y - s.y };
-        else if (decide && d < 34 && Math.random() < A.check) { c.check = true; s.fx = (owner.x - s.x) / d; s.fy = (owner.y - s.y) / d; }
+        if (decide && d < SK.reach * 1.6 + SK.r && R() < p.poke) c.poke = { dx: P.x - s.x, dy: P.y - s.y };
+        else if (decide && d < 34 && R() < clamp(A.check * p.hit, 0, 0.4)) { c.check = true; s.fx = (owner.x - s.x) / d; s.fy = (owner.y - s.y) / d; }
       } else if (owner.windup > 0.2) { // step into the shooting lane
         tx = owner.x + (ownX - owner.x) * 0.4; ty = owner.y * 0.6; [stickX, stickY] = norm(owner.x - s.x, owner.y - s.y);
       } else if (role === 1) {
         const mark = opps.filter((o) => o !== owner).sort((a, b) => len(a.x - ownX, a.y) - len(b.x - ownX, b.y))[0];
         if (mark) { tx = mark.x + (ownX - mark.x) * 0.3; ty = mark.y * 0.8; [stickX, stickY] = norm(owner.x - s.x, owner.y - s.y); }
-      } else { tx = ownX + dir * 60; ty = owner.y * 0.3; [stickX, stickY] = norm(owner.x - s.x, owner.y - s.y); }
+      } else { tx = ownX + dir * (35 + 90 * p.forecheck); ty = owner.y * 0.3; [stickX, stickY] = norm(owner.x - s.x, owner.y - s.y); }
     } else {
       // loose puck: the closest computer player goes for it unless you're closer
       const pt = 0.25, px = P.x + P.vx * pt, py = P.y + P.vy * pt;
       const team = mates.slice().sort((a, b) => len(a.x - px, a.y - py) - len(b.x - px, b.y - py));
-      if (team[0] === s || (team[0].human && team[1] === s && len(s.x - px, s.y - py) < 110)) { tx = px; ty = py; [stickX, stickY] = norm(P.x - s.x, P.y - s.y); ai.chase = true; }
+      const second = team[1] === s && len(s.x - px, s.y - py) < p.chase * (team[0].human ? 1 : 0.5);
+      if (team[0] === s || second) { tx = px; ty = py; [stickX, stickY] = norm(P.x - s.x, P.y - s.y); ai.chase = true; }
       else {
         const attacking = P.lastTeam === s.team;
-        tx = attacking ? P.x * 0.6 + dir * 60 : (ownX + P.x) / 2; ty = (s.idx - 1) * 60;
+        tx = attacking ? P.x * 0.6 + dir * 60 : (ownX + P.x) / 2; ty = (s.idx - 1) * 60 * p.width;
         ai.chase = false;
       }
-      if (decide && len(P.x - s.x, P.y - s.y) < SK.reach * 1.5 && len(P.vx, P.vy) > 240 && Math.random() < 0.3) c.poke = { dx: P.x - s.x, dy: P.y - s.y };
+      if (decide && len(P.x - s.x, P.y - s.y) < SK.reach * 1.5 && len(P.vx, P.vy) > 240 && R() < 0.3) c.poke = { dx: P.x - s.x, dy: P.y - s.y };
     }
     // steer: full speed far away, ease in when close
     const dx = tx - s.x, dy = ty - s.y, d = len(dx, dy);
@@ -624,7 +669,8 @@ export class Game {
   nearest(list, x, y) { let b = null, bd = 1e9; for (const o of list) { const d = len(o.x - x, o.y - y); if (d < bd) { bd = d; b = o; } } return b; }
   aimAt(s, attackX) {
     const g = this.goalies[s.team === 0 ? 1 : 0];
-    const gy = g ? g.y : 0, aimY = (gy > 0 ? -1 : 1) * (GW - 6) + rnd(-4, 4);
+    const d = this.dummies[s.team];
+    const gy = g ? g.y : 0, aimY = (gy > 0 ? -1 : 1) * (GW - 9 + 6 * d.p.snipe) + d.rand(-4, 4);
     return norm(attackX - s.x, aimY - s.y);
   }
   aiPass(s, c, opps) {
