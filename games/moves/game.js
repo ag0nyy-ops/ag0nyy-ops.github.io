@@ -6,9 +6,10 @@
 import { Input } from '../shared/input.js';
 import { loadSettings, reducedMotion } from '../shared/settings.js';
 import * as look from '../shared/look.js';
+import { makeDummy, newSeed, dummyLabel } from '../shared/seed.js';
 import {
-  FLOOR, VMAX, HURDLE, WINDOW, REBOUND, TAU, STEP_AT, clamp, classifyFlick, punchQuality,
-  Flight, touchdown, Balance, judgeSkill, landingDeductions, scoreRoutine, REQUIREMENTS, fmt
+  FLOOR, VMAX, HURDLE, WINDOW, REBOUND, TAU, STEP_AT, clamp, scoreRoutine, REQUIREMENTS, fmt, NO_INPUT,
+  Performer, CpuGymnast, DUMMY_RANGES, DUMMY_STYLES, DUMMY_FALLBACK
 } from './sim.js';
 
 const SAVE = 'jay.moves.v1';
@@ -52,21 +53,6 @@ function legsStick() {
   if (kx || ky) { const m = Math.hypot(kx, ky); return { x: kx / m, y: ky / m }; }
   return { x: s.rx, y: s.ry };
 }
-/* A flick: the stick goes from near the middle to well out. The direction is read over the next
-   50 ms so two arrow keys pressed a hair apart still make a diagonal. */
-const flick = { armed: true, at: null, best: null };
-function readFlick(now) {
-  const l = legsStick(), m = Math.hypot(l.x, l.y);
-  if (m < 0.35) { flick.armed = true; if (flick.at == null) return null; }
-  if (flick.at == null && flick.armed && m > 0.7) { flick.at = now; flick.best = { ...l, m }; flick.armed = false; }
-  if (flick.at != null) {
-    if (m >= flick.best.m - 0.01) flick.best = { ...l, m };
-    if (now - flick.at >= 0.05) { const out = { at: flick.at, x: flick.best.x, y: flick.best.y }; flick.at = null; return out; }
-  }
-  return null;
-}
-const resetFlick = () => { const l = legsStick(); flick.armed = Math.hypot(l.x, l.y) < 0.35; flick.at = null; };
-
 /* ---------------- screens (DOM overlay, driven by controller or keyboard) ---------------- */
 const $ = (sel) => document.querySelector(sel);
 const overlay = $('#overlay');
@@ -83,6 +69,7 @@ function hide() { overlay.hidden = true; overlay.innerHTML = ''; menuItems = [];
 overlay.addEventListener('click', (e) => { const b = e.target.closest('button[data-go]'); if (b) go(b.dataset.go, b.dataset.arg); });
 
 let mode = 'menu';          // menu | play | paused | results
+const WATCH_RESULT = 6;     // seconds a CPU vs CPU result stays up before the next match starts
 let game = null;
 
 function mainMenu() {
@@ -93,11 +80,12 @@ function mainMenu() {
       <button class="btn btn--solid" data-go="play" data-arg="routine">Routine${best}</button>
       <button class="btn" data-go="play" data-arg="free">Free floor <small>practice</small></button>
       <button class="btn" data-go="play" data-arg="slow">Free floor <small>half speed</small></button>
+      <button class="btn" data-go="play" data-arg="watch">CPU vs CPU <small>watch</small></button>
       <button class="btn" data-go="skills">Move list</button>
       <button class="btn" data-go="controls">Controls</button>
       <button class="btn" data-go="home">All games</button>
     </div>
-    <p class="hint">A routine is ${PASSES} passes across the floor. Judges score difficulty (D) for what you throw and execution (E) from 10 for how clean it is. Every skill is open from the start.</p>`);
+    <p class="hint">A routine is ${PASSES} passes across the floor. Judges score difficulty (D) for what you throw and execution (E) from 10 for how clean it is. Every skill is open from the start. CPU vs CPU: two seeded dummies take turns, ${PASSES} passes each, best score wins.</p>`);
 }
 
 function controls(back = 'menu') {
@@ -156,10 +144,11 @@ function skills(back = 'menu') {
 
 function pause() {
   mode = 'paused';
-  show(`<p class="label">Paused</p><div class="menu">
+  const seeds = game.dummies ? `<ul class="blurbs">${game.dummies.map((d, i) => `<li>${dummyLabel(NAMES[i], d)}</li>`).join('')}</ul>` : '';
+  show(`<p class="label">Paused${game.kind === 'watch' ? ' / CPU vs CPU' : ''}</p>${seeds}<div class="menu">
     <button class="btn btn--solid" data-go="resume">Resume</button>
-    ${game.kind === 'routine' ? '' : '<button class="btn" data-go="endfree">End practice</button>'}
-    <button class="btn" data-go="restart">Restart</button>
+    ${game.kind === 'free' || game.kind === 'slow' ? '<button class="btn" data-go="endfree">End practice</button>' : ''}
+    <button class="btn" data-go="restart">${game.kind === 'watch' ? 'New match <small>new seeds</small>' : 'Restart'}</button>
     <button class="btn" data-go="pcontrols">Controls</button>
     <button class="btn" data-go="pskills">Move list</button>
     <button class="btn" data-go="menu">Quit to menu</button></div>`);
@@ -180,162 +169,65 @@ function go(what, arg) {
   else if (what === 'endfree') results();
 }
 
-/* ---------------- game state ---------------- */
-function newGame(kind) {
-  game = {
-    kind, slow: kind === 'slow', passes: [], pass: null, phase: 'ready', t: 0,
-    g: { x: 0.6, face: 1, travel: 1, v: 0, runPhase: 0 }, flight: null, td: null, bal: null,
-    hurdleT: 0, armsWasUp: true, legsWasOut: true, callout: null, msg: '', rebound: null, stepCool: 0,
-    stepShift: 0, landT: 0, walkTo: null, presented: 0
+/* ---------------- game state ----------------
+   The body and the pass logic live in sim.js (Performer). A person drives it from the pad here;
+   in CPU vs CPU two seeded dummies (CpuGymnast) drive their own and take turns, pass by pass. */
+const NAMES = ['dummy a', 'dummy b'];
+function sounds(perf) {
+  perf.on = (ev, v) => {
+    if (ev === 'hurdle') tone(330, 0.05, 'triangle', 0.08);
+    else if (ev === 'punch') tone(220 + 300 * v, 0.06, 'triangle', 0.12);
+    else if (ev === 'thud') thud(v);
+    else if (ev === 'finish') tone(520, 0.2, 'sine', 0.08);
   };
-  newPass();
+  return perf;
+}
+function newGame(kind) {
+  const skipWalk = reducedMotion();
+  game = { kind, slow: kind === 'slow', turn: 0, turnStart: 0, resultT: 0, dummies: null, cpus: null };
+  if (kind === 'watch') {
+    // fresh seeds every match, so no two matches tumble alike
+    game.dummies = [0, 1].map(() => makeDummy(newSeed(), DUMMY_RANGES, DUMMY_STYLES, DUMMY_FALLBACK));
+    game.cpus = game.dummies.map((d) => new CpuGymnast(d, PASSES));
+    game.perfs = [0, 1].map(() => sounds(new Performer({ passes: PASSES, skipWalk, maxTries: 3 })));
+  } else game.perfs = [sounds(new Performer({ passes: kind === 'routine' ? PASSES : null, skipWalk }))];
   mode = 'play'; hide();
 }
-function newPass() { game.linkNext = false; game.pass = { skills: [], connections: 0 }; game.phase = 'ready'; game.g.v = 0; resetFlick(); }
-const passNo = () => game.passes.length + 1;
+const active = () => game.perfs[game.turn];
 
 function update(dt) {
   input.poll();
+  if (mode === 'results' && game && game.kind === 'watch') {
+    game.resultT += dt;
+    if (game.resultT >= WATCH_RESULT) return newGame('watch');
+  }
   if (mode !== 'play') return menuInput();
   if (input.pressed('START') || input.pressed('B')) return pause();
+  if (game.kind === 'watch') return watchStep(dt);
   if (game.slow) dt *= 0.5;
-  const G_ = game, g = G_.g, s = input.state, legs = legsStick();
-  G_.t += dt;
-  const armsUp = s.ly < -0.6, armsUpEdge = armsUp && !G_.armsWasUp;
-  G_.armsWasUp = armsUp;
-  const toward = legs.x * g.travel;                      // how hard the legs push toward the far side
-  G_.stepCool = Math.max(0, G_.stepCool - dt);
+  const s = input.state, perf = game.perfs[0];
+  perf.step(dt, { legs: legsStick(), lx: s.lx, ly: s.ly, lt: s.lt, rt: s.rt });
+  if (perf.done) results();
+}
 
-  if (G_.phase === 'ready' || G_.phase === 'run') {
-    if (toward > 0.3 && G_.phase === 'ready') { G_.phase = 'run'; G_.callout = G_.callout && { ...G_.callout, old: true }; }
-    if (G_.phase === 'run') {
-      if (toward > 0.3) g.v += 8.5 * (1 - g.v / VMAX) * Math.min(1, toward) * dt;
-      else g.v = Math.max(0, g.v - 3 * dt);
-      g.x += g.travel * g.v * dt; g.runPhase += g.v * dt * 1.9;
-      const far = g.travel > 0 ? g.x > FLOOR - 0.5 : g.x < 0.5;
-      if (far) return ranOut('Ran out of floor. Hurdle before the far corner.');
-    }
-    if (armsUpEdge) { G_.phase = 'hurdle'; G_.hurdleT = 0; resetFlick(); tone(330, 0.05, 'triangle', 0.08); }
-    return;
+/* CPU vs CPU: the dummy whose turn it is throws one pass, walks back, then the other goes */
+function watchStep(dt) {
+  const i = game.turn, perf = game.perfs[i];
+  perf.step(dt, game.cpus[i].controls(perf, dt));
+  if (perf.passes.length > game.turnStart && (perf.phase === 'ready' || perf.done)) {
+    if (game.perfs.every((p) => p.done)) return results();
+    const o = 1 - i;
+    if (!game.perfs[o].done) game.turn = o;
+    game.turnStart = game.perfs[game.turn].passes.length;
   }
-  if (G_.phase === 'hurdle') {
-    G_.hurdleT += dt;
-    g.x += g.travel * g.v * 0.6 * dt;
-    const f = readFlick(G_.hurdleT);
-    if (f) {
-      const c = classifyFlick(f.x * g.travel, -f.y);
-      if (!c) return ranOut('That flick was straight down. Flick back, forward or up.');
-      return takeoff(c, g.v, punchQuality(f.at - HURDLE));
-    }
-    if (G_.hurdleT > HURDLE + WINDOW + 0.12) return ranOut(G_.legsHeldMsg || 'No takeoff. Let the legs stick go, then flick it as the rings meet.');
-    if (G_.hurdleT < 0.05 && Math.hypot(legs.x, legs.y) > 0.35) G_.legsHeldMsg = 'No takeoff. Let go of the legs stick during the hurdle, then flick it.';
-    return;
-  }
-  if (G_.phase === 'air') {
-    const f = G_.flight;
-    const tuck = s.lt, pike = s.rt, armsIn = Math.max(0, s.ly);
-    const done = f.step(dt, { tuck, pike, armsIn, legs: Math.hypot(legs.x, legs.y), split: legs.x });
-    g.x = f.x;
-    if (done) land();
-    return;
-  }
-  if (G_.phase === 'land') {
-    G_.landT += dt;
-    // connection: flick again right after a salto lands
-    if (G_.rebound && G_.landT < REBOUND.open) {
-      const fl = readFlick(G_.landT);
-      if (fl) {
-        const c = classifyFlick(fl.x * g.travel, -fl.y);
-        const same = c && (c.kind === 'jump' || c.dir === G_.flight.dir);
-        if (same) {
-          const q = punchQuality(fl.at - REBOUND.at, REBOUND.window);
-          const carry = clamp(G_.flight.speed * 0.55 + 3.4 * (1 - Math.min(1, Math.abs(G_.td.e) / 0.35)), 0, VMAX);
-          finishSkill(true);
-          G_.linkNext = true;
-          return takeoff(c, carry, q, true);
-        }
-      }
-    } else if (G_.rebound) { G_.rebound = null; }
-    const u = s.lx;
-    const legsOut = Math.hypot(legs.x, legs.y) > 0.5;
-    const stepped = !G_.rebound && legsOut && !G_.legsWasOut && G_.stepCool <= 0;
-    G_.legsWasOut = legsOut;
-    if (stepped) G_.stepCool = 0.4;
-    const ev = G_.bal.step(dt, u, armsUp, stepped);
-    if (ev === 'step') { G_.stepShift += Math.sign(G_.bal.lam || g.face) * 0.25; g.x += Math.sign(G_.bal.lam || g.face) * 0.25; thud(0.2); }
-    if (ev === 'fall') thud(1);
-    if (G_.bal.done) { finishSkill(false); endPass(); }
-    return;
-  }
-  if (G_.phase === 'walk') {
-    const dir = Math.sign(G_.walkTo - g.x);
-    g.face = dir || g.face; g.v = 2.6;
-    g.x += dir * 2.6 * dt; g.runPhase += 2.6 * dt * 1.9;
-    if (Math.sign(G_.walkTo - g.x) !== dir || reducedMotion()) arrive();
-  }
-}
-
-function ranOut(msg) {
-  const G_ = game; G_.msg = msg; G_.legsHeldMsg = null;
-  walkTo(G_.g.travel > 0 ? 0.6 : FLOOR - 0.6);
-}
-function walkTo(x) { game.phase = 'walk'; game.walkTo = x; game.g.v = 0; }
-function arrive() {
-  const G_ = game, g = G_.g;
-  g.x = G_.walkTo; g.travel = g.x < FLOOR / 2 ? 1 : -1; g.face = g.travel; g.v = 0;
-  if (G_.kind === 'routine' && G_.passes.length >= PASSES) return results();
-  newPass();
-}
-
-function takeoff(c, speed, q, rebound = false) {
-  const G_ = game, g = G_.g;
-  G_.flight = new Flight({ kind: c.kind, dir: c.dir, twist: c.twist, speed, q, travel: g.travel, x: g.x });
-  g.face = c.dir === 'back' ? -g.travel : g.travel;     // a round-off turns you around for back skills
-  G_.phase = 'air'; G_.q = q; G_.msg = ''; G_.legsHeldMsg = null; G_.rebound = null;
-  tone(220 + 300 * q, 0.06, 'triangle', 0.12);
-  if (!rebound) G_.callout = null;
-}
-
-function land() {
-  const G_ = game, f = G_.flight, g = G_.g;
-  const td = touchdown(f);
-  G_.td = td; G_.phase = 'land'; G_.landT = 0; G_.legsWasOut = true; G_.stepShift = 0; G_.landX = g.x;
-  const lamScreen = td.lean * g.face, velScreen = td.leanVel * g.face;
-  G_.bal = new Balance(td.fall ? Math.sign(lamScreen || 1) * 0.9 : lamScreen, velScreen);
-  if (td.fall) { G_.bal.done = true; G_.bal.fell = true; }
-  G_.rebound = f.kind === 'salto' && !td.fall && !td.squat && Math.abs(td.e) < 0.35 ? { open: true } : null;
-  resetFlick();
-  thud(clamp(Math.abs(td.e), 0, 1));
-}
-
-function finishSkill(connected) {
-  const G_ = game, f = G_.flight, td = G_.td;
-  const sk = judgeSkill(f, td);
-  const out = G_.landX < -0.05 || G_.landX > FLOOR + 0.05;
-  const landDed = connected ? landingDeductions({ ...td, squat: false }, null, out).filter(([w]) => w !== 'No finish')
-    : landingDeductions(td, G_.bal, out);
-  sk.ded = [...sk.air, ...landDed];
-  sk.connected = connected; sk.q = G_.q;
-  sk.linked = !!G_.linkNext; G_.linkNext = false;              // rebounded into from the skill before
-  if (sk.linked && sk.recognized) G_.pass.connections++;      // a connection only counts if the second skill does
-  G_.pass.skills.push(sk);
-  G_.callout = { skills: G_.pass.skills.slice(), connections: G_.pass.connections };
-}
-
-function endPass() {
-  const G_ = game, g = G_.g;
-  G_.passes.push(G_.pass);
-  if (G_.bal && G_.bal.shown) tone(520, 0.2, 'sine', 0.08);
-  G_.phase = 'settle'; G_.settleT = 0;
-  setTimeout(() => {
-    if (!game || game !== G_) return;
-    walkTo(g.x > FLOOR / 2 ? FLOOR - 0.6 : 0.6);
-  }, reducedMotion() ? 300 : 700);
 }
 
 function results() {
   const G_ = game;
   mode = 'results';
+  if (G_.kind === 'watch') return watchResults();
+  const perf = G_.perfs[0];
+  G_.passes = perf.passes;
   const sc = scoreRoutine(G_.passes, { requirements: G_.kind === 'routine' });
   let note = '';
   if (G_.kind === 'routine') {
@@ -352,6 +244,20 @@ function results() {
     ${rows ? `<table class="board"><thead><tr><td>Pass</td><td>Skill</td><td>D</td><td>Deductions</td></tr></thead><tbody>${rows}</tbody></table>` : '<p class="hint">No passes thrown.</p>'}
     ${req}
     <div class="menu"><button class="btn btn--solid" data-go="again">Go again</button><button class="btn" data-go="skills">Move list</button><button class="btn" data-go="menu">Menu</button></div>`);
+}
+
+/* a watch result: both scores, the winner, then the next match starts by itself. Nothing is saved. */
+function watchResults() {
+  const G_ = game; G_.resultT = 0;
+  const sc = G_.perfs.map((p) => scoreRoutine(p.passes));
+  const win = sc[0].total === sc[1].total ? -1 : sc[0].total > sc[1].total ? 0 : 1;
+  const rows = G_.perfs.map((p, i) => p.passes.map((ps, k) => ps.skills.map((s, j) => `<tr><td>${j || k ? '' : NAMES[i].slice(-1).toUpperCase()}</td><td>${k + 1}</td><td>${j ? '+ ' : ''}${s.name}${s.recognized ? '' : ' <small>(not counted)</small>'}</td><td>${fmt(s.d)}</td><td>${s.ded.length ? s.ded.map(([w, v]) => `−${fmt(v)} ${w.toLowerCase()}`).join(', ') : 'clean'}</td></tr>`).join('')).join('')).join('');
+  show(`<p class="label">Floor / CPU vs CPU</p>
+    <h1 class="title">${win < 0 ? 'Tie' : `Dummy ${NAMES[win].slice(-1).toUpperCase()} wins`}</h1>
+    <ul class="blurbs">${G_.dummies.map((d, i) => `<li><b>${sc[i].total.toFixed(2)}</b> <small>D ${sc[i].D.toFixed(1)} · E ${sc[i].E.toFixed(2)}</small> ${dummyLabel(NAMES[i], d)}</li>`).join('')}</ul>
+    <p class="hint">Next match with new seeds in a few seconds. Watch games aren't saved.</p>
+    <table class="board"><thead><tr><td></td><td>Pass</td><td>Skill</td><td>D</td><td>Deductions</td></tr></thead><tbody>${rows}</tbody></table>
+    <div class="menu"><button class="btn btn--solid" data-go="again">Next match</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
 }
 
 function menuInput() {
@@ -392,7 +298,16 @@ function draw(dt) {
   drawFloor(v);
   judges(v);
   if (!game || mode === 'menu') { board(null); HUD.meters([{ label: 'tuck', v: 0 }, { label: 'pike', v: 0 }]); HUD.msg(''); menuBar(); return; }
-  drawGymnast(v, pose());
+  if (game.kind === 'watch') {
+    // the one waiting stands just off the floor by its corner, faded; name tags over the heads, so colour is never the only cue
+    game.perfs.forEach((perf, i) => {
+      if (i === game.turn) return;
+      const p = pose(perf, NO_INPUT); p.x = perf.g.x < FLOOR / 2 ? -0.7 : FLOOR + 0.7; p.face = perf.g.x < FLOOR / 2 ? 1 : -1;
+      drawGymnast(v, p, i, NAMES[i], true);
+    });
+    const perf = active();
+    drawGymnast(v, pose(perf, perf.ctl), game.turn, NAMES[game.turn]);
+  } else { const perf = active(); drawGymnast(v, pose(perf, perf.ctl), 0); }
   hud(v);
   if (mode !== 'play') menuBar();
 }
@@ -406,7 +321,7 @@ function menuBar() {
 /* the end of the floor you are heading for lights up when you get close to it */
 function hotEnd() {
   if (!game || mode !== 'play') return null;
-  const G_ = game, g = G_.g;
+  const G_ = active(), g = G_.g;
   if (!['run', 'hurdle', 'air', 'land'].includes(G_.phase)) return null;
   const dir = G_.phase === 'land' ? Math.sign(g.x - FLOOR / 2) : g.travel;
   const left = dir > 0 ? FLOOR - g.x : g.x;
@@ -453,10 +368,10 @@ function judges(v) {
 // body frame: metres, hip at the origin, facing +x, y up
 const THIGH = 0.45, SHIN = 0.45, TORSO = 0.55, UPPER = 0.3, FORE = 0.28, HEAD = 0.11;
 
-function pose() {
-  const G_ = game, g = G_.g, p = { x: g.x, z: 0, ang: 0, face: g.face, sx: 1, tuck: 0, pike: 0, knee: 0.08,
+function pose(G_, ctl) {
+  const g = G_.g, p = { x: g.x, z: 0, ang: 0, face: g.face, sx: 1, tuck: 0, pike: 0, knee: 0.08,
     arm: 0.15, armB: null, elbow: 0.1, legA: 0, legB: 0, grounded: true };
-  if (G_.phase === 'ready' || (G_.phase === 'settle' && !G_.bal) ) return p;
+  if (G_.phase === 'ready' || G_.phase === 'done' || (G_.phase === 'settle' && !G_.bal)) return p;
   if (G_.phase === 'run' || G_.phase === 'walk') {
     const amp = Math.min(1, g.v / 4) * (G_.phase === 'walk' ? 0.4 : 0.85) + 0.05;
     const sw = Math.sin(g.runPhase) * amp;
@@ -487,9 +402,9 @@ function pose() {
     const b = G_.bal, lamFace = b ? b.lam * g.face : 0;
     const fell = b && b.fell;
     const soak = clamp(0.6 - G_.landT * 1.8, 0.08, 0.6);
-    const up = input.state.ly < -0.6 || (b && b.shown);
+    const up = ctl.ly < -0.6 || (b && b.shown);
     Object.assign(p, { ang: fell ? -Math.sign(lamFace || 1) * 1.35 : -lamFace, knee: fell ? 1.6 : soak + Math.abs(lamFace) * 0.8,
-      tuck: G_.td && G_.td.squat && G_.landT < 0.4 ? 0.7 : 0, arm: up ? Math.PI * 0.92 : 1.45 + input.state.lx * g.face * 0.4,
+      tuck: G_.td && G_.td.squat && G_.landT < 0.4 ? 0.7 : 0, arm: up ? Math.PI * 0.92 : 1.45 + ctl.lx * g.face * 0.4,
       elbow: 0.1, legA: fell ? 0.9 : 0.05, legB: fell ? 0.6 : -0.05 });
     if (fell) p.tuck = 0.4;
     return p;
@@ -510,7 +425,7 @@ function skeleton(p) {
   return { O, S, Hd, KA, FA, KB, FB, E, Hn, E2, Hn2 };
 }
 
-function drawGymnast(v, p) {
+function drawGymnast(v, p, side = 0, label = '', waiting = false) {
   const sk = skeleton(p);
   const c = Math.cos(p.ang), s = Math.sin(p.ang), fx = p.face * p.sx;
   const tf = ([x, y]) => [(x * c - y * s) * fx, x * s + y * c];
@@ -522,10 +437,11 @@ function drawGymnast(v, p) {
     const fxm = (pts.FA[0] + pts.FB[0]) / 2; ox = p.x - fxm;
   } else oy = THIGH + SHIN - 0.04 + p.z;
   const P = ([x, y]) => [v.sx(ox + x), v.sy(oy + y)];
-  const T = look.team(0), k = v.ppm;
-  // your gymnast: a faint ring on the floor under you
-  look.ring(ctx, v.sx(p.x), v.floorY, Math.max(10, 0.5 * k));
+  const T = look.team(side), BACK = FAR[side], k = v.ppm;
+  // the one on the floor: a faint ring under them
+  if (!waiting) look.ring(ctx, v.sx(p.x), v.floorY, Math.max(10, 0.5 * k));
   ctx.save();
+  if (waiting) ctx.globalAlpha = 0.55;
   const path = (...ks) => () => ks.forEach((key, i) => { const [x, y] = P(pts[key]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
   const legW = Math.max(3, k * 0.11), armW = Math.max(2.5, k * 0.085), band = Math.max(2, k * 0.04);
   const ankle = (key) => { const [x, y] = P(pts[key]); look.band(ctx, x, y, band, T); };
@@ -547,20 +463,31 @@ function drawGymnast(v, p) {
   look.strokeLimb(ctx, path('KA', 'FA'), legW * 0.9, T, T.skin);
   ankle('FA');
   look.strokeLimb(ctx, path('S', 'E', 'Hn'), armW, T, T.skin);
+  if (label) look.tag(ctx, qx, qy - HEAD * k * 1.15 - 16, label, { size: 10, pad: 4 });
   ctx.restore();
 }
-const BACK = { suit: ['#d0d0d0', '#a8a8a8', '#6a6a6a'], skin: ['#a8a8a8', '#7c7c7c', '#3e3e3e'] };
+/* the far leg and arm, a shade darker than the near ones, per side */
+const FAR = [
+  { suit: ['#d0d0d0', '#a8a8a8', '#6a6a6a'], skin: ['#a8a8a8', '#7c7c7c', '#3e3e3e'] },
+  { suit: ['#3a3a3a', '#1e1e1e', '#090909'], skin: ['#7e7e7e', '#5a5a5a', '#242424'] }
+];
 
 /* ---------------- heads-up display: scoreboard, calls and the button bar live on the page ---------------- */
-function board(G_) {
+function board() {
+  if (game && game.kind === 'watch' && mode !== 'menu') {
+    const sc = game.perfs.map((p) => scoreRoutine(p.passes)), final = mode === 'results';
+    const side = (i) => ({ name: NAMES[i], sub: `${look.bandWord(i)} · ${game.dummies[i].style}`, score: sc[i].total.toFixed(2), has: !final && i === game.turn });
+    HUD.board({ a: side(0), b: side(1), clock: final ? 'final' : `${Math.min(PASSES, active().passNo)}/${PASSES}` });
+    return;
+  }
   const a = { name: 'you', sub: `${look.bandWord(0)} · difficulty` }, b = { name: 'judges', sub: `${look.bandWord(1)} · execution` };
-  if (!G_) { HUD.board({ a: { ...a, score: '0.0' }, b: { ...b, score: '10.00' }, clock: '--' }); return; }
-  const final = mode === 'results', sc = scoreRoutine(G_.passes, { requirements: final && G_.kind === 'routine' });
-  const routine = G_.kind === 'routine';
+  if (!game || mode === 'menu') { HUD.board({ a: { ...a, score: '0.0' }, b: { ...b, score: '10.00' }, clock: '--' }); return; }
+  const G_ = active(), final = mode === 'results', routine = game.kind === 'routine';
+  const sc = scoreRoutine(G_.passes, { requirements: final && routine });
   HUD.board({
     a: { ...a, score: sc.D.toFixed(1) }, b: { ...b, score: sc.E.toFixed(2) },
-    clock: final ? sc.total.toFixed(2) : routine ? `${Math.min(PASSES, passNo())}/${PASSES}` : `#${passNo()}`,
-    low: !final && routine && passNo() >= PASSES
+    clock: final ? sc.total.toFixed(2) : routine ? `${Math.min(PASSES, G_.passNo)}/${PASSES}` : `#${G_.passNo}`,
+    low: !final && routine && G_.passNo >= PASSES
   });
 }
 /* a skill just landed: stamp its name, value and deductions on the stage once */
@@ -579,22 +506,23 @@ function lastSkill(c) {
 }
 
 function hud(v) {
-  const G_ = game, g = G_.g, s = input.state, pad = input.lastDevice === 'controller';
+  const G_ = active(), g = G_.g, watch = game.kind === 'watch', s = watch ? G_.ctl : input.state;
+  const pad = input.lastDevice === 'controller';
   const fwd = g.travel > 0 ? '→' : '←', bwd = g.travel > 0 ? '←' : '→';
-  board(G_);
+  board();
   const c = G_.callout, sk = c ? c.skills[c.skills.length - 1] : null;
   if (sk && sk !== shownSkill) stamp(c);
   shownSkill = sk;
-  HUD.msg(G_.msg);
+  HUD.msg(watch ? '' : G_.msg);
   const air = G_.phase === 'air' ? G_.flight : null;
   const tuck = clamp(air ? air.tuck : s.lt, 0, 1), pike = clamp(air ? air.pike : s.rt, 0, 1);
-  HUD.meters([{ label: pad ? 'L2 tuck' : 'F tuck', v: tuck }, { label: pad ? 'R2 pike' : 'J pike', v: pike }]);
+  HUD.meters([{ label: watch ? 'tuck' : pad ? 'L2 tuck' : 'F tuck', v: tuck }, { label: watch ? 'pike' : pad ? 'R2 pike' : 'J pike', v: pike }]);
 
   // top right: the spin dial
-  dial(W - 90, 84);
+  dial(G_, W - 90, 84);
 
   // hurdle rings around the feet: the moving ring closes on the fixed one at the sweet spot
-  if (G_.phase === 'hurdle') {
+  if (G_.phase === 'hurdle' && !watch) {
     const k = HURDLE - G_.hurdleT, fx = v.sx(g.x), fy = v.floorY;
     ctx.strokeStyle = look.FLOOR.mark; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fx, fy, 16, 0, TAU); ctx.stroke();
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fx, fy, 16 + Math.max(0, k) * 260, 0, TAU); ctx.stroke();
@@ -605,13 +533,24 @@ function hud(v) {
   speedBox(20, y0, g.v);
   if (G_.phase === 'land' && G_.bal && W > 420) balanceBar(164, y0, G_.bal);
 
-  if (mode === 'play') bar(G_, pad, fwd, bwd, tuck, pike);
+  if (watch) seedTags();
+  if (mode === 'play') { if (watch) watchBar(G_, pad); else bar(G_, pad, fwd, bwd, tuck, pike); }
+}
+
+/* CPU vs CPU: both dummies' style and seed, bottom right */
+function seedTags() {
+  if (W < 520) return;
+  game.dummies.map((d, i) => dummyLabel(NAMES[i], d)).reverse().forEach((l, i) => look.tag(ctx, W - 14, H - 22 - i * 22, l, { size: 10, align: 'right', pad: 4 }));
+}
+function watchBar(G_, pad) {
+  const what = { ready: 'chalking up', run: 'running', hurdle: 'hurdle', air: 'in the air', land: 'landing', settle: 'landing', walk: 'walking back' }[G_.phase] || '';
+  HUD.bar('watching', [{ k: pad ? 'options' : 'P / esc', t: 'pause', open: true }], `${NAMES[game.turn]} ${what} · pass ${Math.min(PASSES, G_.passNo)} of ${PASSES}. the next match starts by itself`);
 }
 
 /* what the buttons do right now */
 function bar(G_, pad, fwd, bwd, tuck, pike) {
   const ph = G_.phase, ch = (k, t, open) => ({ k, t, open });
-  const where = G_.kind === 'routine' ? `routine · pass ${Math.min(PASSES, passNo())} of ${PASSES}` : `free floor${G_.slow ? ' · half speed' : ''} · pass ${passNo()}`;
+  const where = game.kind === 'routine' ? `routine · pass ${Math.min(PASSES, G_.passNo)} of ${PASSES}` : `free floor${game.slow ? ' · half speed' : ''} · pass ${G_.passNo}`;
   const pause = pad ? ch('options', 'pause') : ch('P', 'pause');
   if (ph === 'ready') HUD.bar('ready', [pad ? ch('R' + fwd, 'run', true) : ch(fwd, 'hold to run', true), pause], [where, lastSkill(G_.callout)].filter(Boolean).join(' · '));
   else if (ph === 'run') HUD.bar('run', [pad ? ch('R' + fwd, 'run') : ch(fwd, 'run'), pad ? ch('L↑', 'hurdle', true) : ch('W', 'hurdle', true)], `${where} · hurdle before the far corner`);
@@ -655,19 +594,19 @@ function balanceBar(x, y, b) {
 
 /* The spin dial: the line is where your head points, the notch at the top is feet down.
    Under it: turns and twists so far. */
-function dial(cx, cy) {
-  const G_ = game, f = G_.phase === 'air' || G_.phase === 'land' ? G_.flight : null, r = 46;
+function dial(G_, cx, cy) {
+  const f = G_.phase === 'air' || G_.phase === 'land' ? G_.flight : null, r = 46;
   ctx.fillStyle = 'rgba(6,6,6,.7)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
   ctx.strokeStyle = look.FLOOR.inner; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
   ctx.fillStyle = FG; ctx.fillRect(cx - 1.5, cy - r - 8, 3, 14);
   const theta = f && f.kind === 'salto' ? f.theta : 0, sign = f && f.dir === 'back' ? 1 : -1;
-  const a = sign * theta * game.g.face;
+  const a = sign * theta * G_.g.face;
   ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx, cy);
   ctx.lineTo(cx - Math.sin(a) * r * 0.9, cy - Math.cos(a) * r * 0.9); ctx.stroke();
   ctx.beginPath(); ctx.arc(cx - Math.sin(a) * r * 0.9, cy - Math.cos(a) * r * 0.9, 5, 0, TAU); ctx.fillStyle = '#ffffff'; ctx.fill();
   // hollow ring: where your head ends up if you open now. Open when it reaches the top notch.
-  if (f && f.kind === 'salto' && game.phase === 'air') {
-    const b = sign * f.predicted * game.g.face;
+  if (f && f.kind === 'salto' && G_.phase === 'air') {
+    const b = sign * f.predicted * G_.g.face;
     ctx.strokeStyle = look.FLOOR.line; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx - Math.sin(b) * r, cy - Math.cos(b) * r, 8, 0, TAU); ctx.stroke();
   }
   look.tag(ctx, cx, cy + r + 18, `${(theta / TAU).toFixed(1)} turns`);

@@ -6,12 +6,15 @@
 
 import { Input } from '../shared/input.js';
 import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
+import * as look from '../shared/look.js';
+import { dummyLabel } from '../shared/seed.js';
 import { Game, LEVELS, RINK, SK, PUCK_R, WRIST_MAX, SLAP_FULL, blankCmd } from './sim.js';
 
 const SAVE = 'jay.slapshot.v1';
 const LENGTHS = [60, 120, 180, 240];   // period length options, seconds
 const LOAD = 0.14;                     // hold the stick back this long and the shot is loaded
 const FLICK_WINDOW = 0.25;             // after letting go, this long to flick it forward
+const WATCH_NEXT = 6;                  // CPU vs CPU: seconds the result shows before the next match
 
 const input = new Input({
   UP: ['KeyW'], DOWN: ['KeyS'], LEFT: ['KeyA'], RIGHT: ['KeyD'],
@@ -21,13 +24,15 @@ const input = new Input({
 });
 
 /* ---------------- save data (this browser only) ---------------- */
+function saved() { try { return localStorage.getItem(SAVE); } catch (e) { return null; } }
 function load() {
   let d = {}; try { d = JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) {}
   const rec = {}; for (const l of LEVELS) rec[l.id] = { w: 0, l: 0, t: 0, ...((d.rec || {})[l.id] || {}) };
-  return { periodLen: LENGTHS.includes(d.periodLen) ? d.periodLen : 120, rec };
+  const watchLevel = LEVELS.some((l) => l.id === d.watchLevel) ? d.watchLevel : 'pro';
+  return { periodLen: LENGTHS.includes(d.periodLen) ? d.periodLen : 120, watchLevel, rec, fresh: !saved() };
 }
 const data = load();
-const persist = () => { try { localStorage.setItem(SAVE, JSON.stringify(data)); } catch (e) {} };
+const persist = () => { try { const { fresh, ...keep } = data; localStorage.setItem(SAVE, JSON.stringify(keep)); } catch (e) {} };
 
 /* ---------------- sound: tiny synth, no files ---------------- */
 let ac = null;
@@ -133,15 +138,21 @@ overlay.addEventListener('click', (e) => { const b = e.target.closest('button[da
 
 const recText = (r) => (r.w || r.l || r.t ? `${r.w}-${r.l}-${r.t}` : 'no games');
 const minutes = (s) => `${s / 60} min`;
+const levelName = (id) => (LEVELS.find((l) => l.id === id) || LEVELS[1]).name;
+/* team names and seed lines: "dummy a: cannon, seed 3F2A" */
+const teamName = (g, t) => (g.watch ? (t === 0 ? 'Dummy A' : 'Dummy B') : t === 0 ? 'You' : 'CPU');
+const seedLine = (g, t) => dummyLabel(g.watch ? (t === 0 ? 'dummy a' : 'dummy b') : t === 0 ? 'your line' : 'cpu', g.dummies[t]);
 
 function mainMenu() {
-  mode = 'menu'; demo = reducedMotion() ? null : new Game({ level: 'pro', humanIdx: -1, periodLen: 9999 });
+  mode = 'menu'; demo = reducedMotion() ? null : new Game({ level: 'pro', watch: true, periodLen: 9999 });
   const lv = LEVELS.map((l) => `<button class="btn" data-go="play" data-arg="${l.id}">Play: ${l.name} <small>${recText(data.rec[l.id])}</small></button>`).join('');
   show(`<p class="label">Game file / Hockey / 3 on 3</p><h1 class="title">Slapshot</h1>
-    <div class="menu">${lv}<button class="btn" data-go="practice">Practice <small>you and a goalie</small></button>
+    <div class="menu">${lv}<button class="btn" data-go="watch">CPU vs CPU <small>watch two dummies</small></button>
+    <button class="btn" data-go="watchlevel">CPU vs CPU level <small>${levelName(data.watchLevel)}</small></button>
+    <button class="btn" data-go="practice">Practice <small>you and a goalie</small></button>
     <button class="btn" data-go="length">Periods <small>3 × ${minutes(data.periodLen)}</small></button>
     <button class="btn" data-go="controls">Controls</button></div>
-    <p class="hint">Arcade 3 on 3 with computer goalies. Every skater is the same, so there is nothing to train: you win on how you skate, handle and shoot. Records are W-L-T, saved in this browser only.</p>`);
+    <p class="hint">Arcade 3 on 3 with computer goalies. Every skater is the same, so there is nothing to train: you win on how you skate, handle and shoot. Each computer team is a dummy rolled from a seed, so no two play alike. Records are W-L-T, saved in this browser only.</p>`);
 }
 function controls(from) {
   mode = from === 'pause' ? 'paused' : 'menu';
@@ -171,45 +182,59 @@ function controls(from) {
 }
 
 /* ---------------- game state ---------------- */
-let mode = 'menu';     // menu | play | paused | results
-let game = null, demo = null, gameOpts = null, endT = 0;
+let mode = 'menu';     // menu | play | paused | results  (CPU vs CPU is play with game.watch)
+let game = null, demo = null, gameOpts = null, endT = 0, nextT = 0;
 
+/* every new game rolls fresh seeds for its dummies */
 function newGame(opts) {
   gameOpts = opts;
-  game = new Game({ ...opts, humanIdx: 0 });
+  game = new Game({ ...opts, humanIdx: opts.watch ? -1 : 0 });
   gesture.reset(); pending = null;
-  mode = 'play'; hide(); endT = 0;
+  mode = 'play'; hide(); endT = 0; nextT = 0;
 }
+const watchGame = () => newGame({ level: data.watchLevel, periodLen: data.periodLen, watch: true });
 function go(what, arg) {
   audio();
   if (what === 'menu') mainMenu();
   else if (what === 'controls') controls(mode === 'paused' ? 'pause' : 'menu');
-  else if (what === 'length') { data.periodLen = LENGTHS[(LENGTHS.indexOf(data.periodLen) + 1) % LENGTHS.length]; persist(); mainMenu(); menuItems[LEVELS.length + 1].focus(); }
+  else if (what === 'length') { data.periodLen = LENGTHS[(LENGTHS.indexOf(data.periodLen) + 1) % LENGTHS.length]; persist(); mainMenu(); refocus('length'); }
+  else if (what === 'watchlevel') { const i = LEVELS.findIndex((l) => l.id === data.watchLevel); data.watchLevel = LEVELS[(i + 1) % LEVELS.length].id; persist(); mainMenu(); refocus('watchlevel'); }
   else if (what === 'play') newGame({ level: arg, periodLen: data.periodLen });
+  else if (what === 'watch') watchGame();
   else if (what === 'practice') newGame({ level: 'pro', practice: true });
   else if (what === 'again') newGame(gameOpts);
   else if (what === 'pause') pause();
   else if (what === 'resume') { mode = 'play'; hide(); }
 }
+function refocus(go) { const i = menuItems.findIndex((b) => b.dataset.go === go); if (i >= 0) { menuIndex = i; menuItems[i].focus(); } }
+function seedHint(g) {
+  if (g.practice) return '';
+  return `<p class="hint">${g.watch ? `${seedLine(g, 0)}<br>${seedLine(g, 1)}` : seedLine(g, 1)}</p>`;
+}
 function pause() {
   mode = 'paused';
-  show(`<p class="label">Paused${game.practice ? ' / Practice' : ` / ${game.level.name}`}</p><h1 class="title">${game.practice ? `${game.score[0]} <small>goals</small>` : `${game.score[0]} – ${game.score[1]}`}</h1>
-    <div class="menu"><button class="btn btn--solid" data-go="resume">Resume</button><button class="btn" data-go="again">Restart</button><button class="btn" data-go="controls">Controls</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
+  const where = game.practice ? ' / Practice' : `${game.watch ? ' / CPU vs CPU' : ''} / ${game.level.name}`;
+  show(`<p class="label">Paused${where}</p><h1 class="title">${game.practice ? `${game.score[0]} <small>goals</small>` : `${game.score[0]} – ${game.score[1]}`}</h1>
+    ${seedHint(game)}
+    <div class="menu"><button class="btn btn--solid" data-go="resume">Resume</button><button class="btn" data-go="again">${game.watch ? 'New match <small>new seeds</small>' : 'Restart'}</button><button class="btn" data-go="controls">Controls</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
 }
 function results() {
   mode = 'results';
-  const [a, b] = game.score, r = data.rec[game.level.id];
-  const res = a > b ? 'w' : a < b ? 'l' : 't'; r[res]++; persist();
-  const head = res === 'w' ? 'You win' : res === 'l' ? 'You lose' : 'Tie game';
+  const [a, b] = game.score, w = game.watch, r = data.rec[game.level.id];
+  const res = a > b ? 'w' : a < b ? 'l' : 't';
+  if (!w) { r[res]++; persist(); }   // watch games are not recorded
+  const head = w ? (res === 't' ? 'Tie game' : `${teamName(game, res === 'w' ? 0 : 1)} wins`) : res === 'w' ? 'You win' : res === 'l' ? 'You lose' : 'Tie game';
   const ot = game.ot ? (res === 't' ? ' after overtime' : ' in overtime') : '';
-  show(`<p class="label">${game.level.name} / Final${ot}</p><h1 class="title">${head} <small>${a} – ${b}</small></h1>
+  nextT = w ? WATCH_NEXT : 0;
+  show(`<p class="label">${w ? 'CPU vs CPU / ' : ''}${game.level.name} / Final${ot}</p><h1 class="title">${head} <small>${a} – ${b}</small></h1>
     <table class="board"><tbody>
-      <tr><td></td><td>You</td><td>CPU</td></tr>
+      <tr><td></td><td>${teamName(game, 0)}</td><td>${teamName(game, 1)}</td></tr>
       <tr><td>Goals</td><td>${a}</td><td>${b}</td></tr>
       <tr><td>Shots on goal</td><td>${game.sog[0]}</td><td>${game.sog[1]}</td></tr>
       <tr><td>Hits</td><td>${game.hits[0]}</td><td>${game.hits[1]}</td></tr></tbody></table>
-    <p class="hint">Record at ${game.level.name}: ${recText(r)}.</p>
-    <div class="menu"><button class="btn btn--solid" data-go="again">Play again</button><button class="btn" data-go="menu">Menu</button></div>`);
+    ${seedHint(game)}
+    <p class="hint">${w ? `Next match with new seeds in <span id="next">${WATCH_NEXT}</span> s. Watch games are not recorded.` : `Record at ${game.level.name}: ${recText(r)}.`}</p>
+    <div class="menu"><button class="btn btn--solid" data-go="again">${w ? 'Next match' : 'Play again'}</button><button class="btn" data-go="menu">Menu</button></div>`);
 }
 
 /* ---------------- your inputs → a command for your skater ---------------- */
@@ -260,8 +285,20 @@ function humanCommand(dt) {
 
 function update(dt) {
   input.poll();
-  if (mode !== 'play') { if (demo && mode === 'menu') { demo.step(dt); if (demo.over || demo.t > 240) demo = new Game({ level: 'pro', humanIdx: -1, periodLen: 9999 }); } return menuInput(); }
-  if (input.pressed('START') || input.pressed('ESC')) return pause();
+  if (mode !== 'play') {
+    if (demo && mode === 'menu') { demo.step(dt); if (demo.over || demo.t > 240) demo = new Game({ level: 'pro', watch: true, periodLen: 9999 }); }
+    if (mode === 'results' && game && game.watch && nextT > 0) { // CPU vs CPU rolls on by itself
+      nextT -= dt; const el = overlay.querySelector('#next'); if (el) el.textContent = String(Math.max(0, Math.ceil(nextT)));
+      if (nextT <= 0) return watchGame();
+    }
+    return menuInput();
+  }
+  if (input.pressed('START') || input.pressed('ESC') || (game.watch && input.pressed('B'))) return pause();
+  if (game.watch) { // CPU vs CPU: both teams think for themselves, your input only pauses
+    game.step(dt); sounds(game.events);
+    if (game.over) { endT += dt; if (endT > (game.phase === 'goal' ? 2.4 : 0.6)) results(); }
+    return;
+  }
   const h = game.human;
   h.cmd = humanCommand(dt);
   game.step(dt);
@@ -289,56 +326,77 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && mod
 
 /* ---------------- drawing ---------------- */
 let W = 0, H = 0, dpr = 1, sc = 1, ox = 0, oy = 0;
-const TOP = 70, BOTTOM = 40;
+const TOP = 26, BOTTOM = 12, BOARDS = 9;   // the boards stand this far outside the ice, in rink units
 function resize() {
-  dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight;
-  canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  sc = Math.max(0.3, Math.min((W - 24) / (RINK.HX * 2), (H - TOP - BOTTOM) / (RINK.HY * 2)));
-  ox = W / 2; oy = TOP + (H - TOP - BOTTOM) / 2;
+  ({ W, H, dpr } = look.fit(canvas));
+  const bx = RINK.HX + BOARDS, by = RINK.HY + BOARDS;
+  sc = Math.max(0.3, Math.min((W - 24) / (bx * 2), (H - TOP - BOTTOM) / (by * 2)));
+  // spare height goes mostly above the rink, so the crowd has room behind the far boards
+  const free = Math.max(0, H - TOP - BOTTOM - by * 2 * sc);
+  ox = W / 2; oy = TOP + free * 0.7 + by * sc;
 }
-addEventListener('resize', resize); resize();
+look.watch(canvas, resize); resize();
 const X = (x) => ox + x * sc, Y = (y) => oy + y * sc;
-function toWorld(px, py) { return [(px - ox) / sc, (py - oy) / sc]; }
+/* the pointer gives page coordinates; the canvas now sits inside the stage, so take its box off first */
+function toWorld(px, py) { const r = canvas.getBoundingClientRect(); return [(px - r.left - ox) / sc, (py - r.top - oy) / sc]; }
 
-const FG = '#ececec', BG = '#060606', ICE = '#0e0e0e';
+const FG = '#ececec', BG = '#060606', ICE = '#161616', BOARD = '#090909';
 const fg = (a) => `rgba(236,236,236,${a})`;
-const mono = (px, w = 400) => `${w} ${px}px "IBM Plex Mono", ui-monospace, monospace`;
+const HUD = look.hud();
+let shownCall = '', callGame = null;
 
-function rinkPath() {
-  const { HX, HY, CR } = RINK, r = CR * sc;
-  ctx.beginPath(); ctx.roundRect(X(-HX), Y(-HY), HX * 2 * sc, HY * 2 * sc, r);
+function rinkPath(pad = 0) {
+  const { HX, HY, CR } = RINK, r = (CR + pad) * sc;
+  ctx.beginPath(); ctx.roundRect(X(-HX - pad), Y(-HY - pad), (HX + pad) * 2 * sc, (HY + pad) * 2 * sc, r);
 }
-function drawRink() {
+/* a line someone is about to cross brightens a little, slowly */
+function nearLine(g, x) {
+  if (!g || g.phase !== 'play') return false;
+  const P = g.puck, o = P.owner;
+  return !!o && Math.abs(P.x - x) < 22 && Math.sign(o.vx || 0) === Math.sign(x - P.x);
+}
+function drawRink(g) {
   const { HY, GX, GW, GD, BLUE, CREASE } = RINK;
+  // the boards: a dark band round the ice with a grey edge
+  rinkPath(BOARDS); ctx.fillStyle = BOARD; ctx.fill();
+  ctx.strokeStyle = look.FLOOR.edge; ctx.lineWidth = 1.5; ctx.stroke();
+  // the ice: a slightly lighter grey than the boards, lit in the middle
   rinkPath(); ctx.fillStyle = ICE; ctx.fill();
   ctx.save(); rinkPath(); ctx.clip();
-  ctx.lineWidth = Math.max(2, 4 * sc);
+  look.spot(ctx, X(0), Y(0), RINK.HX * 0.95 * sc, RINK.HY * 1.1 * sc);
   // blue lines solid, centre line dashed: told apart by pattern, not colour
-  ctx.strokeStyle = fg(0.3);
-  for (const x of [-BLUE, BLUE]) { ctx.beginPath(); ctx.moveTo(X(x), Y(-HY)); ctx.lineTo(X(x), Y(HY)); ctx.stroke(); }
-  ctx.setLineDash([10 * sc, 7 * sc]); ctx.strokeStyle = fg(0.22);
+  ctx.lineWidth = Math.max(2, 4 * sc);
+  for (const x of [-BLUE, BLUE]) {
+    const hot = nearLine(g, x);
+    ctx.strokeStyle = hot ? look.FLOOR.hot : look.FLOOR.line; ctx.globalAlpha = hot ? look.pulse(performance.now() / 1000) : 0.8;
+    ctx.beginPath(); ctx.moveTo(X(x), Y(-HY)); ctx.lineTo(X(x), Y(HY)); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.setLineDash([10 * sc, 7 * sc]); ctx.strokeStyle = look.FLOOR.line; ctx.lineWidth = Math.max(1.5, 3 * sc);
   ctx.beginPath(); ctx.moveTo(X(0), Y(-HY)); ctx.lineTo(X(0), Y(HY)); ctx.stroke(); ctx.setLineDash([]);
-  ctx.lineWidth = Math.max(1, 1.5 * sc); ctx.strokeStyle = fg(0.3);
+  // goal lines and circles: the quieter lines
+  ctx.lineWidth = Math.max(1, 1.5 * sc); ctx.strokeStyle = look.FLOOR.inner;
   for (const x of [-GX, GX]) { ctx.beginPath(); ctx.moveTo(X(x), Y(-HY)); ctx.lineTo(X(x), Y(HY)); ctx.stroke(); }
-  ctx.strokeStyle = fg(0.16); ctx.lineWidth = Math.max(1, 1.2 * sc);
+  ctx.lineWidth = Math.max(1, 1.2 * sc);
   ctx.beginPath(); ctx.arc(X(0), Y(0), 60 * sc, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = look.FLOOR.mark;
   for (const fx of [-(GX - 90), GX - 90]) for (const fy of [-70, 70]) {
     ctx.beginPath(); ctx.arc(X(fx), Y(fy), 45 * sc, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = fg(0.25); ctx.beginPath(); ctx.arc(X(fx), Y(fy), 3 * sc, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(X(fx), Y(fy), 3 * sc, 0, Math.PI * 2); ctx.fill();
   }
-  for (const fx of [-(BLUE - 25), BLUE - 25]) for (const fy of [-70, 70]) { ctx.fillStyle = fg(0.2); ctx.beginPath(); ctx.arc(X(fx), Y(fy), 3 * sc, 0, Math.PI * 2); ctx.fill(); }
-  ctx.fillStyle = fg(0.3); ctx.beginPath(); ctx.arc(X(0), Y(0), 3 * sc, 0, Math.PI * 2); ctx.fill();
+  for (const fx of [-(BLUE - 25), BLUE - 25]) for (const fy of [-70, 70]) { ctx.beginPath(); ctx.arc(X(fx), Y(fy), 3 * sc, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = '#a9a9a9'; ctx.beginPath(); ctx.arc(X(0), Y(0), 3 * sc, 0, Math.PI * 2); ctx.fill();
   // creases
   for (const side of [-1, 1]) {
-    ctx.fillStyle = fg(0.06); ctx.strokeStyle = fg(0.3); ctx.lineWidth = Math.max(1, 1.2 * sc);
+    ctx.fillStyle = '#1f1f1f'; ctx.strokeStyle = look.FLOOR.mark; ctx.lineWidth = Math.max(1, 1.2 * sc);
     ctx.beginPath(); ctx.arc(X(side * GX), Y(0), CREASE * sc, side < 0 ? -Math.PI / 2 : Math.PI / 2, side < 0 ? Math.PI / 2 : Math.PI * 1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
   ctx.restore();
   // nets: a box with mesh
   for (const side of [-1, 1]) {
     const x0 = side < 0 ? -GX - GD : GX, w = GD;
-    ctx.fillStyle = fg(0.05); ctx.fillRect(X(x0), Y(-GW), w * sc, GW * 2 * sc);
-    ctx.strokeStyle = fg(0.12); ctx.lineWidth = 1;
+    ctx.fillStyle = '#101010'; ctx.fillRect(X(x0), Y(-GW), w * sc, GW * 2 * sc);
+    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1;
     for (let i = 1; i < 6; i++) { const y = -GW + (GW * 2 * i) / 6; ctx.beginPath(); ctx.moveTo(X(x0), Y(y)); ctx.lineTo(X(x0 + w), Y(y)); ctx.stroke(); }
     ctx.strokeStyle = FG; ctx.lineWidth = Math.max(1.5, 2 * sc);
     ctx.beginPath();
@@ -346,56 +404,71 @@ function drawRink() {
     else { ctx.moveTo(X(GX), Y(-GW)); ctx.lineTo(X(GX + GD), Y(-GW)); ctx.lineTo(X(GX + GD), Y(GW)); ctx.lineTo(X(GX), Y(GW)); }
     ctx.stroke();
   }
-  rinkPath(); ctx.strokeStyle = FG; ctx.lineWidth = 2; ctx.stroke();
+  // the boundary: the top of the boards
+  rinkPath(); ctx.strokeStyle = look.FLOOR.line; ctx.lineWidth = 2; ctx.stroke();
 }
+/* where the far boards meet the stands, so the crowd sits behind the rink */
+const horizonY = () => Math.max(0, Y(-RINK.HY - BOARDS));
 
-/* home skaters are circles, away skaters are diamonds: colour is never the only cue */
+/* home skaters are circles, away skaters are diamonds: shape and shade tell the teams apart, not just the band */
 function bodyPath(team, x, y, r) {
   ctx.beginPath();
   if (team === 0) ctx.arc(x, y, r, 0, Math.PI * 2);
   else { const d = r * 1.18; ctx.moveTo(x, y - d); ctx.lineTo(x + d, y); ctx.lineTo(x, y + d); ctx.lineTo(x - d, y); ctx.closePath(); }
 }
-function drawSkater(s, pal, calm, dim) {
-  const x = X(s.x), y = Y(s.y), r = SK.r * sc, col = s.team === 0 ? pal.home : pal.away;
+/* a shaded body in a side's suit tones, the dark side with its light rim behind it */
+function body(team, x, y, r, T, path = bodyPath) {
+  if (T.rim) { path(team, x, y, r); ctx.strokeStyle = T.rim; ctx.lineWidth = 2.5; ctx.stroke(); }
+  const gr = ctx.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r * 1.2);
+  gr.addColorStop(0, T.suit[0]); gr.addColorStop(.6, T.suit[1]); gr.addColorStop(1, T.suit[2]);
+  path(team, x, y, r); ctx.fillStyle = gr; ctx.fill();
+}
+function drawSkater(s, calm, dim) {
+  const x = X(s.x), y = Y(s.y), r = SK.r * sc, T = look.team(s.team);
   if (s.spray > 0 && !calm) {
-    ctx.fillStyle = fg(0.35 * Math.min(1, s.spray / 0.15));
+    ctx.fillStyle = `rgba(210,210,210,${0.35 * Math.min(1, s.spray / 0.15)})`;
     for (let i = 0; i < 5; i++) { const a = Math.atan2(s.vy, s.vx) + (i - 2) * 0.4; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r * 1.5, y + Math.sin(a) * r * 1.5, 1.2, 0, Math.PI * 2); ctx.fill(); }
   }
   if (s.spray > 0) s.spray -= 1 / 60;
-  // stick
-  const [bx, by] = s.blade, px = X(bx), py = Y(by);
-  ctx.strokeStyle = fg(dim ? 0.35 : 0.7); ctx.lineWidth = Math.max(1.5, 2 * sc); ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(x + (px - x) * 0.35, y + (py - y) * 0.35); ctx.lineTo(px, py); ctx.stroke();
-  const ang = Math.atan2(by - s.y, bx - s.x) + Math.PI / 2, bl = 5 * sc;
-  ctx.lineWidth = Math.max(2.5, 3.2 * sc);
-  ctx.beginPath(); ctx.moveTo(px - Math.cos(ang) * bl, py - Math.sin(ang) * bl); ctx.lineTo(px + Math.cos(ang) * bl, py + Math.sin(ang) * bl); ctx.stroke();
-  // body
   ctx.globalAlpha = dim ? 0.45 : s.stun ? 0.5 : 1;
-  bodyPath(s.team, x, y, r); ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = BG; ctx.stroke();
+  // stick: shaft from the gloves, the band on the gloves, then the blade
+  const [bx, by] = s.blade, px = X(bx), py = Y(by);
+  const gx = x + (px - x) * 0.35, gy = y + (py - y) * 0.35;
+  const ang = Math.atan2(by - s.y, bx - s.x) + Math.PI / 2, bl = 5 * sc;
+  look.strokeLimb(ctx, () => { ctx.moveTo(gx, gy); ctx.lineTo(px, py); }, Math.max(2.5, 2.6 * sc), T, T.suit);
+  look.strokeLimb(ctx, () => { ctx.moveTo(px - Math.cos(ang) * bl, py - Math.sin(ang) * bl); ctx.lineTo(px + Math.cos(ang) * bl, py + Math.sin(ang) * bl); }, Math.max(3.5, 4 * sc), T, T.suit);
+  // body
+  body(s.team, x, y, r, T);
+  look.band(ctx, gx, gy, Math.max(2.2, 2.6 * sc), T);
   // facing notch
-  ctx.fillStyle = BG; ctx.beginPath(); ctx.arc(x + s.fx * r * 0.62, y + s.fy * r * 0.62, Math.max(1.2, r * 0.18), 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = T.light ? BG : FG; ctx.beginPath(); ctx.arc(x + s.fx * r * 0.62, y + s.fy * r * 0.62, Math.max(1.2, r * 0.18), 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
   if (s.stun) { // down on the ice: a dashed ring, no flashing
     ctx.setLineDash([3, 3]); ctx.strokeStyle = FG; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 4, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
   }
-  ctx.fillStyle = BG; ctx.font = mono(Math.max(8, r * 0.95), 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(String(s.num), x, y + 0.5);
-  ctx.textBaseline = 'alphabetic';
-}
-function drawYou(s, pal) {
-  const x = X(s.x), y = Y(s.y), r = SK.r * sc;
-  ctx.strokeStyle = pal.mark; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r + 6, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = pal.mark; ctx.beginPath(); ctx.moveTo(x, y - r - 9); ctx.lineTo(x - 6, y - r - 17); ctx.lineTo(x + 6, y - r - 17); ctx.closePath(); ctx.fill();
-  ctx.font = mono(10, 600); ctx.textAlign = 'center'; ctx.fillText('YOU', x, y - r - 21);
-}
-function drawGoalie(g, pal, dim) {
-  const x = X(g.x), y = Y(g.y), col = g.team === 0 ? pal.home : pal.away, rx = g.size * 0.75 * sc, ry = g.size * 1.1 * sc;
   ctx.globalAlpha = dim ? 0.45 : 1;
+  ctx.fillStyle = T.light ? BG : FG; ctx.font = look.mono(Math.max(8, r * 0.95)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(s.num), x, y + 0.5);
+  ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
+}
+function drawYou(s) {
+  const x = X(s.x), y = Y(s.y), r = SK.r * sc;
+  ctx.strokeStyle = 'rgba(236,236,236,.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 6, 0, Math.PI * 2); ctx.stroke();
+  look.tag(ctx, x, y - r - 16, 'YOU', { size: 10, pad: 4 });
+}
+function goaliePath(team, x, y, rx) {
+  const ry = rx / 0.75 * 1.1;
   ctx.beginPath();
-  if (g.team === 0) ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  if (team === 0) ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
   else { ctx.moveTo(x, y - ry * 1.1); ctx.lineTo(x + rx * 1.2, y); ctx.lineTo(x, y + ry * 1.1); ctx.lineTo(x - rx * 1.2, y); ctx.closePath(); }
-  ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = BG; ctx.stroke();
-  ctx.fillStyle = BG; ctx.font = mono(Math.max(8, g.size * 0.85 * sc), 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+}
+function drawGoalie(g, dim) {
+  const x = X(g.x), y = Y(g.y), T = look.team(g.team), rx = g.size * 0.75 * sc, ry = g.size * 1.1 * sc;
+  ctx.globalAlpha = dim ? 0.45 : 1;
+  body(g.team, x, y, rx, T, goaliePath);
+  // the band on the catching glove, out toward the play
+  look.band(ctx, x + g.out * rx * 0.55, y - ry * 0.7, Math.max(2.2, 2.6 * sc), T);
+  ctx.fillStyle = T.light ? BG : FG; ctx.font = look.mono(Math.max(8, g.size * 0.85 * sc)); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('G', x, y + 0.5); ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
 }
 let trail = [];
@@ -403,13 +476,13 @@ function drawPuck(P, calm) {
   const lift = P.z * 10 * sc, x = X(P.x), y = Y(P.y) - lift, r = Math.max(2.5, PUCK_R * sc) * (1 + P.z * 0.35);
   const v = Math.hypot(P.vx, P.vy);
   if (!calm && !P.owner && v > 300) { trail.push([x, y]); if (trail.length > 6) trail.shift(); } else trail.length = 0;
-  trail.forEach(([tx, ty], i) => { ctx.fillStyle = fg(0.05 + i * 0.03); ctx.beginPath(); ctx.arc(tx, ty, r * 0.8, 0, Math.PI * 2); ctx.fill(); });
-  if (P.z > 0.02) { ctx.fillStyle = fg(0.15); ctx.beginPath(); ctx.ellipse(X(P.x), Y(P.y), r, r * 0.6, 0, 0, Math.PI * 2); ctx.fill(); }
+  trail.forEach(([tx, ty], i) => { ctx.fillStyle = `rgba(255,255,255,${0.05 + i * 0.03})`; ctx.beginPath(); ctx.arc(tx, ty, r * 0.8, 0, Math.PI * 2); ctx.fill(); });
+  if (P.z > 0.02) { ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.ellipse(X(P.x), Y(P.y), r, r * 0.6, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.strokeStyle = fg(0.4); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r + 3.5, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = FG; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = BG; ctx.lineWidth = 1.5; ctx.stroke();
+  look.ball(ctx, x, y, r, null, look.TONE.white);
+  ctx.strokeStyle = BG; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
 }
-function drawAim(h, P, pal) {
+function drawAim(h, P) {
   if (!(h.windup > 0) || pending) return;
   const dx = -h.wdx, dy = -h.wdy, slap = h.windup >= WRIST_MAX, L = (70 + 150 * (h.windup / SLAP_FULL)) * sc;
   const sx = X(P.owner === h ? P.x : h.x), sy = Y(P.owner === h ? P.y : h.y);
@@ -417,78 +490,105 @@ function drawAim(h, P, pal) {
   ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + dx * L, sy + dy * L); ctx.stroke(); ctx.setLineDash([]);
   // wind-up meter: a ring that fills, with a tick where a wrist shot becomes a slapshot
   const x = X(h.x), y = Y(h.y), r = SK.r * sc + 11, frac = h.windup / SLAP_FULL, a0 = -Math.PI / 2;
-  ctx.strokeStyle = fg(0.18); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = pal.mark; ctx.beginPath(); ctx.arc(x, y, r, a0, a0 + frac * Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = FG; ctx.beginPath(); ctx.arc(x, y, r, a0, a0 + frac * Math.PI * 2); ctx.stroke();
   const ta = a0 + (WRIST_MAX / SLAP_FULL) * Math.PI * 2;
-  ctx.strokeStyle = FG; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + Math.cos(ta) * (r - 4), y + Math.sin(ta) * (r - 4)); ctx.lineTo(x + Math.cos(ta) * (r + 4), y + Math.sin(ta) * (r + 4)); ctx.stroke();
-  ctx.fillStyle = FG; ctx.font = mono(10, 600); ctx.textAlign = 'left'; ctx.fillText(slap ? 'SLAP' : 'WRIST', x + r + 6, y + 4);
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + Math.cos(ta) * (r - 4), y + Math.sin(ta) * (r - 4)); ctx.lineTo(x + Math.cos(ta) * (r + 4), y + Math.sin(ta) * (r + 4)); ctx.stroke();
+  look.tag(ctx, x + r + 6, y, slap ? 'slap' : 'wrist', { size: 10, pad: 4, align: 'left' });
 }
-function shape(team, x, y, r, pal) { bodyPath(team, x, y, r); ctx.fillStyle = team === 0 ? pal.home : pal.away; ctx.fill(); }
 function clock(s) { const t = Math.ceil(s); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; }
 
-function hud(g, pal) {
-  ctx.textBaseline = 'alphabetic';
+/* ---------------- HUD: the scoreboard, calls and button bar live on the page, around the stage ---------------- */
+function board(g) {
+  if (!g) { HUD.board({ a: { name: 'you', sub: look.bandWord(0), score: 0 }, b: { name: 'cpu', sub: look.bandWord(1), score: 0 }, clock: '--' }); return; }
   if (g.practice) {
-    ctx.textAlign = 'center'; ctx.fillStyle = FG; ctx.font = mono(26, 600);
-    ctx.fillText(`${g.score[0]} / ${g.sog[0]}`, W / 2, 38);
-    ctx.font = mono(11); ctx.fillStyle = fg(0.6); ctx.fillText('PRACTICE · GOALS / SHOTS ON GOAL', W / 2, 56);
-  } else {
-    const cx = W / 2;
-    ctx.font = mono(30, 600); ctx.fillStyle = FG; ctx.textAlign = 'right'; ctx.fillText(String(g.score[0]), cx - 22, 40);
-    ctx.textAlign = 'left'; ctx.fillText(String(g.score[1]), cx + 22, 40);
-    ctx.textAlign = 'center'; ctx.fillStyle = fg(0.5); ctx.fillText('–', cx, 38);
-    shape(0, cx - 78, 29, 8, pal); shape(1, cx + 78, 29, 8, pal);
-    ctx.font = mono(11, 600); ctx.fillStyle = FG; ctx.textAlign = 'right'; ctx.fillText('YOU', cx - 92, 33); ctx.textAlign = 'left'; ctx.fillText('CPU', cx + 92, 33);
-    ctx.textAlign = 'center'; ctx.font = mono(12); ctx.fillStyle = fg(0.7);
-    ctx.fillText(`${g.ot ? 'OT' : 'P' + g.period} · ${clock(g.clock)}`, cx, 58);
-    if (W > 700) {
-      ctx.textAlign = 'left'; ctx.fillStyle = fg(0.6); ctx.font = mono(11);
-      ctx.fillText(g.level.name.toUpperCase(), 18, 32); ctx.fillText(`SHOTS ${g.sog[0]} – ${g.sog[1]}`, 18, 50);
-    }
+    HUD.board({ a: { name: 'practice', sub: 'goals', score: g.score[0] }, b: { name: 'goalie', sub: 'shots on goal', score: g.sog[0] }, clock: '--' });
+    return;
   }
-  // the big call: faceoff, goal, end of period
-  let big = '', small = '';
-  if (g.phase === 'faceoff') big = 'Faceoff';
+  const own = g.phase === 'play' && g.puck.owner ? g.puck.owner.team : -1;
+  HUD.board({
+    a: { name: teamName(g, 0).toLowerCase(), sub: `${look.bandWord(0)} · shots ${g.sog[0]}`, score: g.score[0], has: own === 0 },
+    b: { name: teamName(g, 1).toLowerCase(), sub: `${look.bandWord(1)} · ${g.level.name} · shots ${g.sog[1]}`, score: g.score[1], has: own === 1 },
+    clock: `${g.ot ? 'OT' : 'P' + g.period} ${clock(g.clock)}`, low: g.clock <= 10 && g.phase === 'play'
+  });
+}
+function calls(g) {
+  // the big call: faceoff, goal, end of period, stamped in once when it changes
+  if (g !== callGame) { callGame = g; shownCall = ''; }
+  let key = '', big = '', small = '', title = false;
+  if (g.phase === 'faceoff') { key = 'faceoff' + g.period + g.score.join(); big = 'Faceoff'; }
   else if (g.phase === 'goal') {
-    big = 'Goal';
-    const lg = g.lastGoal; if (lg && !g.practice) small = lg.team === 0 ? (lg.by && lg.by.team === 0 ? `You scored · #${lg.by.num}` : 'You scored') : (lg.by ? `CPU scored · #${lg.by.num}` : 'CPU scored');
-  } else if (g.phase === 'break') big = g.msg;
-  if (big) {
-    ctx.textAlign = 'center'; ctx.fillStyle = FG; ctx.font = mono(Math.min(64, W / 12), 600); ctx.fillText(big, W / 2, oy - 40 * sc);
-    if (small) { ctx.font = mono(14); ctx.fillStyle = fg(0.75); ctx.fillText(small, W / 2, oy - 40 * sc + 28); }
+    big = 'Goal'; title = true;
+    const lg = g.lastGoal; if (lg && !g.practice) small = `${teamName(g, lg.team).toLowerCase()} scored${lg.by && lg.by.team === lg.team ? ` · #${lg.by.num}` : ''}`;
+    key = 'goal' + g.score.join();
+  } else if (g.phase === 'break') { key = 'break' + g.period + g.msg; big = g.msg; }
+  if (key && key !== shownCall) HUD.call(big, small, title);
+  shownCall = key;
+  for (const e of g.events) {
+    if (e.type === 'goal') look.cheer(0.9);
+    else if (e.type === 'hit') look.cheer(0.5);
+    else if (e.type === 'post') look.cheer(0.6);
   }
-  // controls hint for what you're doing now
-  if (W > 640) {
-    const h = g.human, hasPuck = g.puck.owner === h, pad = input.lastDevice === 'controller';
-    const tip = hasPuck
-      ? (pad ? 'R stick: hold back, flick forward to shoot · R1 pass · R2 saucer · L2 stop' : 'Hold an arrow, tap the opposite one to shoot · E pass · R saucer · Shift stop')
-      : (pad ? 'Cross switch · L1 check · push the R stick at the puck to poke · L2 stop' : 'Space switch · Q check · tap an arrow at the puck to poke · Shift stop');
-    ctx.textAlign = 'center'; ctx.font = mono(11); ctx.fillStyle = fg(0.55); ctx.fillText(tip, W / 2, H - 14);
+  HUD.msg(g.ot && g.phase === 'play' ? 'sudden death' : '');
+}
+function seeds(g) {
+  // seed tags: the CPU team's style and seed, or both dummies when watching
+  if (g.practice || W < 520) return;
+  const lines = g.watch ? [seedLine(g, 0), seedLine(g, 1)] : [seedLine(g, 1)];
+  lines.reverse().forEach((l, i) => look.tag(ctx, 14, H - 22 - i * 22, l, { size: 10, align: 'left', pad: 4 }));
+}
+function playBar(g) {
+  if (g.watch) {
+    const pad = input.lastDevice === 'controller';
+    HUD.bar('watching', [{ k: pad ? 'options' : 'P / esc', t: 'pause', open: true }], 'two seeded dummies. the next game starts by itself');
+    return;
   }
+  const h = g.human; if (!h) return;
+  const P = g.puck, hasPuck = P.owner === h, pad = input.lastDevice === 'controller', c = (k, t, open) => ({ k, t, open });
+  if (g.phase !== 'play') { HUD.bar(g.phase === 'goal' ? 'goal' : g.phase === 'faceoff' ? 'faceoff' : 'break', [], 'play stops for a moment'); return; }
+  if (h.windup > 0 && !pending) {
+    const slap = h.windup >= WRIST_MAX;
+    HUD.bar('winding up', pad ? [c('R', 'flick forward: shoot', true), c('L', 'skate')] : [c('arrows', 'tap the opposite one: shoot', true), c('mouse', 'or let go of the button', true)], slap ? 'slapshot: harder, but the goalie reads it' : 'wrist shot: quick, the goalie sees it late');
+    return;
+  }
+  const dPuck = Math.hypot(P.x - h.x, P.y - h.y), them = P.owner && P.owner.team !== h.team;
+  const near = them && Math.hypot(P.owner.x - h.x, P.owner.y - h.y) < 45;
+  if (hasPuck) HUD.bar('on the puck', pad ? [c('R', 'hold back, flick: shoot', true), c('R1', 'pass', true), c('R2', 'saucer'), c('L2', 'stop')] : [c('arrows', 'hold one, tap the opposite: shoot', true), c('E', 'pass', true), c('R', 'saucer'), c('shift', 'stop')], 'pass goes where you push to skate');
+  else HUD.bar(them ? 'defense' : P.owner ? 'support' : 'loose puck', pad ? [c('✕', 'switch', true), c('L1', 'check', near), c('R', 'push at the puck: poke', !P.owner || them ? dPuck < 48 : false), c('L2', 'stop')] : [c('space', 'switch', true), c('Q', 'check', near), c('arrows', 'tap at the puck: poke', !P.owner || them ? dPuck < 48 : false), c('shift', 'stop')], them ? 'land a check and they drop it. miss and you stumble' : 'wind up early for a one-timer');
+}
+function menuBar() {
+  const pad = input.lastDevice === 'controller';
+  HUD.bar(mode === 'paused' ? 'paused' : mode === 'results' ? 'final' : 'menu', pad ? [{ k: '↕', t: 'pick' }, { k: '✕', t: 'choose', open: true }, { k: '○', t: 'back' }] : [{ k: '↕', t: 'pick' }, { k: 'enter', t: 'choose', open: true }, { k: 'esc', t: 'back' }]);
 }
 
 function drawGame(g, dim) {
-  const pal = palette(), calm = reducedMotion();
-  drawRink();
-  for (const gl of g.goalies) if (gl) drawGoalie(gl, pal, dim);
-  for (const s of g.skaters) drawSkater(s, pal, calm, dim);
+  const calm = reducedMotion();
+  drawRink(dim ? null : g);
+  for (const gl of g.goalies) if (gl) drawGoalie(gl, dim);
+  for (const s of g.skaters) drawSkater(s, calm, dim);
   drawPuck(g.puck, calm || dim);
-  if (!dim && g.human) { drawYou(g.human, pal); drawAim(g.human, g.puck, pal); }
-  if (!dim) hud(g, pal);
+  if (!dim && g.human) { drawYou(g.human); drawAim(g.human, g.puck); }
 }
-function draw() {
-  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
-  if (mode === 'menu') { if (demo) drawGame(demo, true); else drawRink(); return; }
-  if (game) drawGame(game, false);
+function draw(dt) {
+  HUD.tick(dt, input);
+  look.arena(ctx, W, H, { horizon: horizonY(), dt });
+  if (mode === 'menu') { if (demo) drawGame(demo, true); else drawRink(null); board(null); HUD.msg(''); menuBar(); return; }
+  if (game) {
+    drawGame(game, false); seeds(game); board(game);
+    if (mode === 'play') { calls(game); playBar(game); } else { HUD.msg(''); menuBar(); }
+  }
 }
 
 /* ---------------- loop ---------------- */
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(1 / 30, (now - last) / 1000); last = now;
-  update(dt); draw();
+  update(dt); draw(dt);
   requestAnimationFrame(frame);
 }
+document.documentElement.classList.toggle('calm', reducedMotion());
 addEventListener('gamepadconnected', () => { input.lastDevice = 'controller'; });
 mainMenu();
+// phones can't play without a pad: on a first visit from a touch screen, open straight into CPU vs CPU
+if (data.fresh && matchMedia('(pointer: coarse)').matches) watchGame();
 requestAnimationFrame(frame);

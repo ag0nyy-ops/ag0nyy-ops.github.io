@@ -243,4 +243,343 @@ export function scoreRoutine(passes, { requirements = true } = {}) {
 }
 
 export const round1 = (v) => Math.round(v * 1000) / 1000;
+
+/* ---------------- one gymnast on the floor ----------------
+   The pass by pass state machine: ready, run, hurdle, air, land, settle, walk. It reads a plain
+   control frame each step, so a person (game.js reads the pad) and a CPU (CpuGymnast below) drive
+   it the same way:
+     { legs: { x, y }  the legs stick, -1..1, y down
+       lx, ly          the arms stick, ly < -0.6 is arms up
+       lt, rt }        tuck and pike, 0..1
+   opts: passes (routine length, null for free floor), skipWalk (reduce motion), maxTries (how many
+   times a pass can run out before it counts as empty; null never gives up). */
+export const NO_INPUT = Object.freeze({ legs: { x: 0, y: 0 }, lx: 0, ly: 0, lt: 0, rt: 0 });
+
+export class Performer {
+  constructor({ passes = null, skipWalk = false, maxTries = null, x = 0.6 } = {}) {
+    Object.assign(this, { limit: passes, skipWalk, maxTries });
+    this.g = { x, face: x < FLOOR / 2 ? 1 : -1, travel: x < FLOOR / 2 ? 1 : -1, v: 0, runPhase: 0 };
+    this.passes = []; this.pass = null; this.phase = 'ready'; this.t = 0; this.done = false;
+    this.flight = null; this.td = null; this.bal = null; this.q = 0;
+    this.hurdleT = 0; this.armsWasUp = true; this.legsWasOut = true; this.callout = null; this.msg = '';
+    this.rebound = null; this.stepCool = 0; this.stepShift = 0; this.landT = 0; this.landX = x;
+    this.walkTo = null; this.settleT = 0; this.tries = 0; this.linkNext = false; this.legsHeldMsg = null;
+    this.ctl = NO_INPUT; this.flick = { armed: true, at: null, best: null };
+    this.on = () => {};                 // sound hook: on('punch', q), on('hurdle'), on('thud', hard), on('finish')
+    this.newPass();
+  }
+  get passNo() { return this.passes.length + 1; }
+  newPass() { this.linkNext = false; this.pass = { skills: [], connections: 0 }; this.phase = 'ready'; this.g.v = 0; this.resetFlick(); }
+
+  /* A flick: the stick goes from near the middle to well out. The direction is read over the next
+     50 ms so two arrow keys pressed a hair apart still make a diagonal. */
+  readFlick(now) {
+    const l = this.ctl.legs, m = Math.hypot(l.x, l.y), fl = this.flick;
+    if (m < 0.35) { fl.armed = true; if (fl.at == null) return null; }
+    if (fl.at == null && fl.armed && m > 0.7) { fl.at = now; fl.best = { x: l.x, y: l.y, m }; fl.armed = false; }
+    if (fl.at != null) {
+      if (m >= fl.best.m - 0.01) fl.best = { x: l.x, y: l.y, m };
+      if (now - fl.at >= 0.05) { const out = { at: fl.at, x: fl.best.x, y: fl.best.y }; fl.at = null; return out; }
+    }
+    return null;
+  }
+  resetFlick() { const l = this.ctl.legs; this.flick.armed = Math.hypot(l.x, l.y) < 0.35; this.flick.at = null; }
+
+  step(dt, ctl = NO_INPUT) {
+    this.ctl = ctl;
+    if (this.done) return;
+    const g = this.g, legs = ctl.legs;
+    this.t += dt;
+    const armsUp = ctl.ly < -0.6, armsUpEdge = armsUp && !this.armsWasUp;
+    this.armsWasUp = armsUp;
+    const toward = legs.x * g.travel;                      // how hard the legs push toward the far side
+    this.stepCool = Math.max(0, this.stepCool - dt);
+
+    if (this.phase === 'ready' || this.phase === 'run') {
+      if (toward > 0.3 && this.phase === 'ready') { this.phase = 'run'; this.callout = this.callout && { ...this.callout, old: true }; }
+      if (this.phase === 'run') {
+        if (toward > 0.3) g.v += 8.5 * (1 - g.v / VMAX) * Math.min(1, toward) * dt;
+        else g.v = Math.max(0, g.v - 3 * dt);
+        g.x += g.travel * g.v * dt; g.runPhase += g.v * dt * 1.9;
+        const far = g.travel > 0 ? g.x > FLOOR - 0.5 : g.x < 0.5;
+        if (far) return this.ranOut('Ran out of floor. Hurdle before the far corner.');
+      }
+      if (armsUpEdge) { this.phase = 'hurdle'; this.hurdleT = 0; this.resetFlick(); this.on('hurdle'); }
+      return;
+    }
+    if (this.phase === 'hurdle') {
+      this.hurdleT += dt;
+      g.x += g.travel * g.v * 0.6 * dt;
+      const f = this.readFlick(this.hurdleT);
+      if (f) {
+        const c = classifyFlick(f.x * g.travel, -f.y);
+        if (!c) return this.ranOut('That flick was straight down. Flick back, forward or up.');
+        return this.takeoff(c, g.v, punchQuality(f.at - HURDLE));
+      }
+      if (this.hurdleT > HURDLE + WINDOW + 0.12) return this.ranOut(this.legsHeldMsg || 'No takeoff. Let the legs stick go, then flick it as the rings meet.');
+      if (this.hurdleT < 0.05 && Math.hypot(legs.x, legs.y) > 0.35) this.legsHeldMsg = 'No takeoff. Let go of the legs stick during the hurdle, then flick it.';
+      return;
+    }
+    if (this.phase === 'air') {
+      const f = this.flight;
+      const done = f.step(dt, { tuck: ctl.lt, pike: ctl.rt, armsIn: Math.max(0, ctl.ly), legs: Math.hypot(legs.x, legs.y), split: legs.x });
+      g.x = f.x;
+      if (done) this.land();
+      return;
+    }
+    if (this.phase === 'land') {
+      this.landT += dt;
+      // connection: flick again right after a salto lands
+      if (this.rebound && this.landT < REBOUND.open) {
+        const fl = this.readFlick(this.landT);
+        if (fl) {
+          const c = classifyFlick(fl.x * g.travel, -fl.y);
+          const same = c && (c.kind === 'jump' || c.dir === this.flight.dir);
+          if (same) {
+            const q = punchQuality(fl.at - REBOUND.at, REBOUND.window);
+            const carry = clamp(this.flight.speed * 0.55 + 3.4 * (1 - Math.min(1, Math.abs(this.td.e) / 0.35)), 0, VMAX);
+            this.finishSkill(true);
+            this.linkNext = true;
+            return this.takeoff(c, carry, q, true);
+          }
+        }
+      } else if (this.rebound) { this.rebound = null; }
+      const legsOut = Math.hypot(legs.x, legs.y) > 0.5;
+      const stepped = !this.rebound && legsOut && !this.legsWasOut && this.stepCool <= 0;
+      this.legsWasOut = legsOut;
+      if (stepped) this.stepCool = 0.4;
+      const ev = this.bal.step(dt, ctl.lx, armsUp, stepped);
+      if (ev === 'step') { const s = Math.sign(this.bal.lam || g.face) * 0.25; this.stepShift += s; g.x += s; this.on('thud', 0.2); }
+      if (ev === 'fall') this.on('thud', 1);
+      if (this.bal.done) { this.finishSkill(false); this.endPass(); }
+      return;
+    }
+    if (this.phase === 'settle') {
+      this.settleT += dt;
+      if (this.settleT >= (this.skipWalk ? 0.3 : 0.7)) this.walkTo_(g.x > FLOOR / 2 ? FLOOR - 0.6 : 0.6);
+      return;
+    }
+    if (this.phase === 'walk') {
+      const dir = Math.sign(this.walkTo - g.x);
+      g.face = dir || g.face; g.v = 2.6;
+      g.x += dir * 2.6 * dt; g.runPhase += 2.6 * dt * 1.9;
+      if (Math.sign(this.walkTo - g.x) !== dir || this.skipWalk) this.arrive();
+    }
+  }
+
+  ranOut(msg) {
+    this.msg = msg; this.legsHeldMsg = null; this.tries++;
+    if (this.maxTries != null && this.tries >= this.maxTries) { this.passes.push(this.pass); this.tries = 0; }  // counts as an empty pass
+    this.walkTo_(this.g.travel > 0 ? 0.6 : FLOOR - 0.6);
+  }
+  walkTo_(x) { this.phase = 'walk'; this.walkTo = x; this.g.v = 0; }
+  arrive() {
+    const g = this.g;
+    g.x = this.walkTo; g.travel = g.x < FLOOR / 2 ? 1 : -1; g.face = g.travel; g.v = 0;
+    if (this.limit != null && this.passes.length >= this.limit) { this.done = true; this.phase = 'done'; return; }
+    this.newPass();
+  }
+
+  takeoff(c, speed, q, rebound = false) {
+    const g = this.g;
+    this.flight = new Flight({ kind: c.kind, dir: c.dir, twist: c.twist, speed, q, travel: g.travel, x: g.x });
+    g.face = c.dir === 'back' ? -g.travel : g.travel;     // a round-off turns you around for back skills
+    this.phase = 'air'; this.q = q; this.msg = ''; this.legsHeldMsg = null; this.rebound = null;
+    this.on('punch', q);
+    if (!rebound) this.callout = null;
+  }
+
+  land() {
+    const f = this.flight, g = this.g;
+    const td = touchdown(f);
+    this.td = td; this.phase = 'land'; this.landT = 0; this.legsWasOut = true; this.stepShift = 0; this.landX = g.x;
+    const lamScreen = td.lean * g.face, velScreen = td.leanVel * g.face;
+    this.bal = new Balance(td.fall ? Math.sign(lamScreen || 1) * 0.9 : lamScreen, velScreen);
+    if (td.fall) { this.bal.done = true; this.bal.fell = true; }
+    this.rebound = f.kind === 'salto' && !td.fall && !td.squat && Math.abs(td.e) < 0.35 ? { open: true } : null;
+    this.resetFlick();
+    this.on('thud', clamp(Math.abs(td.e), 0, 1));
+  }
+
+  finishSkill(connected) {
+    const f = this.flight, td = this.td;
+    const sk = judgeSkill(f, td);
+    const out = this.landX < -0.05 || this.landX > FLOOR + 0.05;
+    const landDed = connected ? landingDeductions({ ...td, squat: false }, null, out).filter(([w]) => w !== 'No finish')
+      : landingDeductions(td, this.bal, out);
+    sk.ded = [...sk.air, ...landDed];
+    sk.connected = connected; sk.q = this.q;
+    sk.linked = !!this.linkNext; this.linkNext = false;          // rebounded into from the skill before
+    if (sk.linked && sk.recognized) this.pass.connections++;      // a connection only counts if the second skill does
+    this.pass.skills.push(sk);
+    this.callout = { skills: this.pass.skills.slice(), connections: this.pass.connections };
+  }
+
+  endPass() {
+    this.passes.push(this.pass); this.tries = 0;
+    if (this.bal && this.bal.shown) this.on('finish');
+    this.phase = 'settle'; this.settleT = 0;
+  }
+}
+
+/* ---------------- CPU gymnasts ("dummies") ----------------
+   Each one is rolled from a seed with makeDummy (../shared/seed.js), the way Folkstyle rolls its
+   wrestlers. The seed changes how it tumbles, not how strong it is: every dummy has the same body
+   and the same physics as you, and the numbers below are trade-offs. */
+export const DUMMY_RANGES = {
+  ambition: [0, 1],        // how much difficulty it goes for: doubles, triples (more D, more risk)
+  runup: [0.42, 0.62],     // share of the floor it runs before the hurdle: faster takeoff, less room to land
+  focus: [0, 1],           // where its timing is sharp: high = clean punch, worse read of the spin; low = the other way
+  open: [-0.16, 0.14],     // habit of opening early (-, short landings) or late (+, over-rotated)
+  shape: [0, 1],           // < .4 tucks, .4-.72 pikes, above that lays out when the spin allows
+  twist: [0, 1],           // love of twisting saltos (flashy, harder to land on line)
+  front: [0, 1],           // front vs back saltos when nothing forces it
+  link: [0, 1],            // how often it rebounds into a second skill
+  reflex: [0, 1],          // landing: high = reacts fast but pushes softly, low = slow but firm
+  tidy: [0, 1],            // form: how tight its shapes are and how well it keeps the legs together
+  room: [0.4, 1.3],        // metres of floor it wants spare in front before it hurdles
+  think: [0.35, 1.2],      // pause in the corner before each pass, seconds
+  nerve: [0, 1]            // how readily it throws the big skill again after a fall
+};
+export const DUMMY_STYLES = [
+  ['twister', (p) => p.twist > 0.72],
+  ['power tumbler', (p) => p.ambition > 0.72],
+  ['connector', (p) => p.link > 0.7],
+  ['clean lines', (p) => p.tidy > 0.72],
+  ['spot lander', (p) => p.focus < 0.25 && p.reflex < 0.4]
+];
+export const DUMMY_FALLBACK = 'all rounder';
+
+export class CpuGymnast {
+  constructor(d, passes = 4) {
+    this.d = d; this.p = d.p; this.passes = passes;
+    this.plan = null; this.air = null; this.flightSeen = null; this.wait = 0; this.hist = [];
+    this.stillT = 0; this.flickT = -1; this.passSeen = -1; this.fellLast = false;
+    // derived trade-offs
+    const p = this.p;
+    this.punchSd = 0.026 + 0.03 * (1 - p.focus);    // seconds
+    this.spinSd = 0.07 + 0.13 * p.focus;            // radians when it opens
+    this.react = 0.05 + 0.1 * (1 - p.reflex);       // seconds of delay on the landing
+    this.gain = 1.05 + 0.6 * (1 - p.reflex);        // how hard it pushes against the lean
+  }
+  /* about-normal noise from the dummy's own generator */
+  noise() { const R = this.d.R; return (R() + R() + R() - 1.5) * 1.4; }
+
+  /* what this pass is going to be, decided in the corner */
+  planPass(perf) {
+    const p = this.p, R = this.d.R;
+    const skills = perf.passes.flatMap((ps) => ps.skills);
+    const have = (id) => skills.some(REQUIREMENTS.find((r) => r.id === id).test);
+    const left = this.passes - perf.passes.length;          // passes still to throw, this one included
+    const need = ['front', 'back', 'double'].filter((id) => !have(id));
+    let R1 = 1 + (R() < 0.15 + 0.75 * p.ambition ? 1 : 0);
+    if (R1 === 2 && p.ambition > 0.8 && R() < 0.35) R1 = 3;
+    if (this.fellLast && R() > 0.3 + 0.6 * p.nerve) R1 = Math.max(1, R1 - 1);    // shaken: plays it safer
+    if (need.includes('double') && (left <= need.length || R() < 0.4 + 0.4 * p.ambition)) R1 = Math.max(2, R1);
+    let dir = R() < 0.25 + 0.5 * p.front ? 'front' : 'back';
+    if (need.includes('front') && (left <= need.length || dir === 'front' || R() < 0.5)) dir = 'front';
+    else if (need.includes('back') && (left <= need.length || R() < 0.5)) dir = 'back';
+    const twist = R() < 0.1 + 0.75 * p.twist;
+    const connect = R() < 0.1 + 0.7 * p.link;
+    this.plan = { R: R1, dir, twist, connect, second: { dir, R: 1, twist: R() < 0.2 + 0.6 * p.twist } };
+    this.wait = p.think * (0.7 + 0.6 * R());
+    this.startX = perf.g.x; this.flickT = -1;
+  }
+
+  /* the flick vector for a skill, in stick space (x along the floor, y down) */
+  flickVec(perf, s) {
+    const t = perf.g.travel, fx = s.dir === 'front' ? 1 : -1;
+    return s.twist ? { x: fx * t * 0.7, y: -0.72 } : { x: fx * t, y: 0 };
+  }
+
+  /* how the flight goes, decided the moment it leaves the floor */
+  planAir(f, s) {
+    const p = this.p, R = this.d.R;
+    const lay = f.L * f.T, maxTuck = lay / 0.32 * 0.8, maxPike = lay / 0.5 * 0.82;
+    let turns = Math.max(1, Math.min(s.R, Math.floor(maxTuck / TAU)));
+    let shape = 'tuck';
+    if (p.shape > 0.72 && lay >= turns * TAU - 0.35) shape = 'layout';
+    else if (p.shape > 0.4 && maxPike >= turns * TAU) shape = 'pike';
+    const depth = clamp(0.8 + 0.2 * p.tidy + 0.05 * this.noise(), 0.6, 1);
+    let halves = 0;
+    if (f.twist) {
+      const out = f.Lt * f.T, most = f.Lt / 0.3 * f.T * 0.75;
+      halves = Math.max(Math.ceil(out * 2 + 0.15), 2 + (R() < p.twist ? 1 : 0) + (p.twist > 0.8 && R() < 0.5 ? 1 : 0));
+      halves = Math.min(halves, Math.max(Math.ceil(out * 2 + 0.15), Math.floor(most * 2)));
+    }
+    const sloppy = R() < (1 - p.tidy) * 0.35 ? { at: 0.2 + 0.3 * R(), len: 0.1 + 0.25 * R() } : null;
+    this.air = { turns, shape, depth, halves, sloppy,
+      target: turns * TAU + p.open + this.noise() * this.spinSd,
+      twTarget: halves / 2 + this.noise() * (0.02 + 0.017 * halves) };
+  }
+
+  controls(perf, dt) {
+    const p = this.p, R = this.d.R, g = perf.g;
+    const out = { legs: { x: 0, y: 0 }, lx: 0, ly: 0, lt: 0, rt: 0 };
+    if (perf.done) return out;
+    const ph = perf.phase;
+    if (ph === 'ready') {
+      if (this.passSeen !== perf.passes.length || !this.plan) {
+        const prev = perf.passes[perf.passes.length - 1];
+        this.fellLast = !!(prev && prev.skills.some((s) => s.ded.some(([w]) => w === 'Fall')));
+        this.passSeen = perf.passes.length; this.planPass(perf);
+      }
+      this.wait -= dt;
+      if (this.wait <= 0) { out.legs.x = g.travel; this.startX = g.x; }
+      return out;
+    }
+    if (ph === 'run') {
+      out.legs.x = g.travel;
+      const ran = Math.abs(g.x - this.startX), left = g.travel > 0 ? FLOOR - g.x : g.x;
+      const flight = (0.6 + 0.2 * g.v) * 1.1 * (this.plan.connect ? 1.9 : 1);
+      if (ran >= p.runup * FLOOR || left <= 0.6 * g.v * HURDLE + flight + p.room) { out.ly = -1; this.punchAt = HURDLE + this.noise() * this.punchSd; }
+      return out;
+    }
+    if (ph === 'hurdle') {
+      out.ly = -1;
+      if (perf.hurdleT >= this.punchAt - 0.004 && perf.hurdleT < this.punchAt + 0.09) out.legs = this.flickVec(perf, this.plan);
+      return out;
+    }
+    if (ph === 'air') {
+      const f = perf.flight;
+      if (this.flightSeen !== f) { this.flightSeen = f; this.planAir(f, perf.linkNext ? this.plan.second : this.plan); this.flickT = -1; }
+      const a = this.air;
+      if (f.kind === 'salto') {
+        const lag = (f.omega - f.L) * Math.max(f.tuck, f.pike) / 14 * 0.5;
+        const short = f.predicted + lag < a.target;
+        if (a.shape === 'layout') { if (f.predicted < a.target - 0.12) out.rt = 0.5; }
+        else if (short) { if (a.shape === 'pike') out.rt = a.depth; else out.lt = a.depth; }
+      }
+      if (f.twist && f.predictedTwist + (f.twistRate - f.Lt) * f.arms / 12 * 0.5 < a.twTarget) out.ly = 1;
+      if (a.sloppy && f.t > a.sloppy.at && f.t < a.sloppy.at + a.sloppy.len) out.legs = { x: 0, y: 0.6 };
+      return out;
+    }
+    if (ph === 'land') {
+      const b = perf.bal;
+      if (perf.landT < dt * 1.5) { this.hist = []; this.stillT = 0; this.linkDecided = null; }
+      // connection: flick the same way again just after the feet land
+      if (perf.rebound && !perf.linkNext && this.plan.connect) {
+        if (this.linkDecided == null) {
+          const left = g.travel > 0 ? FLOOR - g.x : g.x;
+          this.linkDecided = left > 2.2 + 0.4 * p.room ? REBOUND.at + this.noise() * this.punchSd * 0.8 : false;
+        }
+        if (this.linkDecided !== false && perf.landT >= this.linkDecided - 0.004 && perf.landT < this.linkDecided + 0.09) {
+          out.legs = this.flickVec(perf, this.plan.second);
+          return out;
+        }
+      }
+      if (!b) return out;
+      this.hist.push([perf.landT, b.lam, b.vel]);
+      let seen = this.hist[0];
+      for (const h of this.hist) { if (h[0] <= perf.landT - this.react) seen = h; else break; }
+      while (this.hist.length > 2 && this.hist[1][0] <= perf.landT - this.react) this.hist.shift();
+      this.wob = (this.wob || 0) * 0.92 + (R() * 2 - 1) * 0.16;        // a little unsteadiness of its own
+      out.lx = clamp(-(this.gain * 1.6 * seen[1] + this.gain * 0.55 * seen[2]) + this.wob * (0.5 + 0.5 * (1 - p.tidy)), -1, 1);
+      if (b.stable) this.stillT += dt; else this.stillT = 0;
+      if (this.stillT > this.react) { out.ly = -1; out.lx *= 0.3; }
+      return out;
+    }
+    return out;
+  }
+}
 export const fmt = (v) => (Math.abs(Math.round(v * 100) % 10) ? v.toFixed(2) : v.toFixed(1));

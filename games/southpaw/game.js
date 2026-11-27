@@ -1,10 +1,13 @@
 /* jay. — © 2026 Jay — source viewable, not reusable by others (LICENSE)
    Southpaw: side-on arcade boxing. The triggers are your hands: a light pull is a quick shot,
    a full pull lands heavy and leaves you open. The right stick picks the punch, the left stick
-   moves your feet, the bumpers are your guard. Five computer fighters, no stats to grind. */
+   moves your feet, the bumpers are your guard. Five computer fighters, no stats to grind.
+   Every computer fighter is a seeded dummy, and CPU vs CPU puts two of them in the ring to watch. */
 
 import { Input } from '../shared/input.js';
 import { loadSettings, palette, reducedMotion } from '../shared/settings.js';
+import * as look from '../shared/look.js';
+import { dummyLabel } from '../shared/seed.js';
 import { Bout, STYLES, SPARRING, PUNCHES, RING, COUNT_STEP } from './sim.js';
 
 const SAVE = 'jay.southpaw.v1';
@@ -22,7 +25,8 @@ const input = new Input({
 /* ---------------- save data (this browser only) ---------------- */
 function load() {
   let d = {}; try { d = JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) {}
-  return { record: { ...(d.record || {}) } };
+  const w = d.watch || {};
+  return { record: { ...(d.record || {}) }, watch: { a: w.a || 'random', b: w.b || 'random' } };
 }
 const data = load();
 const persist = () => { try { localStorage.setItem(SAVE, JSON.stringify(data)); } catch (e) {} };
@@ -65,11 +69,11 @@ const $ = (sel) => document.querySelector(sel);
 const overlay = $('#overlay');
 const backLink = $('.back');
 let menuItems = [], menuIndex = 0;
-function show(html) {
+function show(html, focus = 0) {
   overlay.innerHTML = `<div class="panel">${html}</div>`; overlay.hidden = false; if (backLink) backLink.hidden = false;
   menuItems = [...overlay.querySelectorAll('button')];
-  menuIndex = 0;
-  if (menuItems[0]) menuItems[0].focus();
+  menuIndex = Math.min(focus, Math.max(0, menuItems.length - 1));
+  if (menuItems[menuIndex]) menuItems[menuIndex].focus();
   menuItems.forEach((b, i) => b.addEventListener('focus', () => { menuIndex = i; }));
 }
 function hide() { overlay.hidden = true; overlay.innerHTML = ''; menuItems = []; if (backLink) backLink.hidden = true; }
@@ -83,6 +87,7 @@ function mainMenu() {
   show(`<p class="label">Game file / Boxing / ${ROUNDS} rounds × ${ROUND_LEN} s</p><h1 class="title">Southpaw</h1>
     <div class="menu">
       <button class="btn" data-go="pick">Fight <small>pick an opponent</small></button>
+      <button class="btn" data-go="watch">CPU vs CPU <small>two seeded dummies, you watch</small></button>
       <button class="btn" data-go="practice">Practice <small>no clock, partner never punches</small></button>
       <button class="btn" data-go="controls">Controls</button>
     </div>
@@ -97,6 +102,23 @@ function pickMenu() {
     <ul class="blurbs">${STYLES.map((s) => `<li><b>${esc(s.name)}:</b> ${esc(s.blurb)}${s.stance === 'southpaw' ? ' Southpaw.' : ''}</li>`).join('')}</ul>
     <p class="hint">Listed easiest first. They play by your rules: they only see your punch once it starts, and they react about as fast as a person.</p>`);
 }
+/* CPU vs CPU setup: which opponent card each dummy boxes as (the card is the skill, the seed the style) */
+const CARDS = ['random', ...STYLES.map((s) => s.id)];
+const cardName = (id) => (id === 'random' ? 'Random' : STYLES.find((s) => s.id === id).name);
+function watchMenu(focus = 0) {
+  mode = 'menu'; fight = null;
+  const w = data.watch;
+  show(`<p class="label">Game file / Boxing / CPU vs CPU</p><h1 class="title">Dummy vs dummy</h1>
+    <div class="menu">
+      <button class="btn" data-go="watchgo">Start <small>${esc(cardName(w.a))} vs ${esc(cardName(w.b))}</small></button>
+      <button class="btn" data-go="card" data-arg="a">Dummy A boxes as <small>${esc(cardName(w.a))}</small></button>
+      <button class="btn" data-go="card" data-arg="b">Dummy B boxes as <small>${esc(cardName(w.b))}</small></button>
+      <button class="btn" data-go="menu">Back</button>
+    </div>
+    <p class="hint">Both corners are computer fighters with their own seed, so no two bouts go the same way.
+    The fight runs by itself and a new one starts after the result. Options, Circle, P or Esc pauses. Nothing here counts toward your record.</p>`, focus);
+}
+
 function controls(back = 'menu') {
   mode = mode === 'paused' ? 'paused' : 'menu';
   show(`<p class="label">Controls</p><h1 class="title">How to box</h1>
@@ -131,17 +153,31 @@ function newFight(id) {
   const practice = id === 'sparring';
   const style = practice ? SPARRING : STYLES.find((s) => s.id === id);
   const bout = new Bout(style, { practice });
+  canvas.setAttribute('aria-label', FIGHT_ARIA);
   fight = { id, style, bout, practice, round: 1, clock: ROUND_LEN, phase: 'intro', phaseT: 0, cards: [], msg: '', endT: 0,
     ghost: { me: 100, foe: 100 }, last: '' };
   resetPlayer();
   mode = 'fight'; hide();
 }
+/* CPU vs CPU: new seeds every bout, and a fresh card for a side set to Random */
+function newWatch() {
+  const card = (id) => (id === 'random' ? STYLES[Math.floor(Math.random() * STYLES.length)] : STYLES.find((s) => s.id === id));
+  const a = card(data.watch.a), style = card(data.watch.b);
+  const bout = new Bout(style, { watch: a });
+  fight = { id: 'watch', watch: true, styles: [a, style], style, bout, practice: false, round: 1, clock: ROUND_LEN, phase: 'intro', phaseT: 0,
+    cards: [], msg: '', endT: 0, ghost: { me: 100, foe: 100 }, last: '', nextT: 0 };
+  canvas.setAttribute('aria-label', `CPU vs CPU. Dummy A, boxing as ${a.name}, is on the left, drawn solid. Dummy B, boxing as ${style.name}, is on the right, drawn in outline.`);
+  resetPlayer();
+  mode = 'fight'; hide();
+}
+const FIGHT_ARIA = canvas.getAttribute('aria-label');
 function nextRound() {
   const f = fight, b = f.bout;
   f.round++; f.clock = ROUND_LEN; f.phase = 'intro'; f.phaseT = 0;
   for (const p of [b.me, b.foe]) { p.resetRound(); p.hp = Math.min(100, p.hp + 12); }
   if (f.style.switches) b.foe.stance = b.foe.stance === 'orthodox' ? 'southpaw' : 'orthodox';
-  b.brain.newRound();
+  if (f.watch && f.styles[0].switches) b.me.stance = b.me.stance === 'orthodox' ? 'southpaw' : 'orthodox';
+  for (const br of b.brains()) br.newRound();
   resetPlayer();
   mode = 'fight'; hide();
 }
@@ -154,21 +190,43 @@ function go(what, arg) {
   else if (what === 'pause') pauseMenu();
   else if (what === 'fight') newFight(arg);
   else if (what === 'practice') newFight('sparring');
-  else if (what === 'again') newFight(fight.id);
+  else if (what === 'watch') watchMenu();
+  else if (what === 'watchgo') newWatch();
+  else if (what === 'card') {
+    const w = data.watch; w[arg] = CARDS[(CARDS.indexOf(w[arg]) + 1) % CARDS.length]; persist();
+    watchMenu(arg === 'a' ? 1 : 2);
+  }
+  else if (what === 'again') fight.watch ? newWatch() : newFight(fight.id);
   else if (what === 'next') nextRound();
   else if (what === 'resume') { mode = 'fight'; hide(); resetPlayer(); }
 }
 
+/* "dummy a: brawler, seed 3F2A"; against you the computer fighter goes by its card's name */
+function seedLine(side) {
+  const f = fight, b = f.bout;
+  if (side === 'me') return f.watch ? dummyLabel('dummy a', b.meBrain.d) : '';
+  return dummyLabel(f.watch ? 'dummy b' : f.style.name.toLowerCase(), b.brain.d);
+}
 function pauseMenu() {
   mode = 'paused';
   const f = fight;
+  if (f.watch) {
+    return show(`<p class="label">Paused / CPU vs CPU / round ${f.round} of ${ROUNDS}</p><h1 class="title">Timeout</h1>
+    <div class="menu">
+      <button class="btn" data-go="resume">Resume</button>
+      <button class="btn" data-go="again">New bout <small>new seeds</small></button>
+      <button class="btn" data-go="menu">Quit to menu</button>
+    </div>
+    <ul class="blurbs"><li><b>Dummy A (${esc(f.styles[0].name)}):</b> ${esc(seedLine('me'))}</li><li><b>Dummy B (${esc(f.style.name)}):</b> ${esc(seedLine('foe'))}</li></ul>`);
+  }
   show(`<p class="label">Paused / ${f.practice ? 'practice' : `round ${f.round} of ${ROUNDS}`}</p><h1 class="title">Timeout</h1>
     <div class="menu">
       <button class="btn" data-go="resume">Resume</button>
       <button class="btn" data-go="again">${f.practice ? 'Restart practice' : 'Restart fight'}</button>
       <button class="btn" data-go="controls">Controls</button>
       <button class="btn" data-go="${f.practice ? 'menu' : 'pick'}">${f.practice ? 'End practice' : 'Quit fight'}</button>
-    </div>`);
+    </div>
+    <p class="hint">Opponent ${esc(seedLine('foe'))}.</p>`);
 }
 
 /* round scoring: 10 to whoever did more damage, 9 to the other, a point off per knockdown */
@@ -196,6 +254,7 @@ function corner() {
 function finish(winner, how) {
   const f = fight, b = f.bout;
   mode = 'results';
+  if (f.watch) return watchResult(winner, how);
   if (!f.practice) {
     const r = rec(f.id); if (winner === 'me') r.w++; else if (winner === 'foe') r.l++; else r.d++;
     data.record[f.id] = r; persist();
@@ -217,6 +276,35 @@ function finish(winner, how) {
       ${row('Punches blocked', m.blocked, o.blocked)}
       ${row('Knockdowns scored', m.kds, o.kds)}</tbody></table>
     <div class="menu"><button class="btn" data-go="again">Rematch</button><button class="btn" data-go="pick">Pick an opponent</button><button class="btn" data-go="menu">Menu</button></div>`);
+}
+
+/* CPU vs CPU: the result stays up for a few seconds, then the next bout starts with new seeds */
+const WATCH_NEXT = 6;
+function watchResult(winner, how) {
+  const f = fight, b = f.bout;
+  f.nextT = WATCH_NEXT;
+  const mm = Math.floor((ROUND_LEN - f.clock) / 60), ss = Math.floor((ROUND_LEN - f.clock) % 60);
+  const method = how === 'decision' ? `Decision, ${total(0)}–${total(1)}` : `${how}, round ${f.round} at ${mm}:${String(ss).padStart(2, '0')}`;
+  const title = winner === 'me' ? 'Dummy A wins' : winner === 'foe' ? 'Dummy B wins' : 'Draw';
+  const row = (name, a, c) => `<tr><td>${name}</td><td>${a}</td><td>${c}</td></tr>`;
+  const pct = (s) => (s.thrown ? Math.round(100 * s.landed / s.thrown) + '%' : '–');
+  const m = b.me.stats, o = b.foe.stats;
+  show(`<p class="label">Result / CPU vs CPU</p><h1 class="title">${title}</h1>
+    <p class="hint">${esc(method)}. Next bout in <span id="next-in">${WATCH_NEXT}</span> s.</p>
+    <table class="board"><tbody><tr><td></td><td>Dummy A · ${esc(f.styles[0].name)}</td><td>Dummy B · ${esc(f.style.name)}</td></tr>
+      ${row('Style, seed', esc(`${b.meBrain.d.style}, ${b.meBrain.d.tag}`), esc(`${b.brain.d.style}, ${b.brain.d.tag}`))}
+      ${row('Landed / thrown', `${m.landed} / ${m.thrown}`, `${o.landed} / ${o.thrown}`)}
+      ${row('Accuracy', pct(m), pct(o))}
+      ${row('Counters', m.counters, o.counters)}
+      ${row('Punches slipped', m.slips, o.slips)}
+      ${row('Knockdowns scored', m.kds, o.kds)}</tbody></table>
+    <div class="menu"><button class="btn" data-go="again">Next bout now</button><button class="btn" data-go="menu">Quit to menu</button></div>`);
+}
+function watchCountdown(dt) {
+  const f = fight;
+  f.nextT -= dt;
+  const el = document.getElementById('next-in'); if (el) el.textContent = String(Math.max(0, Math.ceil(f.nextT)));
+  if (f.nextT <= 0) newWatch();
 }
 
 /* ---------------- your hands: triggers, keys, stick ---------------- */
@@ -302,7 +390,10 @@ function frame(t) {
   const dt = Math.min(0.1, (t - lastT) / 1000); lastT = t;
   input.poll();
   if (mode === 'fight') runFight(dt, t / 1000);
-  else menuInput();
+  else {
+    menuInput();
+    if (mode === 'results' && fight && fight.watch) watchCountdown(dt);
+  }
   draw(dt);
   requestAnimationFrame(frame);
 }
@@ -323,8 +414,9 @@ function menuInput() {
 
 function runFight(dt, now) {
   const f = fight, b = f.bout;
-  if (input.pressed('START')) { pauseMenu(); return; }
-  const it = myIntent(now);
+  if (input.pressed('START') || (f.watch && input.pressed('B'))) { pauseMenu(); return; }
+  if (f.watch) kbQueue.length = 0;   // your buttons do nothing while you watch
+  const it = f.watch ? { move: 0, guard: 'none', punch: null, slip: false, stance: false } : myIntent(now);
   f.phaseT += dt;
   const acting = f.phase === 'live';
   acc += dt;
@@ -343,7 +435,7 @@ function runFight(dt, now) {
   if (f.phase === 'live' && !f.practice && f.clock <= 0 && !b.downed) { f.phase = 'bell'; f.phaseT = 0; sfx.bell(); scoreRound(); }
   if (f.phase === 'stopped' && f.phaseT > 2.2) return finish(f.result.winner, f.result.how);
   if (f.phase === 'bell' && f.phaseT > 1.6) {
-    if (f.round < ROUNDS) return corner();
+    if (f.round < ROUNDS) return f.watch ? nextRound() : corner();
     const a = total(0), c = total(1);
     return finish(a > c ? 'me' : c > a ? 'foe' : 'draw', 'decision');
   }
@@ -353,56 +445,109 @@ function onEvent(e) {
   const b = fight.bout;
   if (e.type === 'hit') {
     sfx.hit(e.p, e.body);
+    if (e.counter || e.p > 0.85) { look.cheer(0.5); if (e.p > 0.85) shake = Math.max(shake, 3); }
     if (e.who === b.foe) fight.last = describe(b.me.lastThrow);
   } else if (e.type === 'block') sfx.block();
   else if (e.type === 'miss') sfx.miss();
   else if (e.type === 'slipped') sfx.slip();
-  else if (e.type === 'down') sfx.down();
+  else if (e.type === 'down') { sfx.down(); look.cheer(0.9); shake = 5; }
   else if (e.type === 'count') sfx.count();
 }
 function describe(a) { return a ? `${PUNCHES[a.key].name}${a.body ? ' to the body' : ''}, ${Math.round(a.p * 100)}% power` : ''; }
 
-/* ---------------- drawing ---------------- */
+/* ---------------- drawing: the Folkstyle look, the canvas fills the stage ---------------- */
 let W = 0, H = 0, dpr = 1;
-function resize() {
-  dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight;
-  canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
-addEventListener('resize', resize); resize();
+function resize() { ({ W, H, dpr } = look.fit(canvas)); }
+look.watch(canvas, resize); resize();
 
-const FG = '#ececec', BG = '#060606', MUTED = 'rgba(236,236,236,.55)', FAINT = 'rgba(236,236,236,.16)';
-const mono = (px, w = 400) => `${w} ${px}px "IBM Plex Mono", ui-monospace, monospace`;
-let ppm = 100, floorY = 0, cx = 0;
+const FG = '#ececec';
+const HUD = look.hud();
+const MAT = 0.3;   // how deep the ring canvas looks, in metres either side of the fighters' feet
+let ppm = 100, floorY = 0, cx = 0, farY = 0, shake = 0, shownMsg = '', downSeen = null;
 const X = (x) => cx + x * ppm, Y = (y) => floorY - y * ppm;
 
-function draw(dt) {
-  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
-  ppm = Math.max(60, Math.min(W / 6.9, (H - 230) / 1.75));
-  floorY = H - Math.max(110, H * 0.17); cx = W / 2;
-  drawRing();
-  if (!fight) return drawIdle();
-  const f = fight, b = f.bout, pal = palette();
-  const rm = reducedMotion();
-  // draw the one who's punching on top, so the glove is always visible
-  const order = b.foe.is('punch') && !b.me.is('punch') ? [b.me, b.foe] : [b.foe, b.me];
-  for (const p of order) drawFighter(p, b.other(p), p === b.me ? pal.home : pal.away, p === b.me, f);
-  drawFx(b, pal, rm);
-  drawHud(f, b, pal, dt);
+function layout() {
+  ppm = Math.max(48, Math.min(W / 6.9, (H - 70) / 2.45));
+  floorY = H - Math.max(34, 0.5 * ppm); cx = W / 2; farY = floorY - MAT * ppm;
 }
 
-function drawRing() {
-  ctx.strokeStyle = FAINT; ctx.lineWidth = 1;
-  // apron and canvas
-  ctx.beginPath(); ctx.moveTo(X(-RING - 0.4), Y(0)); ctx.lineTo(X(RING + 0.4), Y(0)); ctx.stroke();
-  ctx.fillStyle = 'rgba(236,236,236,.035)'; ctx.fillRect(X(-RING - 0.4), Y(0), (2 * RING + 0.8) * ppm, Math.max(8, 0.12 * ppm));
-  // ropes and posts
-  for (const h of [0.5, 0.85, 1.2]) { ctx.beginPath(); ctx.moveTo(X(-RING - 0.2), Y(h)); ctx.lineTo(X(RING + 0.2), Y(h)); ctx.stroke(); }
-  ctx.fillStyle = 'rgba(236,236,236,.22)';
-  for (const x of [-RING - 0.2, RING + 0.2]) ctx.fillRect(X(x) - 3, Y(1.35), 6, 1.35 * ppm);
+function draw(dt) {
+  HUD.tick(dt, input);
+  layout();
+  const calm = look.calm();
+  shake = Math.max(0, shake - 30 * dt);
+  // the crowd sits behind the far ropes
+  look.arena(ctx, W, H, { horizon: farY, dt });
+  const f = fight;
+  ctx.save();
+  if (shake > 0 && !calm) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+  drawRing(f && f.bout);
+  if (!f) { ctx.restore(); return idle(); }
+  const b = f.bout;
+  // draw the one who's punching on top, so the glove is always visible
+  const order = b.foe.is('punch') && !b.me.is('punch') ? [b.me, b.foe] : [b.foe, b.me];
+  for (const p of order) drawFighter(p, b.other(p), p === b.me ? 0 : 1, f);
+  drawFx(b, calm);
+  if (mode === 'fight' && !f.watch) drawHands();
+  ctx.restore();
+  // seed tags, bottom right: the opponent's style and seed, or both dummies when watching
+  if (W >= 520 && !f.practice) {
+    const lines = f.watch ? [seedLine('me'), seedLine('foe')] : [seedLine('foe')];
+    lines.reverse().forEach((l, i) => look.tag(ctx, W - 14, H - 22 - i * 22, l, { size: 10, align: 'right', pad: 4 }));
+  }
+  drawHud(f, b);
 }
-function drawIdle() {
-  ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.textAlign = 'center';
-  ctx.fillText('SOUTHPAW / BOUT FILE', W / 2, Y(-0.35));
+
+/* the ring: dark canvas, a pool of light in the middle, ropes on the far side, apron in front */
+function drawRing(b) {
+  const L = -RING - 0.4, R = RING + 0.4, k = 0.94, nearY = floorY + MAT * ppm;
+  const fx = (x) => cx + x * ppm * k;
+  const t = performance.now() / 1000;
+  // apron face under the near edge
+  ctx.fillStyle = look.FLOOR.edge; ctx.fillRect(X(L), nearY, (R - L) * ppm, Math.max(6, 0.1 * ppm));
+  // the canvas
+  ctx.fillStyle = look.FLOOR.base;
+  ctx.beginPath(); ctx.moveTo(fx(L), farY); ctx.lineTo(fx(R), farY); ctx.lineTo(X(R), nearY); ctx.lineTo(X(L), nearY); ctx.closePath(); ctx.fill();
+  look.spot(ctx, cx, floorY, RING * 0.85 * ppm, MAT * ppm * 1.4);
+  // edges of the canvas
+  ctx.lineCap = 'butt';
+  ctx.strokeStyle = look.FLOOR.line; ctx.lineWidth = Math.max(1, ppm / 110);
+  ctx.beginPath(); ctx.moveTo(fx(L), farY); ctx.lineTo(fx(R), farY); ctx.moveTo(X(L), nearY); ctx.lineTo(X(R), nearY); ctx.stroke();
+  // where the ropes stand on the canvas: brightens, slowly, when someone is backed onto them
+  for (const s of [-1, 1]) {
+    const hot = b && [b.me, b.foe].some((p) => p.x * s > RING - 0.4);
+    ctx.strokeStyle = hot ? look.FLOOR.hot : look.FLOOR.inner; ctx.globalAlpha = hot ? look.pulse(t) : 1;
+    ctx.lineWidth = hot ? Math.max(1.5, ppm / 90) : 1;
+    ctx.beginPath(); ctx.moveTo(fx(s * RING), farY); ctx.lineTo(X(s * RING), nearY); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  // centre mark
+  ctx.strokeStyle = look.FLOOR.mark; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(X(-0.12), floorY); ctx.lineTo(X(0.12), floorY); ctx.moveTo(X(0), floorY - 0.05 * ppm); ctx.lineTo(X(0), floorY + 0.05 * ppm); ctx.stroke();
+  // far posts and ropes
+  const ph = 1.35 * ppm * k;
+  ctx.strokeStyle = '#565656'; ctx.lineWidth = Math.max(1.5, ppm / 120);
+  ctx.beginPath();
+  for (const h of [0.5, 0.85]) { ctx.moveTo(fx(-RING - 0.2), farY - h * ppm * k); ctx.lineTo(fx(RING + 0.2), farY - h * ppm * k); }
+  ctx.stroke();
+  ctx.strokeStyle = look.FLOOR.mark;
+  ctx.beginPath(); ctx.moveTo(fx(-RING - 0.2), farY - 1.2 * ppm * k); ctx.lineTo(fx(RING + 0.2), farY - 1.2 * ppm * k); ctx.stroke();
+  const pw = Math.max(4, 0.05 * ppm);
+  for (const x of [-RING - 0.2, RING + 0.2]) {
+    ctx.fillStyle = '#2b2b2b'; ctx.fillRect(fx(x) - pw / 2, farY - ph, pw, ph);
+    ctx.fillStyle = look.FLOOR.mark; ctx.fillRect(fx(x) - pw / 2 - 1, farY - ph, pw + 2, Math.max(6, 0.12 * ppm));
+  }
+  // near corner stubs, so the ring reads as a square without ropes in front of the fighters
+  for (const x of [-RING - 0.2, RING + 0.2]) {
+    ctx.fillStyle = '#2b2b2b'; ctx.fillRect(X(x) - pw / 2, nearY - 0.18 * ppm, pw, 0.18 * ppm);
+    ctx.fillStyle = look.FLOOR.mark; ctx.fillRect(X(x) - pw / 2 - 1, nearY - 0.18 * ppm, pw + 2, Math.max(4, 0.06 * ppm));
+  }
+}
+function idle() {
+  HUD.board({ a: { name: 'you', sub: look.bandWord(0), score: 0 }, b: { name: 'cpu', sub: look.bandWord(1), score: 0 }, clock: '--' });
+  HUD.msg('');
+  meters([{ label: 'you · health', v: 1 }, { label: 'cpu · health', v: 1 }], [{ label: 'you · stamina', v: 1 }, { label: 'cpu · stamina', v: 1 }]);
+  menuBar();
 }
 
 /* two-bone arm: shoulder S to glove G, elbow bends down (or up for a hook) */
@@ -463,148 +608,173 @@ function pose(p, o) {
   return { dir, hip, sh, head, S, gloves, up, trail, foot };
 }
 
-function drawFighter(p, o, color, isMe, f) {
-  const w = Math.max(3, 0.085 * ppm);
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  if (p.down()) return drawDown(p, color, isMe, w);
+/* the far-side arm and leg sit in shadow: a step darker than the near side */
+const FAR = [
+  { skin: ['#c4c4c4', '#909090', '#454545'], suit: ['#d8d8d8', '#b4b4b4', '#6a6a6a'] },
+  { skin: ['#7e7e7e', '#5a5a5a', '#242424'], suit: ['#3a3a3a', '#1e1e1e', '#090909'] }
+];
+const path = (...pts) => () => { pts.forEach((q, i) => (i ? ctx.lineTo(X(q.x), Y(q.y)) : ctx.moveTo(X(q.x), Y(q.y)))); };
+/* who's who, in words: you and the card's name, or the two dummies when you watch */
+function sideNames(f) { return f.watch ? ['dummy a', 'dummy b'] : ['you', f.style.name.toLowerCase()]; }
+
+/* a boxer: light skin and white gloves and trunks for your side, darker with a light rim for theirs.
+   The band at the ankle is the only colour in the ring */
+function drawFighter(p, o, side, f) {
+  const T = look.team(side), D = { ...T, ...FAR[side] }, isMe = side === 0 && !f.watch;
+  const w = Math.max(4, 0.11 * ppm), gr = Math.max(4, 0.1 * ppm), br = Math.max(2, 0.035 * ppm);
+  if (isMe) look.ring(ctx, X(p.x), Y(0), 0.45 * ppm, MAT * 0.55 * ppm);
+  if (p.down()) return drawDown(p, T, w, gr, br);
   const P = pose(p, o);
-  const hollow = !isMe;   // you are solid, they are drawn in outline, so it never rests on colour
-  const limb = (A, B, width, alpha = 1) => {
-    ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = width;
-    ctx.beginPath(); ctx.moveTo(X(A.x), Y(A.y)); ctx.lineTo(X(B.x), Y(B.y)); ctx.stroke();
-    if (hollow && width > 4) { ctx.strokeStyle = BG; ctx.lineWidth = width - 4; ctx.stroke(); }
-    ctx.globalAlpha = 1;
-  };
-  const arm = (role, alpha) => {
-    const { E, G } = elbow(P.S[role], P.gloves[role], P.up[role]);
-    limb(P.S[role], E, w, alpha); limb(E, G, w * 0.9, alpha);
-    ctx.globalAlpha = alpha; ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(X(G.x), Y(G.y), 0.085 * ppm, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
-    return G;
-  };
   // trails show the punch's shape: straight line, wide arc for a hook, rising arc for an uppercut
-  for (const role of ['lead', 'rear']) {
+  if (!look.calm()) for (const role of ['lead', 'rear']) {
     const t = P.trail[role]; if (!t || t.k <= 0) continue;
-    ctx.globalAlpha = 0.28 * t.k; ctx.strokeStyle = color; ctx.lineWidth = Math.max(2, 0.05 * ppm);
+    ctx.globalAlpha = 0.3 * t.k; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(2, 0.05 * ppm); ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(X(t.wind.x), Y(t.wind.y)); ctx.quadraticCurveTo(X(t.ctrl.x), Y(t.ctrl.y), X(t.end.x), Y(t.end.y)); ctx.stroke();
     ctx.globalAlpha = 1;
   }
-  // far side first: rear arm and rear leg sit behind the body
   const knee = (F) => ({ x: lerp(P.hip.x, F.x, 0.5) + P.dir * 0.06, y: lerp(P.hip.y, 0, 0.5) + 0.02 });
-  limb(P.hip, knee(P.foot.rear), w * 1.1, 0.55); limb(knee(P.foot.rear), P.foot.rear, w, 0.55);
-  arm('rear', 0.6);
-  limb(P.hip, knee(P.foot.lead), w * 1.15); limb(knee(P.foot.lead), P.foot.lead, w * 1.05);
-  limb(P.hip, P.sh, Math.max(8, 0.24 * ppm));
+  const leg = (F, tt) => {
+    const K = knee(F);
+    look.strokeLimb(ctx, path(P.hip, K, F), w * 1.1, tt, tt.skin);
+    look.strokeLimb(ctx, path({ x: F.x - P.dir * 0.02, y: 0.03 }, { x: F.x + P.dir * 0.09, y: 0.03 }), w * 0.95, tt, look.TONE.shoe);
+    look.band(ctx, X(F.x), Y(0.1), br, T);
+    // trunks down to mid thigh
+    look.strokeLimb(ctx, path(P.hip, lp(P.hip, K, 0.75)), w * 1.55, tt, tt.suit);
+  };
+  const arm = (role, tt) => {
+    const { E, G } = elbow(P.S[role], P.gloves[role], P.up[role]);
+    look.strokeLimb(ctx, path(P.S[role], E, G), w * 0.9, tt, tt.skin);
+    look.ball(ctx, X(G.x), Y(G.y), gr, tt, tt.suit);
+    return G;
+  };
+  // far side first: rear leg and rear arm sit behind the body
+  leg(P.foot.rear, D);
+  arm('rear', D);
+  leg(P.foot.lead, T);
+  // torso, shaded, lit from the top left
+  const torso = [{ x: P.hip.x - 0.1, y: P.hip.y }, { x: P.hip.x + 0.1, y: P.hip.y }, { x: P.sh.x + 0.13, y: P.sh.y + 0.02 }, { x: P.sh.x - 0.13, y: P.sh.y + 0.02 }];
+  look.fillBody(ctx, () => { path(...torso)(); ctx.closePath(); }, T, T.skin, [X(P.sh.x - 0.13), Y(P.sh.y), X(P.hip.x + 0.1), Y(P.hip.y)]);
+  look.strokeLimb(ctx, path({ x: P.hip.x - 0.1, y: P.hip.y + 0.02 }, { x: P.hip.x + 0.1, y: P.hip.y + 0.02 }), w * 0.7, T, T.suit);
   // head
-  ctx.fillStyle = hollow ? BG : color; ctx.strokeStyle = color; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(X(P.head.x), Y(P.head.y), 0.12 * ppm, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  arm('lead', 1);
+  look.ball(ctx, X(P.head.x), Y(P.head.y), Math.max(5, 0.13 * ppm), T, T.skin);
+  arm('lead', T);
   // windup ring: grows with the power that's coming, so heavy shots are readable before they land
   const wd = P.trail.wind;
   if (wd && wd.p > 0.45) {
-    ctx.globalAlpha = 0.5; ctx.strokeStyle = color; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(X(wd.at.x), Y(wd.at.y), (0.1 + 0.08 * wd.p) * ppm, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(236,236,236,.5)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(X(wd.at.x), Y(wd.at.y), (0.1 + 0.08 * wd.p) * ppm, 0, Math.PI * 2); ctx.stroke();
   }
-  // name tag
-  ctx.font = mono(Math.max(10, Math.min(13, ppm * 0.1)), 600); ctx.textAlign = 'center'; ctx.fillStyle = isMe ? FG : color;
-  const tag = isMe ? 'YOU' : f.style.name.toUpperCase();
-  ctx.fillText(tag, X(p.x), Y(2.1));
-  if (p.is('stun') && p.act.dur > 0.22) { ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText('ROCKED', X(p.x), Y(2.23)); }
+  // name tag, and what's going on with them
+  const ty = Y(1.76) - 16;
+  look.tag(ctx, X(p.x), ty, isMe ? 'you' : sideNames(f)[side], { size: 10, pad: 4 });
+  const note = p.is('stun') && p.act.dur > 0.22 ? 'rocked' : isMe && p.counterT > 0 ? 'counter' : '';
+  if (note) look.tag(ctx, X(p.x), ty - 20, note, { size: 10, pad: 4 });
 }
-function drawDown(p, color, isMe, w) {
+function drawDown(p, T, w, gr, br) {
   const d = -p.face, x = p.x;
-  const pts = { head: { x: x + d * 0.72, y: 0.13 }, sh: { x: x + d * 0.5, y: 0.14 }, hip: { x: x, y: 0.12 }, foot: { x: x - d * 0.75, y: 0.05 } };
-  ctx.strokeStyle = color; ctx.globalAlpha = 0.85;
-  ctx.lineWidth = Math.max(8, 0.22 * ppm); ctx.beginPath(); ctx.moveTo(X(pts.hip.x), Y(pts.hip.y)); ctx.lineTo(X(pts.sh.x), Y(pts.sh.y)); ctx.stroke();
-  ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(X(pts.hip.x), Y(pts.hip.y)); ctx.lineTo(X(pts.foot.x), Y(pts.foot.y)); ctx.stroke();
-  ctx.fillStyle = isMe ? color : BG; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(X(pts.head.x), Y(pts.head.y), 0.12 * ppm, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(X(pts.sh.x - d * 0.1), Y(0.3), 0.085 * ppm, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha = 1;
+  const pts = { head: { x: x + d * 0.72, y: 0.13 }, sh: { x: x + d * 0.5, y: 0.14 }, hip: { x: x, y: 0.12 }, foot: { x: x - d * 0.75, y: 0.06 } };
+  look.strokeLimb(ctx, path(pts.hip, pts.foot), w * 1.1, T, T.skin);
+  look.band(ctx, X(pts.foot.x + d * 0.08), Y(0.07), br, T);
+  look.fillBody(ctx, () => { path({ x: x, y: 0.02 }, { x: x + d * 0.52, y: 0.04 }, { x: x + d * 0.52, y: 0.26 }, { x: x, y: 0.22 })(); ctx.closePath(); }, T, T.skin,
+    [X(x), Y(0.26), X(x + d * 0.52), Y(0.02)]);
+  look.strokeLimb(ctx, path(pts.hip, { x: x - d * 0.2, y: 0.1 }), w * 1.55, T, T.suit);
+  look.ball(ctx, X(pts.head.x), Y(pts.head.y), Math.max(5, 0.13 * ppm), T, T.skin);
+  look.ball(ctx, X(pts.sh.x - d * 0.1), Y(0.3), gr, T, T.suit);
 }
 
-function drawFx(b, pal, rm) {
+/* impact rings and the word for what happened, in a label box */
+function drawFx(b, calm) {
   for (const f of b.fx) {
     const k = f.t / f.life;
-    const col = f.tone === 'mark' ? pal.mark : f.tone === 'quiet' ? MUTED : FG;
     ctx.globalAlpha = 1 - k;
     if (f.tone !== 'quiet' || f.text === 'BLOCKED') {
-      const r = rm ? 0.16 * ppm : (0.06 + 0.22 * ease(k)) * ppm;
-      ctx.strokeStyle = col; ctx.lineWidth = f.tone === 'quiet' ? 1.5 : 2.5;
+      const r = calm ? 0.16 * ppm : (0.06 + 0.22 * ease(k)) * ppm;
+      ctx.strokeStyle = f.tone === 'quiet' ? 'rgba(236,236,236,.5)' : 'rgba(236,236,236,.9)'; ctx.lineWidth = f.tone === 'mark' ? 3 : f.tone === 'quiet' ? 1.5 : 2.5;
       ctx.beginPath(); ctx.arc(X(f.x), Y(f.y), r, 0, Math.PI * 2); ctx.stroke();
     }
-    ctx.fillStyle = col; ctx.font = mono(Math.max(11, Math.min(15, ppm * 0.11)), 600); ctx.textAlign = 'center';
-    ctx.fillText(f.text, X(f.x), Y(f.y + 0.26) - (rm ? 0 : 18 * ease(k)));
+    look.tag(ctx, X(f.x), Y(f.y + 0.26) - (calm ? 0 : 18 * ease(k)), f.text, { size: f.tone === 'mark' ? 12 : 11 });
     ctx.globalAlpha = 1;
   }
 }
 
-function bar(x, y, w, h, frac, fill, ghost, alignRight) {
-  ctx.strokeStyle = 'rgba(236,236,236,.35)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-  const fw = (v) => Math.max(0, Math.min(1, v)) * (w - 4);
-  if (ghost != null && ghost > frac) { ctx.fillStyle = 'rgba(236,236,236,.25)'; ctx.fillRect(alignRight ? x + w - 2 - fw(ghost) : x + 2, y + 2, fw(ghost), h - 4); }
-  ctx.fillStyle = fill; ctx.fillRect(alignRight ? x + w - 2 - fw(frac) : x + 2, y + 2, fw(frac), h - 4);
+/* your triggers: how far each one is pulled, bottom left of the ring */
+function pull(h, i) { return kb[h] != null ? Math.min(1, (performance.now() - kb[h]) / 1000 / KB_FULL) : padTrigger(i); }
+function drawHands() {
+  const kbd = input.lastDevice === 'keyboard';
+  const bh = Math.min(46, H * 0.1), by = H - 12;
+  [['L', 6, kbd ? 'F' : 'L2'], ['R', 7, kbd ? 'J' : 'R2']].forEach(([h, i, key], n) => {
+    const x = 14 + n * 58, v = pull(h, i);
+    ctx.strokeStyle = 'rgba(236,236,236,.5)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, by - bh + 0.5, 12, bh);
+    ctx.fillStyle = FG; ctx.fillRect(x + 2, by - 1 - (bh - 3) * v, 9, (bh - 3) * v);
+    look.tag(ctx, x + 18, by - bh + 8, key, { size: 10, align: 'left', pad: 4 });
+  });
 }
 
-function drawHud(f, b, pal, dt) {
-  const m = 22, bw = Math.min(380, W * 0.33), me = b.me, foe = b.foe;
-  f.ghost.me = Math.max(me.hp, f.ghost.me - 22 * dt); f.ghost.foe = Math.max(foe.hp, f.ghost.foe - 22 * dt);
-  if (me.hp > f.ghost.me) f.ghost.me = me.hp; if (foe.hp > f.ghost.foe) f.ghost.foe = foe.hp;
-  ctx.textAlign = 'left'; ctx.font = mono(11, 600); ctx.fillStyle = FG;
-  ctx.fillText(`YOU · ${me.stance.toUpperCase()}`, m, 30);
-  bar(m, 38, bw, 16, me.hp / 100, pal.home, f.ghost.me / 100, false);
-  bar(m, 58, bw * 0.8, 7, me.stam / 100, 'rgba(236,236,236,.6)', null, false);
-  ctx.font = mono(10); ctx.fillStyle = MUTED; ctx.fillText('HEALTH', m, 80); ctx.fillText('STAMINA', m + 64, 80);
-  if (me.kd) ctx.fillText('DOWN ×' + me.kd, m + 136, 80);
-
-  ctx.textAlign = 'right'; ctx.font = mono(11, 600); ctx.fillStyle = pal.away;
-  ctx.fillText(`${f.style.name.toUpperCase()} · ${foe.stance.toUpperCase()}`, W - m, 30);
-  bar(W - m - bw, 38, bw, 16, foe.hp / 100, pal.away, f.ghost.foe / 100, true);
-  bar(W - m - bw * 0.8, 58, bw * 0.8, 7, foe.stam / 100, 'rgba(236,236,236,.6)', null, true);
-  ctx.font = mono(10); ctx.fillStyle = MUTED; ctx.fillText('HEALTH', W - m, 80); ctx.fillText('STAMINA', W - m - 70, 80);
-  if (foe.kd) ctx.fillText('DOWN ×' + foe.kd, W - m - 150, 80);
-
-  // clock
-  ctx.textAlign = 'center'; ctx.fillStyle = FG;
-  if (f.practice) { ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText('PRACTICE', W / 2, 30); }
-  else {
-    ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText(`ROUND ${f.round} / ${ROUNDS}`, W / 2, 30);
-    const c = Math.ceil(f.clock); ctx.font = mono(30, 600); ctx.fillStyle = FG;
-    ctx.fillText(`${Math.floor(c / 60)}:${String(c % 60).padStart(2, '0')}`, W / 2, 62);
-  }
-
-  // big messages
-  let msg = '', sub = '';
-  if (f.phase === 'intro') { msg = f.practice ? 'PRACTICE' : f.phaseT < 1 ? `ROUND ${f.round}` : 'BOX'; }
-  if (f.phase === 'bell') msg = 'BELL';
-  if (b.downed) { msg = String(Math.max(1, b.downed.count)); sub = b.downed.who === me ? 'YOU ARE DOWN' : `${f.style.name.toUpperCase()} IS DOWN`; }
-  if (f.phase === 'stopped') { msg = f.result.how; sub = f.result.winner === 'me' ? 'YOU WIN' : 'YOU LOSE'; }
-  if (msg) {
-    ctx.font = mono(Math.min(84, W / 9), 600); ctx.fillStyle = FG; ctx.fillText(msg, W / 2, H * 0.3);
-    if (sub) { ctx.font = mono(13); ctx.fillStyle = MUTED; ctx.fillText(sub, W / 2, H * 0.3 + 30); }
-  }
-  if (me.counterT > 0) { ctx.font = mono(12, 600); ctx.fillStyle = pal.mark; ctx.textAlign = 'left'; ctx.fillText('COUNTER READY', m, 100); }
-
-  // your hands: what each trigger throws right now, and how far it's pulled
-  const kbd = input.lastDevice === 'keyboard';
-  const shape = punchShape();
-  const now = performance.now();
-  const pull = (h, i) => kb[h] != null ? Math.min(1, (now - kb[h]) / 1000 / KB_FULL) : padTrigger(i);
-  const names = (h) => { const role = me.role(h); const P = PUNCHES[`${role}-${shape.kind}`]; return (shape.kind === 'straight' ? P.name : role.toUpperCase() + ' ' + (shape.kind === 'hook' ? 'HOOK' : 'UPPER')).toUpperCase() + (shape.body ? ' · BODY' : ''); };
-  const by = H - 26, bh = Math.min(70, H * 0.08);
-  [['L', 6, kbd ? 'F' : 'L2'], ['R', 7, kbd ? 'J' : 'R2']].forEach(([h, i, key], n) => {
-    const x = m + n * 150;
-    ctx.strokeStyle = 'rgba(236,236,236,.35)'; ctx.strokeRect(x + 0.5, by - bh + 0.5, 12, bh);
-    const v = pull(h, i); ctx.fillStyle = FG; ctx.fillRect(x + 2, by - 1 - (bh - 3) * v, 9, (bh - 3) * v);
-    ctx.textAlign = 'left'; ctx.font = mono(12, 600); ctx.fillStyle = FG; ctx.fillText(key, x + 22, by - bh + 12);
-    ctx.font = mono(10); ctx.fillStyle = MUTED; ctx.fillText(names(h), x + 22, by - bh + 28);
+/* ---------------- HUD: scoreboard, meters, calls and the button bar live on the page ---------------- */
+const fmt = (s) => { const c = Math.max(0, Math.ceil(s)); return `${Math.floor(c / 60)}:${String(c % 60).padStart(2, '0')}`; };
+const unit = (v) => Math.max(0, Math.min(1, v));
+const GAS = document.getElementById('gas');
+/* health goes through the shared HUD, stamina into the second row the same way */
+function meters(hp, st) {
+  HUD.meters(hp);
+  if (!GAS) return;
+  [...GAS.children].forEach((t, i) => {
+    const m = st[i], v = Math.round(m.v * 100), key = `${m.label}${v}`;
+    if (t.dataset.k === key) return; t.dataset.k = key;
+    t.querySelector('span').firstChild.textContent = m.label + ' ';
+    t.querySelector('b').textContent = String(v);
+    t.querySelector('i').style.width = v + '%';
   });
-  if (f.practice && f.last) { ctx.textAlign = 'left'; ctx.font = mono(11); ctx.fillStyle = MUTED; ctx.fillText('LAST LANDED: ' + f.last.toUpperCase(), m, by - bh - 14); }
+}
+function drawHud(f, b) {
+  const me = b.me, foe = b.foe, [na, nb] = sideNames(f);
+  const sub = (i, p) => `${look.bandWord(i)} · ${f.watch && f.styles ? f.styles[i].name : p.stance}${p.kd ? ` · down ${p.kd}` : ''}`;
+  HUD.board({
+    a: { name: na, sub: f.practice ? `${look.bandWord(0)} · landed` : sub(0, me), score: f.practice ? me.stats.landed : total(0) },
+    b: { name: nb, sub: f.practice ? `${look.bandWord(1)} · thrown` : sub(1, foe), score: f.practice ? me.stats.thrown : total(1) },
+    clock: f.practice ? '--' : `r${f.round} ${fmt(f.clock)}`, low: f.phase === 'live' && !f.practice && f.clock < 10
+  });
+  meters([{ label: `${na} · health`, v: unit(me.hp / 100) }, { label: `${nb} · health`, v: unit(foe.hp / 100) }],
+    [{ label: `${na} · stamina`, v: unit(me.stam / 100) }, { label: `${nb} · stamina`, v: unit(foe.stam / 100) }]);
 
-  ctx.textAlign = 'right'; ctx.font = mono(10); ctx.fillStyle = MUTED;
-  const hint = kbd ? 'F / J PUNCH · ARROWS PICK · S BODY · A D FEET · E HIGH · U LOW · SPACE SLIP · Q STANCE · P PAUSE'
-    : 'L2 / R2 PUNCH · RIGHT STICK PICKS · L1 HIGH · R1 LOW · FLICK OR CIRCLE SLIP · L3 STANCE · OPTIONS PAUSE';
-  if (W > 900) ctx.fillText(hint, W - m, by);
+  // the big calls, stamped once when they change
+  const who = (p) => (p === me ? na : nb);
+  let msg = '', sub2 = '', title = false;
+  if (f.phase === 'intro') { msg = f.practice ? 'Practice' : f.phaseT < 1 ? `Round ${f.round}` : 'Box'; title = msg !== 'Box'; }
+  if (f.phase === 'bell') msg = 'Bell';
+  if (f.phase === 'stopped') {
+    msg = f.result.how; title = true;
+    sub2 = f.watch ? `${who(f.result.winner === 'me' ? me : foe)} wins` : f.result.winner === 'me' ? 'you win' : 'you lose';
+  }
+  if (msg && msg !== shownMsg) HUD.call(msg, sub2, title);
+  shownMsg = msg;
+  if (b.downed && b.downed !== downSeen) HUD.call('Knockdown', `${who(b.downed.who)} ${who(b.downed.who) === 'you' ? 'are' : 'is'} down`, true);
+  downSeen = b.downed;
+  HUD.msg(b.downed ? `count ${Math.max(1, b.downed.count)} · ${who(b.downed.who)} down` : '');
+
+  // what the buttons do right now
+  if (mode !== 'fight') return menuBar();
+  const pad = input.lastDevice === 'controller', c = (k, t, open) => ({ k, t, open });
+  if (f.watch) {
+    HUD.bar('watching', [c(pad ? 'options' : 'P / esc', 'pause', true)], 'two seeded dummies. the next fight starts by itself');
+    return;
+  }
+  const shape = punchShape(), free = f.phase === 'live' && !b.downed && !me.act;
+  const pn = (h) => PUNCHES[`${me.role(h)}-${shape.kind}`].name.toLowerCase() + (shape.body ? ' · body' : '');
+  const hi = me.guard === 'high' || me.guard === 'shell', lo = me.guard === 'low' || me.guard === 'shell';
+  const label = b.downed ? (b.downed.who === me ? 'you are down' : 'neutral corner') : f.phase === 'intro' ? 'get ready' : f.phase !== 'live' ? 'bell' : me.counterT > 0 ? 'counter ready' : 'boxing';
+  const chips = pad
+    ? [c('L2', pn('L'), free), c('R2', pn('R'), free), c('L1', 'high guard', hi), c('R1', 'low guard', lo), c('○', 'slip', free), c('L3', `stance: ${me.stance}`)]
+    : [c('F', pn('L'), free), c('J', pn('R'), free), c('E', 'high guard', hi), c('U', 'low guard', lo), c('space', 'slip', free), c('Q', `stance: ${me.stance}`)];
+  const note = f.practice && f.last ? `last landed: ${f.last}`
+    : pad ? 'right stick picks the punch · left stick down for the body · left stick moves you · options pauses'
+      : 'arrows pick the punch · hold S for the body · A D move you · P pauses';
+  HUD.bar(label, chips, note);
+}
+function menuBar() {
+  const pad = input.lastDevice === 'controller';
+  const label = mode === 'paused' ? 'paused' : mode === 'corner' ? 'corner' : mode === 'results' ? 'result' : 'menu';
+  HUD.bar(label, pad ? [{ k: '↕', t: 'pick' }, { k: '✕', t: 'choose', open: true }, { k: '○', t: 'back' }] : [{ k: '↕', t: 'pick' }, { k: 'enter', t: 'choose', open: true }, { k: 'esc', t: 'back' }]);
 }
 
 requestAnimationFrame(frame);
