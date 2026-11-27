@@ -81,7 +81,7 @@ button:hover { border-color: var(--fg); }
 
 /* menus sit on the stage, like a file laid over the mat */
 .overlay { position: absolute; inset: 0; z-index: 5; overflow: auto; display: grid; align-content: start;
-  padding: clamp(16px, 4vh, 40px) clamp(16px, 4vw, 48px); background: rgba(6, 6, 6, .9); }
+  padding: clamp(16px, 4vh, 40px) clamp(16px, 4vw, 48px); background: rgba(6, 6, 6, .8); }
 .overlay > .panel { display: grid; gap: 14px; width: 100%; max-width: 46rem; margin-inline: auto; }
 .overlay .title { font: 400 clamp(2.2rem, 6vw, 3.6rem)/.95 var(--goth); text-shadow: -1px 0 rgba(255, 60, 60, .35), 1px 0 rgba(60, 220, 255, .35); }
 .overlay .title small { font: 600 .35em/1 var(--mono); letter-spacing: -.02em; vertical-align: .6em; color: var(--muted); text-shadow: none; }
