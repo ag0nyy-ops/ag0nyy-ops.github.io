@@ -1,7 +1,10 @@
 /* jay. — © 2026 Jay — source viewable, not reusable by others (LICENSE)
    Southpaw's fight engine: two fighters on one line, punches with windup / impact / recovery,
    guards, slips, stamina and knockdowns. No drawing and no input here, so the computer fighters
-   and you run on exactly the same rules. */
+   and you run on exactly the same rules. Every computer fighter is also a seeded dummy (see DUMMY below):
+   the opponent you pick sets how good it is, the seed sets how it boxes. */
+
+import { makeDummy, newSeed } from '../shared/seed.js';
 
 export const RING = 2.9;      // ropes sit this many metres either side of the centre
 export const MIN_GAP = 0.5;   // chest to chest, fighters can't get closer than this
@@ -21,7 +24,6 @@ const GET_UP_HP = [100, 60, 44, 30];
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 export const rand = (a, b) => a + Math.random() * (b - a);
-const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
 export class Fighter {
   constructor(x, face, stance = 'orthodox') {
@@ -74,17 +76,24 @@ export class Fighter {
    An intent is { move: -1..1 toward the other fighter, guard: none|high|low|shell, punch: {hand, kind, body, p}|null,
    slip: bool, stance: bool }. Things worth drawing or hearing come out in bout.fx and bout.events. */
 export class Bout {
+  /* opts.practice: no stoppages. opts.watch: a style for the left fighter too, so both sides are
+     computer fighters (CPU vs CPU) and the intent passed to step() is ignored. opts.seeds: [left, right]. */
   constructor(style, opts = {}) {
     this.style = style;
-    this.me = new Fighter(-1.1, 1, 'orthodox');
+    this.watch = opts.watch || null;
+    const seeds = opts.seeds || [newSeed(), newSeed()];
+    this.me = new Fighter(-1.1, 1, this.watch ? this.watch.stance || 'orthodox' : 'orthodox');
     this.foe = new Fighter(1.1, -1, style.stance || 'orthodox');
-    this.foe.speed = style.speed || 1; this.foe.heavy = style.iron ? 0.4 : 1;
-    this.brain = new Brain(style);
+    body(this.foe, style);
+    this.brain = new Brain(style, makeBoxer(seeds[1]));
+    this.meBrain = null;
+    if (this.watch) { body(this.me, this.watch); this.meBrain = new Brain(this.watch, makeBoxer(seeds[0])); }
     this.practice = !!opts.practice;
     this.fx = []; this.events = []; this.freeze = 0; this.clock = 0;
     this.downed = null; // the fighter on the canvas, while the count runs
     this.over = null;   // { winner: 'me'|'foe', how: 'KO'|'TKO' }
   }
+  brains() { return this.meBrain ? [this.meBrain, this.brain] : [this.brain]; }
   other(f) { return f === this.me ? this.foe : this.me; }
   gap() { return this.foe.x - this.me.x; }
 
@@ -97,6 +106,7 @@ export class Bout {
     const me = this.me, foe = this.foe;
     if (this.downed) return this.stepCount(dt);
     const foeIntent = acting ? this.brain.think(dt, foe, me, this) : idle();
+    if (this.meBrain && acting) myIntent = this.meBrain.think(dt, me, foe, this);
     this.apply(me, acting ? myIntent : idle(), dt);
     this.apply(foe, foeIntent, dt);
     const hits = [];
@@ -205,7 +215,7 @@ export class Bout {
     att.roundDmg += dmg;
     const stun = P.stun * (0.6 + 0.8 * a.p) * Math.min(1, mult) * (counter ? 1.25 : 1);
     // a real shot stuns and stuffs whatever they were winding up; a light touch doesn't stop a committed punch
-    const iron = def === this.foe ? this.style.iron || 0 : 0;   // some fighters walk through light shots
+    const iron = def.iron || 0;   // some fighters walk through light shots
     if ((dmg >= 2.2 || !def.is('punch')) && dmg >= iron) { def.act = { type: 'stun', t: 0, dur: stun }; def.guard = 'none'; }
     def.vx = -(0.3 + 0.9 * a.p) * (def.heavy || 1);
     this.freeze = 0.03 + 0.04 * a.p;
@@ -248,6 +258,8 @@ export class Bout {
 }
 
 const idle = () => ({ move: 0, guard: 'none', punch: null, slip: false, stance: false });
+/* a fighter's build comes from the opponent card, never from the seed */
+function body(f, style) { f.speed = style.speed || 1; f.heavy = style.iron ? 0.4 : 1; f.iron = style.iron || 0; }
 
 /* ---------------- computer fighters ----------------
    A brain only sees what you would see: your punch from the moment its windup starts, a reaction
@@ -290,16 +302,80 @@ export const SPARRING = { id: 'sparring', name: 'Partner', tag: 'Practice', stan
   blurb: 'Holds pads, guards now and then, never throws.', tip: '',
   reaction: 0.3, pGuard: 0.45, pSlip: 0.15, pStep: 0, punish: 0, tempo: 9, range: 0.85, idleGuard: 0.35, power: [0, 0], combos: [] };
 
+/* ---------------- seeded dummies ----------------
+   Each computer fighter rolls a personality from its own seed, drawn in this order. The opponent card
+   (Rook, Bull, ...) is the skill level; the seed only changes how that fighter boxes, and every number
+   is a trade-off (busier but tires sooner, heavier but slower, more guard but fewer slips). */
+export const DUMMY = {
+  tempo:  [0.75, 1.3],    // x the card's time between attacks: low = busy
+  react:  [0.9, 1.12],    // x reaction time to your windup
+  range:  [-0.12, 0.1],   // m added to the distance it likes to work from: low = inside, high = outside
+  power:  [-0.12, 0.12],  // shift of how hard it pulls the trigger: heavy shots are slower and cost more
+  guard:  [0, 1],         // high = gloves up more and slips less, low = the other way round
+  feet:   [0, 1],         // bounce and stepping back out of range
+  read:   [0.75, 1.25],   // x how often it punishes a miss and covers up against a busy opponent
+  gamble: [0.04, 0.3],    // chance to let a combo go without checking it reaches
+  pacing: [-8, 8],        // stamina % added to where it backs off to breathe
+  flow:   [0.7, 1.4],     // x the gap between punches in a combo
+  body:   [0, 1],         // high = digs to the body, low = head hunter
+  flash:  [0, 1],         // love of hooks and uppercuts over straights
+  switchy: [0, 1],        // above 0.8 it switches stance out of range now and then
+  rhythm: [1.6, 3.2]      // bounce frequency
+};
+export const DUMMY_STYLES = [
+  ['brawler', (p) => p.flash > 0.72 && p.range < 0],
+  ['volume puncher', (p) => p.tempo < 0.88],
+  ['out-boxer', (p) => p.range > 0.04 && p.feet > 0.5],
+  ['counter puncher', (p) => p.read > 1.1],
+  ['body snatcher', (p) => p.body > 0.72]
+];
+export const makeBoxer = (seed = newSeed()) => makeDummy(seed, DUMMY, DUMMY_STYLES, 'all rounder');
+
 export class Brain {
-  constructor(style) {
-    this.s = style; this.t = 0; this.seen = []; this.lastAct = null; this.plan = [];
-    this.next = rand(0.6, 1.2) * style.tempo; this.hold = 0; this.holdGuard = 'none'; this.backT = 0;
+  constructor(style, d = makeBoxer()) {
+    const p = d.p, g = p.guard - 0.5;
+    this.s = style; this.d = d; this.R = d.R; this.rand = d.rand;
+    // the card's numbers, bent by the seed
+    this.k = {
+      tempo: style.tempo * p.tempo,
+      reaction: style.reaction * p.react,
+      range: style.range + p.range,
+      power: [clamp(style.power[0] + p.power, 0, 0.95), clamp(style.power[1] + p.power, 0.1, 1)],
+      pGuard: clamp(style.pGuard + g * 0.2, 0.05, 0.8),
+      pSlip: clamp(style.pSlip - g * 0.2, 0, 0.6),
+      idleGuard: clamp(style.idleGuard + g * 0.2, 0, 0.8),
+      pStep: clamp(style.pStep + (p.feet - 0.5) * 0.12, 0, 0.5),
+      bounce: (style.bounce || 0) + p.feet * 0.1,
+      punish: clamp(style.punish * p.read, 0, 0.95),
+      anticipate: clamp((style.anticipate || 0) * p.read, 0, 0.8),
+      rangeSense: (style.rangeSense ?? 0.6) * (1 - p.gamble),
+      tiredAt: (style.tiredAt ?? 25) + p.pacing,
+      minStam: Math.max(5, (style.minStam || 22) + p.pacing * 0.5)
+    };
+    this.t = 0; this.seen = []; this.lastAct = null; this.plan = [];
+    this.next = this.rand(0.6, 1.2) * this.k.tempo; this.hold = 0; this.holdGuard = 'none'; this.backT = 0;
     this.idleGuard = 'none'; this.idleT = 0; this.tally = { head: 0, body: 0, upper: 0 }; this.gapT = 0; this.recent = [];
+    this.switchT = this.rand(6, 16);
   }
-  newRound() { this.plan = []; this.tally = { head: 0, body: 0, upper: 0 }; this.next = rand(0.8, 1.4) * this.s.tempo; }
+  newRound() { this.plan = []; this.tally = { head: 0, body: 0, upper: 0 }; this.next = this.rand(0.8, 1.4) * this.k.tempo; }
+  pick(list) { return list[Math.floor(this.R() * list.length)]; }
+  /* a combo, weighted by the seed's taste for hooks and uppercuts, then bent toward head or body */
+  combo(list) {
+    const p = this.d.p;
+    const w = list.map((c) => Math.max(0.2, 1 + (p.flash - 0.5) * 1.6 * (c.some((n) => n.kind !== 'straight') ? 1 : -1)));
+    let r = this.R() * w.reduce((a, b) => a + b, 0), i = 0;
+    while (i < list.length - 1 && (r -= w[i]) > 0) i++;
+    return list[i].map((n) => {
+      if (n.kind === 'upper') return n;
+      const flip = this.R();
+      if (!n.body && flip < (p.body - 0.45) * 0.4) return { ...n, body: true };
+      if (n.body && flip < (0.45 - p.body) * 0.6) return { ...n, body: false };
+      return n;
+    });
+  }
 
   think(dt, me, foe, bout) {
-    const s = this.s; this.t += dt;
+    const s = this.s, k = this.k, p = this.d.p, R = this.R, rand = this.rand; this.t += dt;
     const d = Math.abs(foe.x - me.x);
     const it = { move: 0, guard: 'none', punch: null, slip: false, stance: false };
 
@@ -308,45 +384,45 @@ export class Brain {
     if (fa !== this.lastAct) {
       this.lastAct = fa;
       if (fa && fa.type === 'punch') this.recent.push(this.t);
-      if (fa && fa.type === 'punch') this.seen.push({ at: this.t + s.reaction * rand(0.85, 1.25), act: fa, kind: 'windup' });
+      if (fa && fa.type === 'punch') this.seen.push({ at: this.t + k.reaction * rand(0.85, 1.25), act: fa, kind: 'windup' });
     }
     if (fa && fa.type === 'punch' && fa.missed && !fa.seenMiss) {
       fa.seenMiss = true;
-      this.seen.push({ at: this.t + s.reaction * rand(0.8, 1.1), act: fa, kind: 'miss' });
+      this.seen.push({ at: this.t + k.reaction * rand(0.8, 1.1), act: fa, kind: 'miss' });
     }
     const due = this.seen.filter((e) => e.at <= this.t);
     this.seen = this.seen.filter((e) => e.at > this.t);
     for (const e of due) {
       if (e.kind === 'windup' && foe.act === e.act && e.act.phase === 'startup') this.defend(e.act, it, me);
-      if (e.kind === 'miss' && !s.noPunch && Math.random() < s.punish && d < 1.0 && me.stam > 10) {
-        this.plan = [pick([[C()], [LH()], [RH()], [J(), C()]])]; this.plan = this.plan[0].slice(); this.gapT = 0;
+      if (e.kind === 'miss' && !s.noPunch && R() < k.punish && d < 1.0 && me.stam > 10) {
+        this.plan = this.combo([[C()], [LH()], [RH()], [J(), C()]]); this.gapT = 0;
       }
     }
 
     // offense
     if (!s.noPunch && !bout.downed) {
       this.next -= dt;
-      const want = this.plan.length ? reachOf(this.plan[0], me) - 0.08 : s.range;
-      if (!this.plan.length && this.next <= 0 && d <= s.range + 0.12 && me.stam > (s.minStam || 22)) {
+      const want = this.plan.length ? reachOf(this.plan[0], me) - 0.08 : k.range;
+      if (!this.plan.length && this.next <= 0 && d <= k.range + 0.12 && me.stam > k.minStam) {
         let options = s.combos;
-        if (Math.random() < (s.rangeSense ?? 0.6)) {   // pick something that reaches from here
+        if (R() < k.rangeSense) {   // pick something that reaches from here
           const fits = options.filter((c) => reachOf(c[0]) >= d - 0.04);
           if (fits.length) options = fits;
         }
         if (foe.guard === 'shell' || foe.guard === 'high') {
-          const under = options.filter((c) => c.some((p) => p.body || p.kind === 'upper'));
-          if (under.length && Math.random() < 0.6) options = under;
+          const under = options.filter((c) => c.some((n) => n.body || n.kind === 'upper'));
+          if (under.length && R() < 0.6) options = under;
         }
-        this.plan = pick(options).slice(); this.gapT = 0; this.closeG = Math.random() < (s.closeGuard || 0);
-        this.next = s.tempo * rand(0.6, 1.4) * (1 + (1 - me.stam / 100) * 0.8);
+        this.plan = this.combo(options); this.gapT = 0; this.closeG = R() < (s.closeGuard || 0);
+        this.next = k.tempo * rand(0.6, 1.4) * (1 + (1 - me.stam / 100) * 0.8);
       }
       if (this.plan.length && me.free()) {
         this.gapT -= dt;
         if (this.gapT <= 0 && d <= want + 0.06) {
           const n = this.plan.shift();
           const hand = n.hand === 'lead' ? me.lead() : (me.lead() === 'L' ? 'R' : 'L');
-          it.punch = { hand, kind: n.kind, body: n.body, p: rand(s.power[0], s.power[1]) };
-          this.gapT = rand(0.03, 0.1);
+          it.punch = { hand, kind: n.kind, body: n.body, p: rand(k.power[0], k.power[1]) };
+          this.gapT = rand(0.03, 0.1) * p.flow;
         }
       }
       if (this.plan.length && d > want + 0.6) this.plan = [];
@@ -357,18 +433,25 @@ export class Brain {
     this.recent = this.recent.filter((t) => this.t - t < 2.5);
     if (this.idleT <= 0) {
       // a busy opponent in range gets the gloves up more often
-      const busy = this.recent.length >= 2 && d < 1.15 ? s.anticipate || 0 : 0;
-      this.idleT = rand(0.5, 1.2); this.idleGuard = Math.random() < s.idleGuard + busy ? 'high' : 'none';
+      const busy = this.recent.length >= 2 && d < 1.15 ? k.anticipate : 0;
+      this.idleT = rand(0.5, 1.2); this.idleGuard = R() < k.idleGuard + busy ? 'high' : 'none';
     }
     if (this.hold > 0) it.guard = this.holdGuard;
     else if (!this.plan.length || (this.recent.length >= 3 && d < 1.15)) it.guard = this.idleGuard;
     if (this.plan.length && this.closeG && d > reachOf(this.plan[0]) - 0.02) it.guard = 'high';   // walk in behind the gloves
 
+    // stance: some seeds switch now and then while out of range
+    this.switchT -= dt;
+    if (this.switchT <= 0) {
+      this.switchT = rand(6, 16);
+      if (p.switchy > 0.8 && !this.plan.length && d > k.range + 0.3 && me.free()) it.stance = true;
+    }
+
     // feet
-    let desired = this.plan.length ? reachOf(this.plan[0], me) - 0.1 : s.range;
-    if (s.bounce) desired += Math.sin(this.t * 2.3) * s.bounce;
-    if (me.stam < (s.tiredAt ?? 25)) desired += 0.45;
-    if (s.noPunch) desired = s.range;
+    let desired = this.plan.length ? reachOf(this.plan[0], me) - 0.1 : k.range;
+    if (k.bounce) desired += Math.sin(this.t * p.rhythm) * k.bounce;
+    if (me.stam < k.tiredAt) desired += 0.45;
+    if (s.noPunch) desired = k.range;
     this.backT -= dt;
     if (this.backT > 0) it.move = -1;
     else { const e = d - desired; it.move = Math.abs(e) < 0.06 ? 0 : clamp(e * 4, -1, 1); }
@@ -377,23 +460,23 @@ export class Brain {
   }
 
   defend(act, it, me) {
-    const s = this.s;
-    let pG = s.pGuard, pS = s.pSlip;
+    const s = this.s, k = this.k, rand = this.rand;
+    let pG = k.pGuard, pS = k.pSlip;
     const cat = act.kind === 'upper' ? 'upper' : act.body ? 'body' : 'head';
     if (s.adaptive) {
       this.tally[cat]++;
       const total = this.tally.head + this.tally.body + this.tally.upper;
       if (total >= 4) pG = Math.min(0.8, pG + 0.4 * (this.tally[cat] / total - 0.33));
     }
-    const r = Math.random();
+    const r = this.R();
     if (cat === 'body') {
-      if (r < pG + 0.1) { this.holdGuard = 'low'; this.hold = rand(0.3, 0.5); } else if (r < pG + 0.1 + s.pStep) this.backT = 0.25;
+      if (r < pG + 0.1) { this.holdGuard = 'low'; this.hold = rand(0.3, 0.5); } else if (r < pG + 0.1 + k.pStep) this.backT = 0.25;
     } else if (cat === 'upper') {
-      if (r < s.pStep + pG * 0.5) this.backT = 0.3; else if (r < s.pStep + pG) { this.holdGuard = 'shell'; this.hold = 0.35; }
+      if (r < k.pStep + pG * 0.5) this.backT = 0.3; else if (r < k.pStep + pG) { this.holdGuard = 'shell'; this.hold = 0.35; }
     } else {
       if (r < pS) it.slip = true;
       else if (r < pS + pG) { this.holdGuard = 'high'; this.hold = rand(0.3, 0.55); }
-      else if (r < pS + pG + s.pStep * 0.5) this.backT = 0.25;
+      else if (r < pS + pG + k.pStep * 0.5) this.backT = 0.25;
     }
     if (this.hold > 0) { this.plan = []; }
   }
