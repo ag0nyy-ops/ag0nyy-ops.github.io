@@ -2243,10 +2243,11 @@
           animation-timing-function: linear; animation-fill-mode: both;
           animation-timeline: --dossier; animation-range: contain 0% contain 100%;
         }
-        .dossier__stage { animation-name: file-rise; }
+        /* the folder rises while the section scrolls in, so the screen under
+           the tape is never empty; it is settled by the time the pin holds */
+        .dossier__stage { animation-name: file-rise; animation-range: entry 10% contain 6%; }
         @keyframes file-rise {
-          0%   { opacity: 0; transform: translateY(16svh) rotateX(28deg) scale(.84); }
-          16%  { opacity: 1; transform: none; }
+          0%   { opacity: 0; transform: translateY(22svh) rotateX(32deg) scale(.82); }
           100% { opacity: 1; transform: none; }
         }
         .dossier__cover { animation-name: file-cover; }
@@ -2257,12 +2258,12 @@
           100%    { transform: rotateY(-172deg); opacity: .22; }
         }
         /* the cover's contents ink in, one after another, as the folder rises */
-        .dossier__front > * { animation-name: file-ink; }
-        .dossier__front > :nth-child(2) { animation-range: contain 4% contain 100%; }
-        .dossier__front > :nth-child(3) { animation-range: contain 8% contain 100%; }
-        .dossier__front > :nth-child(4) { animation-range: contain 11% contain 100%; }
-        .dossier__front > :nth-child(5) { animation-range: contain 14% contain 100%; }
-        @keyframes file-ink { 0% { opacity: 0; } 10% { opacity: 1; } 100% { opacity: 1; } }
+        .dossier__front > * { animation-name: file-ink; animation-range: entry 40% entry 60%; }
+        .dossier__front > :nth-child(2) { animation-range: entry 50% entry 70%; }
+        .dossier__front > :nth-child(3) { animation-range: entry 60% entry 80%; }
+        .dossier__front > :nth-child(4) { animation-range: entry 70% entry 90%; }
+        .dossier__front > :nth-child(5) { animation-range: entry 80% entry 100%; }
+        @keyframes file-ink { from { opacity: 0; } to { opacity: 1; } }
 
         /* the eye on the cover is shut, then opens just before the cover lifts */
         .dossier__eye .eye__lid--top {
