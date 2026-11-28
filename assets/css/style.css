@@ -1922,6 +1922,11 @@
     .toc__dots { display: none; }
     .toc__meta { font-size: .62rem; letter-spacing: .08em; }
   }
+  /* very narrow: the note drops under the name instead of crushing it */
+  @container toc (max-width: 22rem) {
+    .toc a { grid-template-columns: 2.6rem minmax(0, 1fr); row-gap: .25rem; }
+    .toc__meta { grid-column: 2; white-space: normal; }
+  }
 
   /* the cover (only drawn when the motion layer turns the scene on) */
   .dossier__cover { position: absolute; inset: 0; z-index: 3; transform-origin: 0 50%; transform-style: preserve-3d; }
