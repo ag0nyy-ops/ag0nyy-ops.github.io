@@ -84,7 +84,7 @@
     const areaIO = new IntersectionObserver((entries) => {
       for (const e of entries) e.target.classList.toggle('is-offscreen', !e.isIntersecting);
     }, { rootMargin: '200px' });
-    document.querySelectorAll('.hero, .tape, #services, .footer').forEach((el) => areaIO.observe(el));
+    document.querySelectorAll('.hero, .tape, #index, #games, #stills, #evidence, #services, #about, #contact, .footer').forEach((el) => areaIO.observe(el));
   }
 
   /* 2b. scroll progress fallback. Browsers with scroll-driven animations do
@@ -234,6 +234,42 @@
     setTimeout(stare, rand(30000, 55000));
   };
   setTimeout(stare, rand(12000, 20000));
+
+  /* 3d. rarer scares (JS only flips a flag; CSS decides what it looks like)
+     - a shut eye somewhere on screen opens for a few seconds and looks at you
+     - one section title on screen glitches for about a second
+     Only things that are actually on screen are picked, never while idle,
+     during the stare, in a hidden tab, or with reduced motion. */
+  const peeks = [...document.querySelectorAll('.eye--peek')];
+  const titles = [...document.querySelectorAll('.sh__title')];
+  const seen = new Set();
+  if ('IntersectionObserver' in window) {
+    const seenIO = new IntersectionObserver((entries) => {
+      for (const e of entries) e.isIntersecting ? seen.add(e.target) : seen.delete(e.target);
+    }, { threshold: 0.6 });
+    [...peeks, ...titles].forEach((el) => seenIO.observe(el));
+  }
+  const pick = (list) => { const on = list.filter((el) => seen.has(el)); return on[(Math.random() * on.length) | 0]; };
+  const busy = () => reduce.matches || document.hidden || !!root.dataset.idle || !!root.dataset.scare;
+  const peek = () => {
+    const el = busy() ? null : pick(peeks);
+    if (el) {
+      measure();                     // aim it at the cursor before it opens
+      el.dataset.peek = '';
+      setTimeout(() => { delete el.dataset.peek; }, 3400);
+    }
+    setTimeout(peek, rand(26000, 50000));
+  };
+  setTimeout(peek, rand(9000, 15000));
+  const glitchTitle = () => {
+    const el = busy() ? null : pick(titles);
+    if (el) {
+      el.dataset.glitch = '';
+      setTimeout(() => { delete el.dataset.glitch; }, 1250);
+    }
+    setTimeout(glitchTitle, rand(34000, 70000));
+  };
+  setTimeout(glitchTitle, rand(16000, 26000));
 
   /* 4a. same-page view transitions: the new section is revealed through a
      circle growing from where you clicked (CSS reads --vt-x / --vt-y) */

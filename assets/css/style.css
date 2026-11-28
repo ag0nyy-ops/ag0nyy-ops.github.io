@@ -1756,3 +1756,678 @@
   /* the current page in the top bar stays fully lit */
   .topbar__nav a[aria-current="page"] { opacity: 1; }
 }
+
+
+/* ==========================================================================
+   SCENES — the second pass that makes the file feel deep
+   © 2026 Jay · https://ag0nyy-ops.github.io/ · case ref jdx-strata-4c19e0
+   Source is viewable for learning, not for reuse. See LICENSE.
+   --------------------------------------------------------------------------
+   Same rules as everything above: JS only feeds numbers and flags, CSS does
+   the rest. Each scene re-opens the layers declared at the top of the file.
+     1. hero: second sigil ring, bearing dial, camera HUD (clock + cursor
+        readout are CSS counters), crosshair, pencil notes only the light
+        finds, and cursor parallax across the three depth layers
+     2. the file opens: a pinned folder whose cover swings open on scroll
+     3. stills: a contact sheet with grease-pencil circles that draw in
+     4. evidence: exhibits pinned around the subject, strings drawn in
+     5. field notes: lines that type themselves as you scroll
+     6. scares: closed eyes that open once in a while, a rare title glitch
+   ========================================================================== */
+
+/* typed numbers for the scenes (top level, outside layers) */
+@property --jdx-h { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@property --jdx-m { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@property --jdx-s { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@property --jdx-f { syntax: "<integer>"; inherits: false; initial-value: 0; }
+/* the cursor, rounded to whole pixels by the integer syntax */
+@property --jdx-cx { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@property --jdx-cy { syntax: "<integer>"; inherits: false; initial-value: 0; }
+/* how much of a grease-pencil circle is drawn. Starts full, so a page with no
+   scroll timelines (or reduced motion) shows the finished marks. */
+@property --jdx-mark { syntax: "<angle>"; inherits: false; initial-value: 360deg; }
+
+/* four-digit readout: 0640 */
+@counter-style jdx-pad4 { system: extends decimal; pad: 4 "0"; }
+
+@layer components {
+
+  /* ---------------- 1. hero ---------------- */
+  .sigil--inner { width: calc(var(--stage) * .7); }
+  .sigil--inner text { font-size: 13px; letter-spacing: .3em; fill: color-mix(in oklab, var(--fg) 52%, var(--bg)); }
+  .sigil--inner circle { stroke: var(--line); stroke-dasharray: 2 6; }
+  .sigil__dial { width: var(--stage); aspect-ratio: 1; overflow: visible; }
+  .sigil__dial text {
+    fill: color-mix(in oklab, var(--fg) 40%, var(--bg));
+    font: 400 11px var(--mono); letter-spacing: .12em; text-anchor: middle;
+  }
+
+  /* pencil notes: --line-strong text sits under the flashlight's darkness,
+     so it only shows where the beam is */
+  .ink-note {
+    position: absolute; left: var(--x); top: var(--y); rotate: var(--r);
+    font: 400 .78rem/1.3 var(--mono); letter-spacing: .2em; text-transform: uppercase;
+    color: var(--line-strong); white-space: nowrap;
+  }
+  .ink-note::before { content: "— "; }
+
+  /* camera HUD: sits above the dark (z 45) like the headline */
+  .hud {
+    position: absolute; z-index: 45; pointer-events: none;
+    inset: 4.7rem calc(var(--gutter) - 14px) .9rem;
+    font: 400 .68rem/1 var(--mono); letter-spacing: .18em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .hud__corner { position: absolute; width: 22px; height: 22px; border: 0 solid var(--fg); }
+  .hud__corner--tl { left: 0; top: 0; border-width: 1px 0 0 1px; }
+  .hud__corner--tr { right: 0; top: 0; border-width: 1px 1px 0 0; }
+  .hud__corner--bl { left: 0; bottom: 0; border-width: 0 0 1px 1px; }
+  .hud__corner--br { right: 0; bottom: 0; border-width: 0 1px 1px 0; }
+  .hud__rec, .hud__tc, .hud__xy { position: absolute; margin: 0; }
+  .hud__rec { left: 14px; top: 5.7rem; display: flex; align-items: center; gap: .55em; color: var(--fg); }
+  .hud__dot { width: .5rem; aspect-ratio: 1; border-radius: 50%; background: var(--fg); }
+  .hud__tc { left: 14px; top: 6.9rem; font-variant-numeric: tabular-nums; letter-spacing: .12em; }
+  .hud__xy { right: 14px; top: 5.7rem; display: grid; gap: .5rem; justify-items: end; font-variant-numeric: tabular-nums; }
+
+  /* the clock: four registered integers, printed with CSS counters */
+  .hud__h { counter-reset: h var(--jdx-h); }
+  .hud__m { counter-reset: m var(--jdx-m); }
+  .hud__s { counter-reset: s var(--jdx-s); }
+  .hud__f { counter-reset: f var(--jdx-f); }
+  .hud__h::after { content: counter(h, decimal-leading-zero); }
+  .hud__m::after { content: counter(m, decimal-leading-zero); }
+  .hud__s::after { content: counter(s, decimal-leading-zero); }
+  .hud__f::after { content: counter(f, decimal-leading-zero); }
+
+  /* the cursor readout: --mx/--my are "640.0"-style numbers; assigning them
+     to an <integer> property rounds them, and a counter prints them */
+  .hud__x { --jdx-cx: calc(var(--mx)); counter-reset: cx var(--jdx-cx); }
+  .hud__y { --jdx-cy: calc(var(--my)); counter-reset: cy var(--jdx-cy); }
+  .hud__x::after { content: "X " counter(cx, jdx-pad4); }
+  .hud__y::after { content: "Y " counter(cy, jdx-pad4); }
+  .hud__xy { display: none; }
+  @media (hover: hover) and (pointer: fine) { :root[data-cursor] .hud__xy { display: grid; } }
+
+  /* hairlines through the cursor, only on the first screen (fades on scroll) */
+  .crosshair { position: fixed; inset: 0; z-index: 41; pointer-events: none; display: none; }
+  .crosshair__h, .crosshair__v { position: absolute; left: 0; top: 0; background: color-mix(in oklab, var(--fg) 13%, transparent); will-change: translate; }
+  .crosshair__h { width: 100%; height: 1px; translate: 0 calc(var(--my) * 1px); }
+  .crosshair__v { width: 1px; height: 100%; translate: calc(var(--mx) * 1px) 0; }
+
+  @media (max-width: 760px) {
+    .hud { inset: 4.4rem calc(var(--gutter) - 8px) .6rem; }
+    .hud__rec { top: 1.1rem; left: 10px; }
+    .hud__tc { top: 2.3rem; left: 10px; }
+    .ink-note:nth-of-type(2n) { display: none; }
+    .ink-note { font-size: .7rem; }
+  }
+
+  /* ---------------- 2. the file opens ---------------- */
+  /* Static first: this is the whole layout for reduced motion and for
+     browsers without scroll timelines. The motion layer adds the pin. */
+  .dossier { position: relative; padding: clamp(5rem, 10vw, 8rem) var(--gutter) 0; }
+  .dossier__pin { position: relative; max-width: 58rem; margin-inline: auto; }
+  .dossier__stage { position: relative; width: 100%; margin-top: 2.2rem; }
+  .dossier__cover, .dossier__paper--under, .dossier__hint { display: none; }
+
+  .dossier__folder {
+    position: relative;
+    padding: clamp(.6rem, 2.2vw, 1.6rem);
+    border: 1px solid var(--line-strong);
+    background:
+      repeating-linear-gradient(-45deg, transparent 0 14px, color-mix(in oklab, var(--fg) 3%, transparent) 14px 15px),
+      var(--bg-2);
+  }
+  .dossier__tab {   /* the folder's tab, sticking up out of the top edge */
+    position: absolute; left: 1.4rem; bottom: 100%;
+    padding: .5rem 1.6rem .45rem 1rem;
+    border: 1px solid var(--line-strong); border-bottom: 0;
+    background: var(--bg-2);
+    clip-path: polygon(0 0, 84% 0, 100% 100%, 0 100%);
+    font: 600 .72rem/1 var(--mono); letter-spacing: .2em; color: var(--muted);
+  }
+  .dossier__paper {
+    position: relative;
+    padding: clamp(1.2rem, 4vw, 2.8rem) clamp(1rem, 4vw, 2.8rem) clamp(1rem, 3vw, 2rem);
+    border: 1px solid var(--line-strong);
+    background: var(--bg);
+  }
+  .dossier__head { display: grid; gap: .5rem; margin-bottom: clamp(1rem, 3vw, 1.8rem); }
+  .dossier__label { font: 400 .75rem/1.3 var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+  .dossier__label::before { content: "■ "; }
+  .dossier__title {
+    width: fit-content;
+    font: 400 clamp(3rem, 9vw, 6.4rem)/.85 var(--goth);
+    text-shadow: -1px 0 var(--fringe-r), 1px 0 var(--fringe-c);
+  }
+  .dossier__stamp { position: absolute; right: clamp(1rem, 4vw, 2.6rem); top: clamp(1.2rem, 4vw, 2.6rem); }
+
+  .toc { container: toc / inline-size; border-top: 1px solid var(--line-strong); }
+  .toc a {
+    display: grid; grid-template-columns: 3.8rem auto minmax(1.5rem, 1fr) auto;
+    align-items: baseline; gap: 1rem;
+    padding: .8rem .4rem;
+    border-bottom: 1px dashed var(--line-strong);
+    text-decoration: none;
+    transition: background-color .3s, padding .5s var(--ease-spring);
+  }
+  .toc a:is(:hover, :focus-visible) { background: color-mix(in oklab, var(--fg) 6%, transparent); padding-left: 1rem; }
+  .toc:has(a:hover) a:not(:hover) { color: color-mix(in oklab, var(--fg) 45%, var(--bg)); }
+  .toc__no { font: 400 .75rem/1 var(--mono); letter-spacing: .1em; color: var(--muted); }
+  .toc__name { font: 600 clamp(1.05rem, 2.4vw, 1.55rem)/1.15 var(--mono); letter-spacing: -.03em; }
+  .toc__dots { border-bottom: 2px dotted var(--line-strong); translate: 0 -.25em; }
+  .toc__meta { font: 400 .72rem/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  @container toc (max-width: 30rem) {
+    .toc a { grid-template-columns: 2.6rem minmax(0, 1fr) auto; gap: .6rem; padding: .6rem .2rem; }
+    .toc__dots { display: none; }
+    .toc__meta { font-size: .62rem; letter-spacing: .08em; }
+  }
+  /* very narrow: the note drops under the name instead of crushing it */
+  @container toc (max-width: 22rem) {
+    .toc a { grid-template-columns: 2.6rem minmax(0, 1fr); row-gap: .25rem; }
+    .toc__meta { grid-column: 2; white-space: normal; }
+  }
+
+  /* the cover (only drawn when the motion layer turns the scene on) */
+  .dossier__cover { position: absolute; inset: 0; z-index: 3; transform-origin: 0 50%; transform-style: preserve-3d; }
+  .dossier__front, .dossier__inside { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .dossier__front {
+    display: grid; place-content: center; justify-items: center; gap: clamp(.8rem, 2.5vh, 1.4rem);
+    padding: 2rem; text-align: center;
+    border: 1px solid var(--fg);
+    background:
+      radial-gradient(ellipse at 50% 40%, color-mix(in oklab, var(--fg) 6%, transparent), transparent 70%),
+      repeating-linear-gradient(-45deg, transparent 0 9px, color-mix(in oklab, var(--fg) 4%, transparent) 9px 10px),
+      var(--bg);
+  }
+  .dossier__front::before, .dossier__front::after {   /* the callout's solid corners */
+    content: ""; position: absolute; width: 10px; height: 10px; background: var(--fg);
+  }
+  .dossier__front::before { top: -5px; right: -5px; }
+  .dossier__front::after { bottom: -5px; left: -5px; }
+  .dossier__k {
+    padding: .7rem 1rem; border: 2px solid var(--fg); rotate: -6deg;
+    font: 600 clamp(.85rem, 2vw, 1.1rem)/1 var(--mono); letter-spacing: .3em; text-transform: uppercase;
+  }
+  .dossier__eye { width: clamp(9rem, 26vw, 17rem); }
+  .dossier__name {
+    font: 400 clamp(4rem, 13vw, 8.5rem)/.8 var(--goth);
+    color: transparent; -webkit-text-stroke: 1px var(--fg);
+  }
+  .dossier__meta { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem 1.6rem; font: 400 .72rem/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+  .dossier__meta div { display: flex; gap: .6em; }
+  .dossier__meta dt { color: var(--muted); }
+  .dossier__warn { font: 400 .68rem/1 var(--mono); letter-spacing: .4em; text-transform: uppercase; color: var(--muted); }
+  .dossier__inside {
+    transform: rotateY(180deg);
+    display: grid; place-items: end start; padding: 2rem;
+    border: 1px solid var(--line-strong);
+    background:
+      repeating-linear-gradient(transparent 0 2.1rem, var(--line) 2.1rem calc(2.1rem + 1px)),
+      var(--bg-2);
+    font: 400 .72rem/1.8 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+  }
+  .dossier__paper--under {
+    position: absolute; inset: clamp(.6rem, 2.2vw, 1.6rem);
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    rotate: 1.6deg; translate: .8rem .5rem;
+  }
+  .dossier__hint {
+    position: absolute; left: 50%; bottom: 1.4rem; translate: -50% 0;
+    font: 400 .7rem/1 var(--mono); letter-spacing: .3em; text-transform: uppercase; color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ---------------- 3. stills: the contact sheet ---------------- */
+  .sheet {
+    position: relative;
+    padding: 2.6rem clamp(.7rem, 2vw, 1.6rem);
+    border: 1px solid var(--line-strong);
+    /* sprocket holes along both edges */
+    background:
+      repeating-linear-gradient(90deg, color-mix(in oklab, var(--fg) 11%, var(--bg)) 0 12px, transparent 12px 26px) 0 .7rem / 100% 9px no-repeat,
+      repeating-linear-gradient(90deg, color-mix(in oklab, var(--fg) 11%, var(--bg)) 0 12px, transparent 12px 26px) 0 calc(100% - .7rem) / 100% 9px no-repeat,
+      var(--bg-2);
+  }
+  .sheet__edge {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: .3rem 1.2rem;
+    margin-bottom: 1rem;
+    font: 400 .62rem/1.2 var(--mono); letter-spacing: .3em; text-transform: uppercase; color: var(--muted);
+  }
+  .sheet__edge--b { margin: 1.2rem 0 0; letter-spacing: .16em; }
+  .sheet__frames { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.6rem clamp(.6rem, 1.4vw, 1rem); }
+  @media (min-width: 700px)  { .sheet__frames { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 1050px) { .sheet__frames { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+  .still { position: relative; }
+  .still__link { display: block; text-decoration: none; }
+  .still__img {
+    position: relative; display: block; overflow: hidden;
+    aspect-ratio: 16 / 10;
+    border: 1px solid var(--line-strong);
+    background: var(--bg);
+    transition: border-color .3s;
+  }
+  .still__img img {
+    width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%;
+    filter: grayscale(1) contrast(1.1);
+    transition: scale .7s var(--ease-spring);
+  }
+  .still__no {
+    position: absolute; left: 0; top: 0; z-index: 1;
+    padding: .25rem .4rem; background: var(--bg);
+    font: 600 .6rem/1 var(--mono); letter-spacing: .14em; color: var(--muted);
+  }
+  .still__cap {
+    display: block; margin-top: .6rem;
+    font: 400 .66rem/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  }
+  .still__cap b { display: block; color: var(--fg); font-weight: 600; letter-spacing: .14em; }
+  /* the loupe: hovering a frame zooms into it; the rest of the sheet dims */
+  .still__link:is(:hover, :focus-visible) .still__img { border-color: var(--fg); }
+  a.still__link:is(:hover, :focus-visible) .still__img img { scale: 1.32; }
+  .sheet__frames:has(a.still__link:hover) .still:not(:has(.still__link:hover)) { opacity: .45; }
+  .still { transition: opacity .4s var(--ease-liquid); }
+
+  /* grease pencil: a ring drawn with a conic mask (--jdx-mark = how far round) */
+  .still--select::after {
+    content: ""; position: absolute; left: -9px; top: -10px; z-index: 2; pointer-events: none;
+    width: calc(100% + 18px); aspect-ratio: 16 / 11;
+    border: 2px solid var(--fg); border-radius: 50%;
+    rotate: -4deg;
+    mask: conic-gradient(from 200deg, #000 var(--jdx-mark), #0000 0);
+  }
+  .still--select .still__no::after { content: " / select"; color: var(--fg); }
+
+  /* ---------------- 4. evidence board ---------------- */
+  .board {
+    container-type: inline-size;
+    position: relative;
+    border: 1px solid var(--line-strong);
+    background:
+      linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 40px 40px,
+      var(--bg-2);
+    background-blend-mode: normal;
+  }
+  .board__strings { display: none; }
+  .board__note { display: none; }
+
+  /* small screens first: subject on top, exhibits in a grid */
+  .board { padding: 1.2rem; }
+  .board__subject {
+    position: relative; display: grid; justify-items: center; gap: .6rem;
+    max-width: 16rem; margin: 1rem auto 2rem; padding: 1.2rem 1rem 1rem;
+    border: 1px solid var(--fg); background: var(--bg); text-align: center;
+  }
+  .board__eye { width: min(9rem, 60%); }
+  .board__who { display: grid; gap: .3rem; font: 400 2.6rem/.9 var(--goth); }
+  .board__who span { font: 400 .62rem/1 var(--mono); letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+  .board__why { font: 400 .66rem/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .board__cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.8rem 1rem; }
+  @media (max-width: 460px) { .board__cards { grid-template-columns: minmax(0, 1fr); } }
+
+  .exh {
+    position: relative;
+    padding: .5rem .5rem .7rem;
+    border: 1px solid var(--line-strong);
+    background: var(--bg);
+    rotate: var(--r);
+    transition: rotate .6s var(--ease-spring), scale .6s var(--ease-spring), border-color .3s;
+  }
+  .exh:is(:hover, :focus-within) { rotate: 0deg; scale: 1.05; border-color: var(--fg); z-index: 5; }
+  .board__cards:has(.exh:hover) .exh:not(:hover) { border-color: var(--line); }
+  .exh__pin {
+    position: absolute; left: 50%; top: 0; z-index: 3;
+    width: clamp(10px, 1.3cqw, 16px); aspect-ratio: 1; border-radius: 50%;
+    translate: -50% -50%;
+    background: radial-gradient(circle at 35% 32%, var(--fg) 0 22%, var(--muted) 46%, color-mix(in oklab, var(--fg) 28%, var(--bg)) 100%);
+  }
+  .exh__link { display: grid; gap: .25rem; text-decoration: none; }
+  .exh__link::before { content: ""; position: absolute; inset: 0; z-index: 1; }   /* whole card clickable */
+  .exh__img { display: block; overflow: hidden; aspect-ratio: 16 / 10; margin-bottom: .4rem; border: 1px solid var(--line); }
+  .exh__img img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; filter: grayscale(1) contrast(1.1); }
+  .exh__tag { font: 400 .62rem/1.2 var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+  .exh__title { font: 600 1.05rem/1.1 var(--mono); letter-spacing: -.03em; }
+  .exh__line { font: 400 .7rem/1.35 var(--mono); color: var(--muted); }
+  /* a stamp that slams on when you pick the exhibit up (transition, so it
+     answers the hover; the page's scroll-driven .stamp slam isn't used here) */
+  .exh__stamp {
+    position: absolute; right: .5rem; bottom: 2.6rem; z-index: 2;
+    padding: .35rem .55rem; border: 1.5px solid currentColor; background: var(--bg);
+    font: 600 .62rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; white-space: nowrap;
+    opacity: 0; scale: 2.4; rotate: -16deg;
+    transition: opacity .2s, scale .5s var(--ease-spring), rotate .5s var(--ease-spring);
+    pointer-events: none;
+  }
+  .exh:is(:hover, :focus-within) .exh__stamp { opacity: 1; scale: 1; rotate: -6deg; }
+
+  /* the board itself, on screens wide enough to read it */
+  @media (min-width: 900px) {
+    /* the board is a 1000 x 770 grid: 1cqw = 10 units */
+    .board { aspect-ratio: 1000 / 770; padding: 0; }
+    .board__strings {
+      display: block; position: absolute; inset: 0; width: 100%; height: 100%;
+      overflow: visible; pointer-events: none; z-index: 1;
+    }
+    .board__strings path {
+      fill: none; stroke: var(--muted); stroke-width: 1.25; vector-effect: non-scaling-stroke;
+      stroke-dasharray: 1; stroke-dashoffset: 0;
+    }
+    .board__strings .board__x { stroke: var(--line-strong); }
+    .board__subject {
+      position: absolute; left: 41cqw; top: 28cqw; width: 18cqw; z-index: 2;
+      margin: 0; padding: 1.6cqw 1cqw 1.2cqw; gap: .7cqw; max-width: none;
+    }
+    .board__eye { width: 13cqw; }
+    .board__who { font-size: 3.4cqw; gap: .5cqw; }
+    .board__who span, .board__why { font-size: max(.58rem, .78cqw); }
+    .board__cards { position: absolute; inset: 0; display: block; z-index: 2; }
+    .exh {
+      position: absolute; width: 24cqw;
+      left: calc(var(--cx) * .1cqw - 12cqw);
+      top: calc(var(--cy) * .1cqw - 11cqw);
+      padding: .7cqw .7cqw 1cqw;
+    }
+    .exh__tag { font-size: max(.58rem, .9cqw); }
+    .exh__title { font-size: max(.9rem, 1.75cqw); }
+    .exh__line { font-size: max(.62rem, 1cqw); }
+    .exh__stamp { bottom: 4.6cqw; right: 1cqw; }
+    .board__note {
+      display: block; position: absolute; z-index: 3; margin: 0;
+      translate: -50% -50%;
+      padding: .3rem .55rem; border: 1px dashed var(--line-strong); background: var(--bg);
+      font: 400 max(.6rem, .85cqw)/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--fg);
+      white-space: nowrap;
+    }
+    .board__note--1 { left: 65.4cqw; top: 9.2cqw; rotate: 12deg; }
+    .board__note--2 { left: 34.6cqw; top: 47cqw; rotate: 18deg; }
+  }
+
+  /* ---------------- 5. field notes ---------------- */
+  .notes {
+    --row: 2.5rem;
+    margin-top: clamp(3rem, 7vw, 5rem);
+    padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 3vw, 2.2rem);
+    border: 1px solid var(--line-strong);
+    border-left: 3px double var(--line-strong);
+    /* ruled paper: one line per row */
+    background:
+      repeating-linear-gradient(transparent 0 calc(var(--row) - 1px), var(--line) calc(var(--row) - 1px) var(--row)),
+      var(--bg-2);
+    background-position: 0 calc(clamp(1rem, 3vw, 2rem) + 1.9rem);
+  }
+  .notes__label { margin-bottom: .9rem; font: 400 .75rem/1 var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+  .notes__label::before { content: "■ "; }
+  .notes__list { font: 400 clamp(.8rem, 1.5vw, .98rem)/var(--row) var(--mono); letter-spacing: 0; }
+  .notes__list li { display: flex; gap: 1.1rem; }
+  .notes__no { flex: none; color: var(--muted); }
+  .notes__t { min-width: 0; }
+  @media (max-width: 640px) {
+    .notes__list { line-height: 1.6; }
+    .notes__list li { padding: .45rem 0; border-bottom: 1px solid var(--line); }
+    .notes { background: var(--bg-2); }
+  }
+
+  /* ---------------- 6. eyes that are usually shut ---------------- */
+  .eye--peek {
+    position: absolute; right: calc(var(--gutter) + .5rem); top: clamp(4rem, 8vw, 6.5rem);
+    width: clamp(3.4rem, 7vw, 5.5rem); opacity: .6; pointer-events: none;
+  }
+  .stills .eye--peek, .contact .eye--peek { top: auto; bottom: 1rem; }
+  #about .eye--peek { right: auto; left: calc(var(--gutter) + 22rem); top: clamp(5rem, 9vw, 7.5rem); }
+  @media (max-width: 760px) { #about .eye--peek { left: auto; right: var(--gutter); } }
+}
+
+
+@layer motion {
+  @media (prefers-reduced-motion: no-preference) {
+    /* ---- hero loops ---- */
+    .sigil--inner { animation: spin 95s linear infinite reverse; }
+    .sigil__dial  { animation: spin 260s linear infinite; }
+    .hud__dot     { animation: rec 2s steps(1, end) infinite; }   /* one slow on/off: 1 change per second */
+    .hud__f { animation: tc-f 1s steps(24, end) infinite; }
+    .hud__s { animation: tc-s 60s steps(60, end) infinite; }
+    .hud__m { animation: tc-m 3600s steps(60, end) infinite; }
+    .hud__h { animation: tc-h 86400s steps(24, end) infinite; }
+    @keyframes rec  { 0% { opacity: 1; } 50% { opacity: .15; } }
+    @keyframes tc-f { from { --jdx-f: 0; } to { --jdx-f: 24; } }
+    @keyframes tc-s { from { --jdx-s: 0; } to { --jdx-s: 60; } }
+    @keyframes tc-m { from { --jdx-m: 0; } to { --jdx-m: 60; } }
+    @keyframes tc-h { from { --jdx-h: 0; } to { --jdx-h: 24; } }
+    .is-offscreen :is(.sigil--inner, .sigil__dial, .hud__dot) { animation-play-state: paused; }
+
+    /* cursor parallax: each depth layer leans a different amount toward or
+       away from the pointer. Only with a real mouse and only at FULL sight. */
+    @media (hover: hover) and (pointer: fine) {
+      :root[data-fx="full"] .hero__layer > * {
+        transform:
+          translate(calc((var(--mx) * 1px - 50vw) * var(--jdx-par)),
+                    calc((var(--my) * 1px - 50vh) * var(--jdx-par)));
+        transition: transform 1.1s var(--ease-liquid);
+      }
+      .hero__layer--far  { --jdx-par: -.018; }
+      .hero__layer--mid  { --jdx-par: .022; }
+      .hero__layer--near { --jdx-par: .06; }
+    }
+
+    /* ---- peeking eyes: shut, no blinking, until JS sets data-peek ---- */
+    .eye--peek .eye__lid, .eye--peek .eye__lashes { animation: none; }
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+
+      /* crosshair: only on the first screen */
+      @media (hover: hover) and (pointer: fine) {
+        :root[data-cursor]:not([data-fx="low"]) .crosshair { display: block; }
+      }
+      .crosshair { animation: cross-out linear both; animation-timeline: scroll(root); animation-range: 0 70vh; }
+      @keyframes cross-out { to { opacity: 0; } }
+
+      /* ================= 2. the file opens =================
+         .dossier is 300svh tall; its stage is sticky for the 200svh in
+         between. "contain 0% → contain 100%" is exactly that pinned stretch,
+         so every keyframe % below is "how far through the pin". */
+      @media (min-height: 560px) {
+        .dossier { height: 300svh; padding: 0; view-timeline: --dossier block; }
+        .dossier__pin {
+          position: sticky; top: 0; height: 100svh; max-width: none;
+          display: grid; place-items: center;
+          padding: 5rem var(--gutter) 3.2rem;
+          perspective: 1800px; perspective-origin: 50% 35%;
+          overflow: clip;
+        }
+        .dossier__stage { width: min(100%, 58rem); margin: 0; transform-style: preserve-3d; }
+        .dossier__cover, .dossier__paper--under, .dossier__hint { display: block; }
+        .dossier__front { display: grid; }
+        .dossier__inside { display: grid; }
+
+        .dossier__stage, .dossier__cover, .dossier__paper, .dossier__paper--under,
+        .dossier__hint, .toc li, .dossier__front > * {
+          animation-timing-function: linear; animation-fill-mode: both;
+          animation-timeline: --dossier; animation-range: contain 0% contain 100%;
+        }
+        /* the folder rises while the section scrolls in, so the screen under
+           the tape is never empty; it is settled by the time the pin holds */
+        .dossier__stage { animation-name: file-rise; animation-range: entry 10% contain 6%; }
+        @keyframes file-rise {
+          0%   { opacity: 0; transform: translateY(22svh) rotateX(32deg) scale(.82); }
+          100% { opacity: 1; transform: none; }
+        }
+        .dossier__cover { animation-name: file-cover; }
+        @keyframes file-cover {
+          0%, 30% { transform: none; opacity: 1; }
+          58%     { transform: rotateY(-172deg); opacity: 1; }
+          70%     { transform: rotateY(-172deg); opacity: .22; }
+          100%    { transform: rotateY(-172deg); opacity: .22; }
+        }
+        /* the cover's contents ink in, one after another, as the folder rises */
+        .dossier__front > * { animation-name: file-ink; animation-range: entry 40% entry 60%; }
+        .dossier__front > :nth-child(2) { animation-range: entry 50% entry 70%; }
+        .dossier__front > :nth-child(3) { animation-range: entry 60% entry 80%; }
+        .dossier__front > :nth-child(4) { animation-range: entry 70% entry 90%; }
+        .dossier__front > :nth-child(5) { animation-range: entry 80% entry 100%; }
+        @keyframes file-ink { from { opacity: 0; } to { opacity: 1; } }
+
+        /* the eye on the cover is shut, then opens just before the cover lifts */
+        .dossier__eye .eye__lid--top {
+          animation: blink-top var(--jdx-blink) var(--jdx-blink-delay) infinite, file-lid-top linear both;
+          animation-timeline: auto, --dossier; animation-range: normal, contain 0% contain 100%;
+        }
+        .dossier__eye .eye__lid--bottom {
+          animation: blink-bottom var(--jdx-blink) var(--jdx-blink-delay) infinite, file-lid-bottom linear both;
+          animation-timeline: auto, --dossier; animation-range: normal, contain 0% contain 100%;
+        }
+        .dossier__eye .eye__lashes {
+          animation: blink-lashes var(--jdx-blink) var(--jdx-blink-delay) infinite, file-lashes linear both;
+          animation-timeline: auto, --dossier; animation-range: normal, contain 0% contain 100%;
+        }
+        @keyframes file-lid-top    { 0%, 14% { translate: 0 40cqw; } 26%, 100% { translate: 0 0; } }
+        @keyframes file-lid-bottom { 0%, 14% { translate: 0 -11cqw; } 26%, 100% { translate: 0 0; } }
+        @keyframes file-lashes     { 0%, 14% { translate: 0 40cqw; scale: 1 -.7; } 26%, 100% { translate: 0 0; scale: 1 1; } }
+
+        /* the index page slides up out of the folder and settles crooked */
+        .dossier__paper { animation-name: file-paper; }
+        @keyframes file-paper {
+          0%, 40% { transform: translateY(2.5%) scale(.985); }
+          60%     { transform: translateY(-4%) rotate(-1.4deg); }
+          78%     { transform: rotate(-.5deg); }
+          100%    { transform: rotate(-.5deg); }
+        }
+        .dossier__paper--under { animation-name: file-under; }
+        @keyframes file-under {
+          0%, 44% { transform: none; }
+          70%, 100% { transform: translate(1.2rem, 1rem) rotate(2.6deg); }
+        }
+        /* entries arrive one by one */
+        .toc li {
+          animation-name: file-entry;
+          animation-range: contain calc(50% + var(--i) * 3%) contain calc(58% + var(--i) * 3%);
+        }
+        @keyframes file-entry { from { opacity: 0; translate: -1.6rem 0; } to { opacity: 1; translate: 0 0; } }
+        /* the stamp lands last */
+        .dossier__stamp { animation-timeline: --dossier; animation-range: contain 84% contain 94%; }
+        .dossier__hint { animation-name: file-hint; }
+        @keyframes file-hint { 0%, 6% { opacity: 0; } 12%, 24% { opacity: 1; } 34%, 100% { opacity: 0; } }
+
+        /* keyboard: tabbing into the index opens the file at once */
+        .dossier:has(:focus-visible) :is(.dossier__stage, .dossier__paper, .toc li, .dossier__stamp) { animation: none; }
+        .dossier:has(:focus-visible) .dossier__cover { animation: none; transform: rotateY(-172deg); opacity: .22; }
+      }
+
+      /* ================= 3. stills: frames develop, circles draw ================= */
+      .still {
+        animation: develop linear both;
+        animation-timeline: view();
+        animation-range: entry calc(20% + var(--i) * 5%) cover 42%;
+      }
+      @keyframes develop {
+        from { opacity: .08; translate: 0 2.5rem; }
+        to   { opacity: 1;   translate: 0 0; }
+      }
+      .still--select::after {
+        animation: mark linear both;
+        animation-timeline: view();
+        animation-range: cover 35% cover 60%;
+      }
+      @keyframes mark { from { --jdx-mark: 0deg; } to { --jdx-mark: 360deg; } }
+
+      /* ================= 4. evidence: pinned in, strings drawn ================= */
+      .board { view-timeline: --board block; }
+      .exh {
+        animation: pin-in linear both;
+        animation-timeline: --board;
+        animation-range: entry calc(30% + var(--i) * 7%) cover calc(30% + var(--i) * 4%);
+      }
+      @keyframes pin-in {
+        from { opacity: 0; transform: translateY(-3rem) rotate(-9deg) scale(1.12); }
+        to   { opacity: 1; transform: none; }
+      }
+      @media (min-width: 900px) {
+        .board__strings path {
+          animation: string linear both;
+          animation-timeline: --board;
+          animation-range: cover calc(22% + var(--i) * 3%) cover calc(42% + var(--i) * 3%);
+        }
+        @keyframes string { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+        .board__note { animation: note-in linear both; animation-timeline: --board; animation-range: cover 46% cover 56%; }
+        @keyframes note-in { from { opacity: 0; scale: .6; } to { opacity: 1; scale: 1; } }
+      }
+
+      /* ================= 5. field notes type themselves ================= */
+      @media (min-width: 641px) {
+        .notes__list { view-timeline: --notes block; }
+        .notes__t {
+          display: inline-block; overflow: hidden; white-space: nowrap; vertical-align: top;
+          width: calc(var(--n) * 1ch);
+          animation: type both;
+          animation-timing-function: steps(var(--n), end);
+          animation-timeline: --notes;
+          animation-range: cover calc(16% + var(--i) * 6%) cover calc(22% + var(--i) * 6%);
+        }
+        @keyframes type { from { width: 0; } }
+        .notes__list li:last-child::after {
+          content: ""; flex: none; align-self: center;
+          width: .6ch; height: 1.1em; margin-left: -.8rem;
+          background: var(--fg);
+          animation: caret 1.1s steps(2, jump-none) infinite;
+        }
+        @keyframes caret { 0% { opacity: 1; } 100% { opacity: 0; } }
+      }
+    }
+  }
+}
+
+
+@layer scares {
+  /* shut by default (beats the idle/away lid states, which are less specific) */
+  :root .eye--peek:not([data-peek]) { --jdx-lid-top: 40cqw; --jdx-lid-bottom: -11cqw; }
+  :root .eye--peek:not([data-peek]) .eye__lashes { scale: 1 -.7; }
+  .eye--peek[data-peek] { --jdx-lid-top: 0cqw; --jdx-lid-bottom: 0cqw; opacity: .8; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .eye--peek { transition: opacity .8s var(--ease-liquid); }
+    /* a title, once in a long while: 3 frames over 1.2s (2.5 changes a second) */
+    .sh__title[data-glitch] { animation: title-glitch 1.2s steps(1, end) both; }
+    .sh__title[data-glitch]::before, .sh__title[data-glitch]::after {
+      content: attr(data-text); position: absolute; inset: 0; pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .sh__title[data-glitch]::before { color: var(--fringe-r); animation: title-glitch-r 1.2s steps(1, end) both; }
+    .sh__title[data-glitch]::after  { color: var(--fringe-c); animation: title-glitch-c 1.2s steps(1, end) both; }
+    @keyframes title-glitch {
+      0%   { transform: skewX(-6deg) translateX(-.02em); filter: url(#jdx-rgb-split); }
+      33%  { transform: skewX(3deg) translateX(.015em); }
+      66%  { transform: none; filter: none; }
+    }
+    @keyframes title-glitch-r {
+      0%   { opacity: .9; clip-path: inset(14% 0 58% 0); translate: -.06em 0; }
+      33%  { opacity: .9; clip-path: inset(56% 0 18% 0); translate: .05em 0; }
+      66%  { opacity: 0; }
+    }
+    @keyframes title-glitch-c {
+      0%   { opacity: .9; clip-path: inset(40% 0 38% 0); translate: .07em 0; }
+      33%  { opacity: .9; clip-path: inset(70% 0 8% 0); translate: -.04em 0; }
+      66%  { opacity: 0; }
+    }
+  }
+}
+
+
+@layer a11y {
+  @media (prefers-reduced-motion: reduce) {
+    .crosshair, .hud__xy { display: none !important; }
+  }
+  /* BALANCED and LOW: no SVG filter in the title glitch; LOW: no crosshair,
+     no HUD clock frames, no dial (one less spinning layer) */
+  :root:is([data-fx="balanced"], [data-fx="low"]) .sh__title[data-glitch] { filter: none; animation-name: glitch-lite; }
+  :root:is([data-fx="balanced"], [data-fx="low"]) .sh__title[data-glitch]::before,
+  :root:is([data-fx="balanced"], [data-fx="low"]) .sh__title[data-glitch]::after { mix-blend-mode: normal; }
+  [data-fx="low"] .crosshair, [data-fx="low"] .sigil__dial { display: none; }
+  [data-fx="low"] .hud__f { animation: none; }
+  @media (prefers-contrast: more) {
+    .ink-note { color: var(--muted); }
+    .crosshair { display: none !important; }
+  }
+}

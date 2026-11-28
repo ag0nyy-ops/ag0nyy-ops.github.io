@@ -23,7 +23,7 @@
   <!-- fonts are self-hosted (assets/fonts); preload the two the first screen needs -->
   <link rel="preload" href="assets/fonts/unifrakturmaguntia-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/css/style.css?v=25">
+  <link rel="stylesheet" href="assets/css/style.css?v=28">
   <script>
     /* The only blocking JS, kept tiny:
        1. skip the eyelid intro on repeat visits this session
@@ -53,7 +53,7 @@
       d.setAttribute('data-fx', tier); d.setAttribute('data-fx-src', src);
     })(document.documentElement);
   </script>
-  <script src="assets/js/main.js?v=15" defer></script>
+  <script src="assets/js/main.js?v=16" defer></script>
   <noscript><style>.reel__game[hidden] { display: block !important; } .fresh__next { display: none; }</style></noscript>
 </head>
 <body>
@@ -135,6 +135,16 @@
           </svg>
         </div>
         <div class="sigil__ticks"></div>
+        <!-- second ring: the file's own details, turning the other way -->
+        <div class="sigil sigil--inner">
+          <svg viewBox="0 0 600 600">
+            <defs><path id="ring-path-2" d="M300,300 m-200,0 a200,200 0 1,1 400,0 a200,200 0 1,1 -400,0"/></defs>
+            <circle cx="300" cy="300" r="214"/>
+            <text><textPath href="#ring-path-2" textLength="1250" lengthAdjust="spacing">FILE J-018 ✶ SUBJECT: JAY ✶ CLASS: PUBLIC ✶ STATUS: ACTIVE ✶ FILE J-018 ✶ SUBJECT: JAY ✶ CLASS: PUBLIC ✶ STATUS: ACTIVE ✶</textPath></text>
+          </svg>
+        </div>
+        <!-- bearing dial: 000 to 330, like the scale on a scope -->
+        <svg class="sigil__dial" viewBox="0 0 600 600"><text transform="rotate(0 300 300)" x="300" y="116">000</text><text transform="rotate(30 300 300)" x="300" y="116">030</text><text transform="rotate(60 300 300)" x="300" y="116">060</text><text transform="rotate(90 300 300)" x="300" y="116">090</text><text transform="rotate(120 300 300)" x="300" y="116">120</text><text transform="rotate(150 300 300)" x="300" y="116">150</text><text transform="rotate(180 300 300)" x="300" y="116">180</text><text transform="rotate(210 300 300)" x="300" y="116">210</text><text transform="rotate(240 300 300)" x="300" y="116">240</text><text transform="rotate(270 300 300)" x="300" y="116">270</text><text transform="rotate(300 300 300)" x="300" y="116">300</text><text transform="rotate(330 300 300)" x="300" y="116">330</text></svg>
         <svg class="sigil__tri" viewBox="0 0 600 600"><path d="M300 52 L515 424 L85 424Z"/><path d="M300 548 L515 176 L85 176 L300 548.004Z"/></svg>
       </div>
 
@@ -151,7 +161,23 @@
         <span class="eye eye--mini" style="--x:88%; --y:42%; --w:5rem;   --jdx-blink:4.8s; --jdx-blink-delay:-1.7s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
         <span class="eye eye--mini" style="--x:66%; --y:64%; --w:3.2rem; --jdx-blink:8.3s; --jdx-blink-delay:-6s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
         <span class="eye eye--mini" style="--x:9%;  --y:52%; --w:3rem;   --jdx-blink:6.1s; --jdx-blink-delay:-3.3s"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+        <!-- written in pencil on the file: too faint to read until the light lands on them -->
+        <p class="ink-note" style="--x:14%; --y:70%; --r:-4deg">It saw you first.</p>
+        <p class="ink-note" style="--x:30%; --y:34%; --r:3deg">Don't blink.</p>
+        <p class="ink-note" style="--x:62%; --y:28%; --r:-2deg">File J-018 is not closed.</p>
+        <p class="ink-note" style="--x:78%; --y:58%; --r:5deg">Keep scrolling. It likes that.</p>
       </div>
+
+      <!-- camera overlay: frame corners, a running clock and the cursor's position.
+           The clock and the X/Y numbers are CSS counters: no JS writes any text here. -->
+      <div class="hud" aria-hidden="true">
+        <span class="hud__corner hud__corner--tl"></span><span class="hud__corner hud__corner--tr"></span>
+        <span class="hud__corner hud__corner--bl"></span><span class="hud__corner hud__corner--br"></span>
+        <p class="hud__rec"><span class="hud__dot"></span>Rec</p>
+        <p class="hud__tc"><span class="hud__h"></span>:<span class="hud__m"></span>:<span class="hud__s"></span>:<span class="hud__f"></span></p>
+        <p class="hud__xy"><span class="hud__x"></span><span class="hud__y"></span></p>
+      </div>
+      <div class="crosshair" aria-hidden="true"><span class="crosshair__h"></span><span class="crosshair__v"></span></div>
 
       <div class="hero__file" aria-hidden="true">
         <p>File no. J-018</p>
@@ -182,6 +208,53 @@
       <div class="tape__strip tape__strip--b"><div class="tape__track"><span>Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶&nbsp;</span><span>Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶ Classified ✶ Do not distribute ✶&nbsp;</span></div></div>
       <div class="tape__strip tape__strip--a"><div class="tape__track"><span>Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶ Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶&nbsp;</span><span>Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶ Data analysis ✶ IT support ✶ Security basics ✶ Discord bots ✶ Websites ✶ Ships real things ✶&nbsp;</span></div></div>
     </div>
+
+
+    <!-- ================= THE FILE OPENS =================
+         A tall section with a sticky stage. While it's pinned, its own view
+         timeline drives the scene: the folder rises, the eye on the cover
+         opens, the cover swings back, the index slides out, the stamp lands.
+         Reduced motion or no scroll timelines: no cover, just the index. -->
+    <section class="dossier" id="index" aria-labelledby="index-title">
+      <div class="dossier__pin">
+        <div class="dossier__stage">
+          <div class="dossier__folder">
+            <span class="dossier__tab" aria-hidden="true">J-018</span>
+            <div class="dossier__paper dossier__paper--under" aria-hidden="true"></div>
+            <div class="dossier__paper">
+              <header class="dossier__head">
+                <p class="dossier__label">File J-018 / Contents</p>
+                <h2 class="dossier__title" id="index-title">Index</h2>
+              </header>
+              <nav aria-label="File index">
+                <ol class="toc">
+            <li style="--i:0"><a href="#wrestle"><span class="toc__no">00</span><span class="toc__name">New!!!</span><span class="toc__dots" aria-hidden="true"></span><span class="toc__meta">Folkstyle and Southpaw</span></a></li>
+            <li style="--i:1"><a href="#games"><span class="toc__no">00-B</span><span class="toc__name">Games</span><span class="toc__dots" aria-hidden="true"></span><span class="toc__meta">7 playable</span></a></li>
+            <li style="--i:2"><a href="#stills"><span class="toc__no">00-C</span><span class="toc__name">Stills</span><span class="toc__dots" aria-hidden="true"></span><span class="toc__meta">10 frames</span></a></li>
+            <li style="--i:3"><a href="#projects"><span class="toc__no">01</span><span class="toc__name">Projects</span><span class="toc__dots" aria-hidden="true"></span><span class="toc__meta">2 case files</span></a></li>
+            <li style="--i:4"><a href="#evidence"><span class="toc__no">01-B</span><span class="toc__name">Evidence</span><span class="toc__dots" aria-hidden="true"></span><span class="toc__meta">6 exhibits</span></a></li>
+            <li style="--i:5"><a href="#services"><span class="toc__no">02</span><span class="toc__name">Services</span><span class="toc__dots" aria-hidden="true"></span><span class="toc__meta">11 + a showpiece</span></a></li>
+            <li style="--i:6"><a href="#about"><span class="toc__no">03</span><span class="toc__name">About</span><span class="toc__dots" aria-hidden="true"></span><span class="toc__meta">subject profile</span></a></li>
+            <li style="--i:7"><a href="#contact"><span class="toc__no">04</span><span class="toc__name">Contact</span><span class="toc__dots" aria-hidden="true"></span><span class="toc__meta">open a channel</span></a></li>
+                </ol>
+              </nav>
+              <span class="stamp stamp--big dossier__stamp">Declassified</span>
+            </div>
+          </div>
+          <div class="dossier__cover" aria-hidden="true">
+            <div class="dossier__front">
+              <p class="dossier__k">Classified</p>
+              <span class="eye dossier__eye" style="--jdx-blink:9.3s; --jdx-blink-delay:-2s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+              <p class="dossier__name">Jay</p>
+              <dl class="dossier__meta"><div><dt>File</dt><dd>J-018</dd></div><div><dt>Class</dt><dd>Public</dd></div><div><dt>Pages</dt><dd>8</dd></div></dl>
+              <p class="dossier__warn">Eyes only</p>
+            </div>
+            <div class="dossier__inside"><p>Property of the subject.<br>Return if found.</p></div>
+          </div>
+        </div>
+        <p class="dossier__hint" aria-hidden="true">Keep scrolling to open the file</p>
+      </div>
+    </section>
 
     <!-- ================= NEW: the game reel =================
          One .reel__game per game with a promo. The arrow next to the name steps to the next one
@@ -280,6 +353,7 @@
 
     <!-- ================= GAMES ================= -->
     <section class="section" id="games" tabindex="-1" aria-labelledby="games-title">
+      <span class="eye eye--peek" style="--jdx-blink:7.4s; --jdx-blink-delay:-3s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
       <header class="sh">
         <p class="sh__label">File 00-B / Games / 7 playable</p>
         <h2 class="sh__title distort" id="games-title" data-text="Games">Games</h2>
@@ -294,6 +368,56 @@
         <li class="price bleed"><span class="price__no">06</span><h3 class="price__name">Moves</h3><span class="price__dots" aria-hidden="true"></span><p class="price__amt">Early build</p><p class="price__desc">Gymnastics. Sticks drive your arms and legs, stick the landing.</p><a class="price__cta" href="/games/moves/">Play it <span aria-hidden="true">→</span></a></li>
       </ol>
       <p class="fresh__note bleed"><a href="/games/">Every game in one place →</a></p>
+    </section>
+
+
+    <!-- ================= STILLS: a surveillance contact sheet =================
+         Every frame is a real screenshot already on this site. Grease-pencil
+         circles mark the "selects" and draw themselves in as you scroll. -->
+    <section class="section stills" id="stills" tabindex="-1" aria-labelledby="stills-title">
+      <span class="section__ghost" aria-hidden="true">0C</span>
+      <span class="eye eye--peek" style="--jdx-blink:6.6s; --jdx-blink-delay:-1.3s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+      <header class="sh">
+        <p class="sh__label">File 00-C / Surveillance / contact sheet</p>
+        <h2 class="sh__title distort" id="stills-title" data-text="Stills">Stills</h2>
+      </header>
+      <div class="sheet bleed">
+        <p class="sheet__edge" aria-hidden="true"><span>J-018</span><span>Safety film</span><span>10 frames</span><span>Do not print</span></p>
+        <ol class="sheet__frames">
+        <li class="still still--select" style="--i:0">
+          <a class="still__link" href="/wrestle/"><span class="still__img"><img src="assets/img/wrestle/slam.webp" width="1600" height="956" loading="lazy" decoding="async" alt="Folkstyle: one wrestler arches back and throws the other"></span><span class="still__no" aria-hidden="true">01A</span><span class="still__cap"><b>Folkstyle</b> A slam off the back arch</span></a>
+        </li>
+        <li class="still" style="--i:1">
+          <a class="still__link" href="/wrestle/"><span class="still__img"><img src="assets/img/wrestle/ref-flop.webp" width="1200" height="617" loading="lazy" decoding="async" alt="Folkstyle: the referee dives flat toward the mat beside a pin"></span><span class="still__no" aria-hidden="true">02A</span><span class="still__cap"><b>Folkstyle</b> The referee takes pins personally</span></a>
+        </li>
+        <li class="still" style="--i:2">
+          <a class="still__link" href="/wrestle/"><span class="still__img"><img src="assets/img/wrestle/tie-up.webp" width="1200" height="617" loading="lazy" decoding="async" alt="Folkstyle: two wrestlers in a low stance fighting for each other's hands"></span><span class="still__no" aria-hidden="true">03A</span><span class="still__cap"><b>Folkstyle</b> Tying up on your feet</span></a>
+        </li>
+        <li class="still" style="--i:3">
+          <a class="still__link" href="/wrestle/moves.html"><span class="still__img"><img src="assets/img/wrestle/move-index.webp" width="1200" height="750" loading="lazy" decoding="async" alt="The Folkstyle move index filtered to body lock slams"></span><span class="still__no" aria-hidden="true">04A</span><span class="still__cap"><b>Folkstyle</b> Every move, looked up</span></a>
+        </li>
+        <li class="still still--select" style="--i:4">
+          <a class="still__link" href="/games/southpaw/"><span class="still__img"><img src="assets/img/southpaw/knockdown.webp" width="1600" height="900" loading="lazy" decoding="async" alt="Southpaw: one boxer flat on the canvas while the other waits out the count"></span><span class="still__no" aria-hidden="true">05A</span><span class="still__cap"><b>Southpaw</b> Down, and the count is on</span></a>
+        </li>
+        <li class="still" style="--i:5">
+          <a class="still__link" href="/games/southpaw/"><span class="still__img"><img src="assets/img/southpaw/counter.webp" width="1200" height="675" loading="lazy" decoding="async" alt="Southpaw: two boxers trading at close range as a counter lands"></span><span class="still__no" aria-hidden="true">06A</span><span class="still__cap"><b>Southpaw</b> Counters land harder</span></a>
+        </li>
+        <li class="still" style="--i:6">
+          <a class="still__link" href="/games/southpaw/"><span class="still__img"><img src="assets/img/southpaw/get-up.webp" width="1200" height="675" loading="lazy" decoding="async" alt="Southpaw: a knocked-down boxer on one knee, getting back up"></span><span class="still__no" aria-hidden="true">07A</span><span class="still__cap"><b>Southpaw</b> Getting up off the canvas</span></a>
+        </li>
+        <li class="still" style="--i:7">
+          <a class="still__link" href="/games/southpaw/"><span class="still__img"><img src="assets/img/southpaw/opponents.webp" width="1200" height="675" loading="lazy" decoding="async" alt="Southpaw: the opponent menu with Rook, Bull, Kestrel, Dutch and The Clerk"></span><span class="still__no" aria-hidden="true">08A</span><span class="still__cap"><b>Southpaw</b> Five to fight</span></a>
+        </li>
+        <li class="still still--select" style="--i:8">
+          <a class="still__link" href="https://github.com/ag0nyy-ops/skyscrob" target="_blank" rel="noopener"><span class="still__img"><img src="assets/img/board/skyscrob.webp" width="640" height="400" loading="lazy" decoding="async" alt="Skyscrob diagram: devices play songs, skyscrob polls Apple Music and sends scrobbles to Last.fm"></span><span class="still__no" aria-hidden="true">09A</span><span class="still__cap"><b>Skyscrob</b> How the scrobbles get to Last.fm</span></a>
+        </li>
+        <li class="still" style="--i:9">
+          <!-- TODO: link this frame once the bots have an invite / info page -->
+          <div class="still__link"><span class="still__img"><img src="assets/img/board/bots.webp" width="640" height="400" loading="lazy" decoding="async" alt="Preview card listing the commands of the Jinzo and Cosmou Discord bots"></span><span class="still__no" aria-hidden="true">10A</span><span class="still__cap"><b>Jinzo & Cosmou</b> What each bot does</span></div>
+        </li>
+        </ol>
+        <p class="sheet__edge sheet__edge--b" aria-hidden="true"><span>Frames 01 to 04: Folkstyle</span><span>05 to 08: Southpaw</span><span>09: Skyscrob</span><span>10: Jinzo &amp; Cosmou</span></p>
+      </div>
     </section>
 
     <!-- ================= PROJECTS ================= -->
@@ -339,6 +463,66 @@
         <p class="file-cta__big">Your project could be the next file.</p>
         <a class="btn btn--solid" href="https://discord.gg/nGysyw7MgS" target="_blank" rel="noopener">Open a case on Discord ↗</a>
       </aside>
+    </section>
+
+
+    <!-- ================= EVIDENCE BOARD =================
+         Pinned exhibits around the subject, strung together. The strings are
+         one small SVG drawn in with stroke-dashoffset on a view timeline; the
+         cards sit on the same 1000 x 700 grid (--cx/--cy), so pins and strings
+         always meet. Under 760px it turns into a plain two-column stack. -->
+    <section class="section evidence" id="evidence" tabindex="-1" aria-labelledby="evidence-title">
+      <span class="section__ghost" aria-hidden="true">1B</span>
+      <header class="sh">
+        <p class="sh__label">File 01-B / Evidence board / 6 exhibits</p>
+        <h2 class="sh__title distort" id="evidence-title" data-text="Evidence">Evidence</h2>
+      </header>
+      <div class="board bleed">
+        <svg class="board__strings" viewBox="0 0 1000 770" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          <path style="--i:0" d="M500 280 Q353 268 206 137" pathLength="1"/><path style="--i:1" d="M500 280 Q470 146 500 12" pathLength="1"/><path style="--i:2" d="M500 280 Q647 268 794 137" pathLength="1"/><path style="--i:3" d="M500 280 Q647 383 794 387" pathLength="1"/><path style="--i:4" d="M500 280 Q530 396 500 512" pathLength="1"/><path style="--i:5" d="M500 280 Q353 383 206 387" pathLength="1"/><path class="board__x" style="--i:6" d="M500 12 Q660 110 794 137" pathLength="1"/><path class="board__x" style="--i:7" d="M500 512 Q340 490 206 387" pathLength="1"/>
+        </svg>
+        <p class="board__note board__note--1" aria-hidden="true">Both need a controller</p>
+        <p class="board__note board__note--2" aria-hidden="true">This site is a sample</p>
+        <div class="board__subject">
+          <span class="exh__pin" aria-hidden="true"></span>
+          <span class="eye board__eye" style="--jdx-blink:5.6s; --jdx-blink-delay:-.8s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
+          <p class="board__who"><span>Subject</span>Jay</p>
+          <p class="board__why">Every case leads back here.</p>
+        </div>
+        <ol class="board__cards">
+          <li class="exh" style="--cx:206; --cy:247; --r:-4deg; --i:0">
+            <span class="exh__pin" aria-hidden="true"></span>
+            <a class="exh__link" href="https://github.com/ag0nyy-ops/skyscrob" target="_blank" rel="noopener"><span class="exh__img"><img src="assets/img/board/skyscrob.webp" width="640" height="400" loading="lazy" decoding="async" alt="Diagram of how skyscrob moves Apple Music plays to Last.fm"></span><span class="exh__tag">Exhibit A</span><span class="exh__title">Skyscrob</span><span class="exh__line">Apple Music to Last.fm</span></a>
+            <span class="exh__stamp" aria-hidden="true">Shipped</span>
+          </li>
+          <li class="exh" style="--cx:500; --cy:122; --r:2deg; --i:1">
+            <span class="exh__pin" aria-hidden="true"></span>
+            <a class="exh__link" href="/wrestle/"><span class="exh__img"><img src="assets/img/wrestle/slam.webp" width="1600" height="956" loading="lazy" decoding="async" alt="Folkstyle: a slam off the back arch"></span><span class="exh__tag">Exhibit B</span><span class="exh__title">Folkstyle</span><span class="exh__line">Wrestling in the browser</span></a>
+            <span class="exh__stamp" aria-hidden="true">Live</span>
+          </li>
+          <li class="exh" style="--cx:794; --cy:247; --r:5deg; --i:2">
+            <span class="exh__pin" aria-hidden="true"></span>
+            <a class="exh__link" href="/games/southpaw/"><span class="exh__img"><img src="assets/img/southpaw/knockdown.webp" width="1600" height="900" loading="lazy" decoding="async" alt="Southpaw: a boxer down while the count runs"></span><span class="exh__tag">Exhibit C</span><span class="exh__title">Southpaw</span><span class="exh__line">Boxing on the triggers</span></a>
+            <span class="exh__stamp" aria-hidden="true">Early build</span>
+          </li>
+          <li class="exh" style="--cx:794; --cy:497; --r:-3deg; --i:3">
+            <span class="exh__pin" aria-hidden="true"></span>
+            <!-- TODO: link Exhibit D once the bots have an invite / info page -->
+            <div class="exh__link"><span class="exh__img"><img src="assets/img/board/bots.webp" width="640" height="400" loading="lazy" decoding="async" alt="Preview card of the Jinzo and Cosmou bot commands"></span><span class="exh__tag">Exhibit D</span><span class="exh__title">Jinzo &amp; Cosmou</span><span class="exh__line">Two Discord bots</span></div>
+            <span class="exh__stamp" aria-hidden="true">Live</span>
+          </li>
+          <li class="exh" style="--cx:500; --cy:622; --r:3deg; --i:4">
+            <span class="exh__pin" aria-hidden="true"></span>
+            <a class="exh__link" href="https://github.com/ag0nyy-ops/ag0nyy-ops.github.io" target="_blank" rel="noopener"><span class="exh__img"><img src="assets/img/board/site.webp" width="640" height="336" loading="lazy" decoding="async" alt="Link preview card of this site: the hollow name and screenshots on desktop and phone"></span><span class="exh__tag">Exhibit E</span><span class="exh__title">This site</span><span class="exh__line">The file you are in</span></a>
+            <span class="exh__stamp" aria-hidden="true">Sample</span>
+          </li>
+          <li class="exh" style="--cx:206; --cy:497; --r:-5deg; --i:5">
+            <span class="exh__pin" aria-hidden="true"></span>
+            <a class="exh__link" href="commissions.html"><span class="exh__img"><img src="assets/img/board/sheet.webp" width="640" height="889" loading="lazy" decoding="async" alt="The top of the commission rate sheet"></span><span class="exh__tag">Exhibit F</span><span class="exh__title">Commission sheet</span><span class="exh__line">Every price, one page</span></a>
+            <span class="exh__stamp" aria-hidden="true">Open</span>
+          </li>
+        </ol>
+      </div>
     </section>
 
     <!-- ================= SERVICES ================= -->
@@ -390,6 +574,7 @@
     <!-- ================= ABOUT ================= -->
     <section class="section" id="about" tabindex="-1" aria-labelledby="about-title">
       <span class="section__ghost" aria-hidden="true">03</span>
+      <span class="eye eye--peek" style="--jdx-blink:8.1s; --jdx-blink-delay:-5s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
       <header class="sh">
         <p class="sh__label">File 03 / Subject profile</p>
         <h2 class="sh__title distort" id="about-title" data-text="About">About</h2>
@@ -412,11 +597,26 @@
           </dl>
         </div>
       </div>
+
+      <!-- field notes: each line types itself out as the list scrolls through
+           (steps() on a width in ch). Static and wrapping on small screens. -->
+      <div class="notes bleed">
+        <p class="notes__label">Field notes / observed</p>
+        <ol class="notes__list">
+          <li style="--i:0; --n:47"><span class="notes__no">01</span><span class="notes__t">Builds things after school and ships them fast.</span></li>
+          <li style="--i:1; --n:37"><span class="notes__no">02</span><span class="notes__t">Has 7 playable browser games on file.</span></li>
+          <li style="--i:2; --n:52"><span class="notes__no">03</span><span class="notes__t">Wrote a move index with 139 entries for one of them.</span></li>
+          <li style="--i:3; --n:40"><span class="notes__no">04</span><span class="notes__t">Runs two Discord bots, Jinzo and Cosmou.</span></li>
+          <li style="--i:4; --n:58"><span class="notes__no">05</span><span class="notes__t">Next stop: computer engineering, then an Apple internship.</span></li>
+          <li style="--i:5; --n:33"><span class="notes__no">06</span><span class="notes__t">Sleep schedule: still classified.</span></li>
+        </ol>
+      </div>
     </section>
 
     <!-- ================= CONTACT ================= -->
     <section class="section contact" id="contact" tabindex="-1" aria-labelledby="contact-title">
       <span class="section__ghost" aria-hidden="true">04</span>
+      <span class="eye eye--peek" style="--jdx-blink:6.2s; --jdx-blink-delay:-.6s" aria-hidden="true"><span class="eye__ball"><span class="eye__iris"><span class="eye__fibers"></span><span class="eye__pupil"></span></span><span class="eye__lid eye__lid--top"></span><span class="eye__lid eye__lid--bottom"></span></span><span class="eye__lashes"></span></span>
       <header class="sh">
         <p class="sh__label">File 04 / Open a channel</p>
         <h2 class="sh__title distort" id="contact-title" data-text="Contact">Contact</h2>
